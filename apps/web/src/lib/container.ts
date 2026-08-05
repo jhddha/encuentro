@@ -2,8 +2,10 @@ import 'server-only';
 
 import {
   createActorResolver,
+  createCatalogRepository,
   createEventRepository,
   createPrismaClient,
+  createRegistrationRepository,
 } from '@encuentro/infrastructure';
 
 /**
@@ -38,6 +40,14 @@ export function eventRepository() {
 
 export function actorResolver() {
   return createActorResolver(prismaClient());
+}
+
+export function catalogRepository() {
+  return createCatalogRepository(prismaClient());
+}
+
+export function registrationRepository() {
+  return createRegistrationRepository(prismaClient());
 }
 
 export function prisma() {
