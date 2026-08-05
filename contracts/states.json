@@ -28,6 +28,13 @@
     "NO_SHOW",
     "COMPLETED"
   ],
+  "payment": [
+    "PENDING",
+    "SUCCEEDED",
+    "CANCELLED",
+    "PARTIALLY_REFUNDED",
+    "REFUNDED"
+  ],
   "paymentProof": [
     "PENDING_UPLOAD",
     "SUBMITTED",

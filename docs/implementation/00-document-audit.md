@@ -41,7 +41,12 @@ Distribución de los 65 requisitos: `PAY` 15, `EVT` 10, `GOV` 10, `HOS` 8, `REG`
 
 ## 3. Hallazgos
 
-### H-01 — `states.json` omite la máquina de estados `payment` — ALTA
+### H-01 — `states.json` omite la máquina de estados `payment` — ALTA — **CERRADO 5-ago-2026**
+
+> Cerrado. `payment` se añadió a `contracts/states.json` y se transcribió a
+> `packages/domain/src/states.ts` como `PAYMENT_STATES`. El test de contrato
+> detectó la divergencia automáticamente. Se conserva el texto original abajo.
+
 
 `docs/01-product/requirements.md` §4.2 declara seis máquinas. `contracts/states.json` define cinco (`registration`, `paymentComputed`, `attendance`, `paymentProof`, `lodging`) más `event`. Falta:
 
@@ -111,7 +116,11 @@ Hay rutas administrativas sin permiso que las proteja. La regla `03-security-rba
 
 Cada entrada es solo `{"id": ..., "status": "CANONICAL"}`. El campo `source` apunta al Markdown. Consecuencia: el validador puede detectar que un ID desaparece, pero **no** que su regla o criterio cambió. La deriva entre `requirements.md` y el contrato es indetectable automáticamente.
 
-### H-08 — `MANIFEST.sha256` desactualizado — BAJA
+### H-08 — `MANIFEST.sha256` desactualizado — BAJA — **CERRADO 5-ago-2026**
+
+> Regenerado tras el arreglo de encoding y la incorporación de `payment` al
+> contrato de estados.
+
 
 79 de 80 archivos íntegros. Discrepa `scripts/validate_canonical_docs.py`, modificado en el commit `95c953b` para declarar `encoding='utf-8'` en las seis lecturas que lo omitían (el script fallaba con `UnicodeDecodeError` bajo cp1252 en Windows). Hay que regenerar la línea del manifiesto.
 

@@ -3,6 +3,7 @@ export {
   REGISTRATION_STATES,
   PAYMENT_COMPUTED_STATES,
   ATTENDANCE_STATES,
+  PAYMENT_STATES,
   PAYMENT_PROOF_STATES,
   LODGING_STATES,
   EVENT_TRANSITIONS,
@@ -14,6 +15,7 @@ export {
   type RegistrationState,
   type PaymentComputedState,
   type AttendanceState,
+  type PaymentState,
   type PaymentProofState,
   type LodgingState,
 } from './states.js';

@@ -4,12 +4,6 @@
  * Transcripción literal de `contracts/states.json`, que a su vez deriva de
  * `docs/01-product/requirements.md` §4. No añadir estados aquí sin actualizar
  * primero el contrato (regla 00-sources).
- *
- * Pendiente: la máquina `payment` (`PENDING`, `SUCCEEDED`, `CANCELLED`,
- * `PARTIALLY_REFUNDED`, `REFUNDED`) está declarada en requirements.md §4.2 pero
- * ausente de states.json. Ver hallazgo H-01 en
- * `docs/implementation/00-document-audit.md`. No se transcribe hasta que el
- * contrato la incluya.
  */
 
 export const EVENT_STATES = [
@@ -34,6 +28,21 @@ export const PAYMENT_COMPUTED_STATES = [
 
 export const ATTENDANCE_STATES = ['NOT_ARRIVED', 'CHECKED_IN', 'NO_SHOW', 'COMPLETED'] as const;
 
+/**
+ * Estado del registro `payments` (data-api-rbac.md §2).
+ *
+ * Distinto de `PAYMENT_COMPUTED_STATES`, que es el saldo derivado de la
+ * inscripción. Un pago `SUCCEEDED` es inmutable: las correcciones se hacen por
+ * reversión o anulación, nunca reescribiendo el registro (GOV-005, GOV-009).
+ */
+export const PAYMENT_STATES = [
+  'PENDING',
+  'SUCCEEDED',
+  'CANCELLED',
+  'PARTIALLY_REFUNDED',
+  'REFUNDED',
+] as const;
+
 export const PAYMENT_PROOF_STATES = [
   'PENDING_UPLOAD',
   'SUBMITTED',
@@ -51,6 +60,7 @@ export type EventState = (typeof EVENT_STATES)[number];
 export type RegistrationState = (typeof REGISTRATION_STATES)[number];
 export type PaymentComputedState = (typeof PAYMENT_COMPUTED_STATES)[number];
 export type AttendanceState = (typeof ATTENDANCE_STATES)[number];
+export type PaymentState = (typeof PAYMENT_STATES)[number];
 export type PaymentProofState = (typeof PAYMENT_PROOF_STATES)[number];
 export type LodgingState = (typeof LODGING_STATES)[number];
 

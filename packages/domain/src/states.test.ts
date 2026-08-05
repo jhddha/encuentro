@@ -8,6 +8,7 @@ import {
   LODGING_STATES,
   PAYMENT_COMPUTED_STATES,
   PAYMENT_PROOF_STATES,
+  PAYMENT_STATES,
   REGISTRATION_STATES,
   acceptsRegistrationsAndPayments,
   blocksOrdinaryOperations,
@@ -24,6 +25,7 @@ describe('máquinas de estado frente a contracts/states.json', () => {
     ['registration', REGISTRATION_STATES],
     ['paymentComputed', PAYMENT_COMPUTED_STATES],
     ['attendance', ATTENDANCE_STATES],
+    ['payment', PAYMENT_STATES],
     ['paymentProof', PAYMENT_PROOF_STATES],
     ['lodging', LODGING_STATES],
   ];
@@ -32,10 +34,18 @@ describe('máquinas de estado frente a contracts/states.json', () => {
     expect(states).toEqual(contract[key]);
   });
 
-  it('no transcribe máquinas ausentes del contrato', () => {
-    // Guarda contra el hallazgo H-01: si alguien añade `payment` al contrato,
-    // este test falla y obliga a transcribirla también en el dominio.
+  it('cubre todas las máquinas del contrato, sin sobrantes', () => {
+    // Si alguien añade una máquina al contrato y no la transcribe al dominio,
+    // este test falla. Así se detectó y cerró el hallazgo H-01.
     expect(Object.keys(contract).filter((k) => k !== 'version')).toEqual(cases.map(([key]) => key));
+  });
+
+  it('distingue el estado del pago del saldo derivado', () => {
+    // `payments.status` y el saldo calculado de la inscripción comparten el
+    // nombre en lenguaje natural pero son máquinas distintas (requirements.md §4.2).
+    expect(PAYMENT_STATES).not.toEqual(PAYMENT_COMPUTED_STATES);
+    expect(PAYMENT_STATES).toContain('SUCCEEDED');
+    expect(PAYMENT_COMPUTED_STATES).toContain('PAID');
   });
 });
 

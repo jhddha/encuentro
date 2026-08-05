@@ -94,14 +94,23 @@ El resto cubre las transiciones de gestión (EVT-003, GOV-002), el motivo obliga
 
 ## 6. Notas de entorno
 
-- **Docker no está operativo.** Docker Desktop 4.85.0 quedó instalado pero el daemon no arranca; requiere reiniciar Windows y abrirlo una vez. `docker-compose.yml` está escrito y publica puertos solo en `127.0.0.1`, pero **no se ha levantado ni verificado**.
-- `.env` no existe todavía. `packages/config` rechaza los valores `change-me` de `.env.example` y exige 32 caracteres mínimos en `SESSION_SECRET` y `RECEIPT_VERIFICATION_SECRET`.
+- **Docker verificado.** Con WSL2 y Docker Desktop 4.85.0 (server 29.6.2, Compose v5.3.1), `docker compose up -d` levanta los tres servicios y los tres reportan `healthy`. Puertos publicados solo en `127.0.0.1`.
+
+  | Servicio | Estado | Comprobación |
+  |---|---|---|
+  | postgres 17 | healthy | `prisma migrate dev` conecta y sincroniza |
+  | redis 7 | healthy | `redis-cli ping` → `PONG` |
+  | minio | healthy | healthcheck `mc ready local` |
+
+- `.env` local creado con secretos aleatorios de 48 caracteres, fuera del control de versiones. `packages/config` rechaza los valores `change-me` de `.env.example` y exige 32 caracteres mínimos en `SESSION_SECRET` y `RECEIPT_VERIFICATION_SECRET`.
+- **Prisma 7 no carga `.env` por su cuenta** y ya no acepta `url` en `schema.prisma`. Ambos comportamientos se confirmaron contra la documentación oficial vía Context7, no por suposición: la configuración vive en `prisma.config.ts` con `import 'dotenv/config'` y `env('DATABASE_URL')`.
 - `.claude/hooks/preflight.sh` sigue sin declararse en `settings.json` y depende de bash (hallazgo H-10 de P00). Su función la cubre hoy el paso de validación del CI.
 - Prettier ignora `docs/`, `contracts/`, `prompts/` y `scripts/`: reformatearlos alteraría archivos cubiertos por `MANIFEST.sha256`.
 
 ## 7. Pendientes que arrastra P01
 
-1. Verificar `docker compose up` tras reiniciar Windows.
-2. Regenerar `MANIFEST.sha256` (desactualizado desde el arreglo de encoding del validador, hallazgo H-08).
-3. Cerrar H-01 a H-06 antes de P03/P05/P07, según la secuencia recomendada en la auditoría P00.
-4. Añadir Playwright y el primer smoke E2E en P02, cuando existan rutas reales que probar.
+1. ~~Verificar `docker compose up`~~ — hecho, los tres servicios `healthy`.
+2. ~~Regenerar `MANIFEST.sha256`~~ — hecho, 80/80 íntegros (H-08 cerrado).
+3. ~~Cerrar H-01~~ — hecho: `payment` está en el contrato y en el dominio.
+4. Cerrar H-02 a H-06 antes de P03/P05/P07. **H-05 y H-06 requieren decisión humana** sobre qué permisos deben existir.
+5. Añadir Playwright y el primer smoke E2E en P02, cuando existan rutas reales que probar.
