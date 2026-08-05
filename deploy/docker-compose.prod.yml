@@ -1,0 +1,141 @@
+# Despliegue productivo — DEC-001.
+#
+# Regla que gobierna este archivo: **PostgreSQL y Redis no se exponen a
+# Internet**. No llevan `ports:`, solo red interna. Lo único publicado son 80 y
+# 443 del reverse proxy.
+#
+# Este archivo se aplica en el VPS. No lo ejecuta el equipo de desarrollo desde
+# su máquina.
+
+name: encuentro
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    # Los dos únicos puertos públicos de todo el sistema.
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge, internal]
+    depends_on:
+      web:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.web
+    restart: unless-stopped
+    # Sin `ports`: solo alcanzable desde el reverse proxy por la red interna.
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL:?falta APP_URL}
+      DATABASE_URL: ${DATABASE_URL:?falta DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:?falta REDIS_URL}
+      SESSION_SECRET: ${SESSION_SECRET:?falta SESSION_SECRET}
+      RECEIPT_VERIFICATION_SECRET: ${RECEIPT_VERIFICATION_SECRET:?falta RECEIPT_VERIFICATION_SECRET}
+      OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT}
+      OBJECT_STORAGE_BUCKET: ${OBJECT_STORAGE_BUCKET}
+      OBJECT_STORAGE_ACCESS_KEY: ${OBJECT_STORAGE_ACCESS_KEY}
+      OBJECT_STORAGE_SECRET_KEY: ${OBJECT_STORAGE_SECRET_KEY}
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.worker
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL:?falta APP_URL}
+      DATABASE_URL: ${DATABASE_URL:?falta DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:?falta REDIS_URL}
+      SESSION_SECRET: ${SESSION_SECRET:?falta SESSION_SECRET}
+      RECEIPT_VERIFICATION_SECRET: ${RECEIPT_VERIFICATION_SECRET:?falta RECEIPT_VERIFICATION_SECRET}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+    networks: [internal]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    # Sin `ports`. DEC-001: la base nunca es alcanzable desde Internet.
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?falta POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER:?falta POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Redis no es fuente autoritativa (arquitectura §1), pero contiene sesiones
+    # y colas: tampoco se expone.
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redisdata:/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Respaldo cifrado — DEC-012. RPO 1 h.
+  backup:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      PGHOST: postgres
+      PGDATABASE: ${POSTGRES_DB:?falta POSTGRES_DB}
+      PGUSER: ${POSTGRES_USER:?falta POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
+      BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?falta BACKUP_PASSPHRASE}
+      BACKUP_INTERVAL_SECONDS: '3600'
+    volumes:
+      - ./backup.sh:/usr/local/bin/backup.sh:ro
+      - backups:/backups
+    networks: [internal]
+    entrypoint: ['/bin/bash', '/usr/local/bin/backup.sh']
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+networks:
+  # `edge` es la única red con salida a Internet, y solo Caddy está en ella.
+  edge:
+  internal:
+    internal: true
+
+volumes:
+  pgdata:
+  redisdata:
+  caddy_data:
+  caddy_config:
+  # Copia local de trabajo. DEC-012 exige además copia **fuera del VPS**:
+  # ver `backup.sh` y el runbook.
+  backups:

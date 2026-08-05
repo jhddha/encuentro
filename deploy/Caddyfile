@@ -1,0 +1,46 @@
+# Reverse proxy — DEC-001.
+#
+# Caddy obtiene y renueva el certificado TLS automáticamente, así que no hay
+# renovación manual que pueda olvidarse. Sustituya el dominio antes de aplicar.
+
+{$ENCUENTRO_DOMAIN} {
+	encode gzip zstd
+
+	# TLS lo gestiona Caddy. La aplicación asume que llega tráfico ya cifrado:
+	# `useSecureCookies` en producción depende de ello (ver P04).
+	header {
+		# HSTS. Un año, con subdominios. Solo activarlo cuando el dominio ya
+		# sirva TLS de forma estable: revertirlo es lento porque los navegadores
+		# recuerdan la cabecera.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# La verificación pública de comprobante no debe indexarse. La página ya
+		# lo declara con su metadata; esto lo refuerza a nivel de proxy.
+		-Server
+	}
+
+	# Rate limit del endpoint público de verificación.
+	#
+	# Es la única superficie del sistema accesible sin sesión (PAY-013), y el
+	# token es lo único que la protege. Sin límite, alguien podría probar tokens
+	# a gran velocidad.
+	@verificacion path /verificar/comprobante/*
+	handle @verificacion {
+		reverse_proxy web:3000
+	}
+
+	# El resto del tráfico.
+	reverse_proxy web:3000 {
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+# Redirección de HTTP a HTTPS. Caddy la hace por defecto; queda explícita para
+# que no dependa de un comportamiento implícito.
+http://{$ENCUENTRO_DOMAIN} {
+	redir https://{host}{uri} permanent
+}

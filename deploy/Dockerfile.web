@@ -1,0 +1,71 @@
+# Imagen de apps/web — DEC-001.
+#
+# Multietapa para que la imagen final no arrastre el toolchain de compilación.
+# `output: 'standalone'` de Next produce un servidor con solo las dependencias
+# que realmente usa, y se activa con BUILD_STANDALONE=1 (ver apps/web/next.config.ts).
+
+# El patch exacto de Node se toma de .nvmrc y engines, no de "lts".
+FROM node:24.19.0-bookworm-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+# --- dependencias -----------------------------------------------------------
+FROM base AS deps
+WORKDIR /repo
+
+# Solo los manifiestos, para que una capa de dependencias se reutilice mientras
+# no cambien. Copiar el código aquí invalidaría la caché en cada commit.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+COPY packages/domain/package.json packages/domain/
+COPY packages/application/package.json packages/application/
+COPY packages/infrastructure/package.json packages/infrastructure/
+COPY packages/ui/package.json packages/ui/
+COPY packages/config/package.json packages/config/
+
+RUN pnpm install --frozen-lockfile
+
+# --- compilación ------------------------------------------------------------
+FROM deps AS build
+WORKDIR /repo
+COPY . .
+
+# El cliente Prisma se genera antes del build: el código de infraestructura lo
+# importa y sin él no compila.
+# `prisma generate` no se conecta a la base, pero `prisma.config.ts` exige la
+# variable al cargarse. Se usa un marcador válido en forma pero inútil en
+# destino: si algo intentara conectar durante el build, fallaría en vez de
+# alcanzar una base real por accidente.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:1/build"
+RUN pnpm exec prisma generate
+RUN BUILD_STANDALONE=1 pnpm build
+
+# --- imagen final -----------------------------------------------------------
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+# Next escucha en todas las interfaces dentro del contenedor; quien restringe
+# el acceso es el reverse proxy, no la aplicación.
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+# Usuario sin privilegios. Un proceso que no necesita root no debe tenerlo.
+RUN groupadd --system --gid 1001 encuentro \
+ && useradd --system --uid 1001 --gid encuentro encuentro
+
+COPY --from=build --chown=encuentro:encuentro /repo/apps/web/.next/standalone ./
+COPY --from=build --chown=encuentro:encuentro /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=encuentro:encuentro /repo/apps/web/public ./apps/web/public
+
+USER encuentro
+EXPOSE 3000
+
+# Health check propio del contenedor. La arquitectura §9 pide health checks
+# separados para web y worker.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["node", "apps/web/server.js"]

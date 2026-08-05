@@ -1,0 +1,57 @@
+# Imagen de apps/worker — DEC-001.
+#
+# Proceso separado de la web, no un hilo dentro de ella: la arquitectura §2 lo
+# exige y permite reiniciar o escalar uno sin tocar el otro.
+
+FROM node:24.19.0-bookworm-slim AS base
+ENV PNPM_HOME=/pnpm
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+
+FROM base AS deps
+WORKDIR /repo
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
+COPY packages/domain/package.json packages/domain/
+COPY packages/application/package.json packages/application/
+COPY packages/infrastructure/package.json packages/infrastructure/
+COPY packages/ui/package.json packages/ui/
+COPY packages/config/package.json packages/config/
+RUN pnpm install --frozen-lockfile
+
+FROM deps AS build
+WORKDIR /repo
+COPY . .
+# `prisma generate` no se conecta a la base, pero `prisma.config.ts` exige la
+# variable al cargarse. Se usa un marcador válido en forma pero inútil en
+# destino: si algo intentara conectar durante el build, fallaría en vez de
+# alcanzar una base real por accidente.
+ENV DATABASE_URL="postgresql://build:build@127.0.0.1:1/build"
+RUN pnpm exec prisma generate
+RUN pnpm exec tsc --build
+
+# No se podan las dependencias de desarrollo: `pnpm prune --prod` no opera
+# sobre un workspace con enlaces internos sin romper las rutas. La imagen queda
+# más grande de lo estrictamente necesario, y se prefiere eso a un arranque que
+# falle por un módulo ausente.
+
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+RUN groupadd --system --gid 1001 encuentro \
+ && useradd --system --uid 1001 --gid encuentro encuentro
+
+COPY --from=build --chown=encuentro:encuentro /repo/node_modules ./node_modules
+COPY --from=build --chown=encuentro:encuentro /repo/apps/worker/dist ./apps/worker/dist
+COPY --from=build --chown=encuentro:encuentro /repo/apps/worker/node_modules ./apps/worker/node_modules
+COPY --from=build --chown=encuentro:encuentro /repo/packages ./packages
+
+USER encuentro
+
+# El worker no expone puerto HTTP: su salud se mide por su conexión a Redis y
+# por el avance de las colas. Un health check de contenedor aquí solo diría que
+# el proceso vive, que es menos de lo que hace falta saber.
+CMD ["node", "apps/worker/dist/main.js"]

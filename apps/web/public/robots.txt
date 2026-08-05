@@ -1,0 +1,11 @@
+# La verificación pública de comprobante no debe indexarse: cada URL contiene
+# un token, y un buscador que las recorra las deja en su índice.
+User-agent: *
+Disallow: /verificar/
+Disallow: /admin/
+Disallow: /caja/
+Disallow: /comision/
+Disallow: /scanner/
+Disallow: /ingresar
+Disallow: /configurar-mfa
+Disallow: /verificar-correo

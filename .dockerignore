@@ -1,0 +1,27 @@
+# Sin esto, `COPY . .` arrastra el node_modules del host y pnpm aborta al
+# detectar que el directorio de módulos no coincide con el lockfile.
+node_modules
+**/node_modules
+
+# Artefactos de compilación: la imagen los reconstruye.
+**/dist
+**/.next
+**/*.tsbuildinfo
+
+# Nunca deben entrar en una imagen.
+.env
+.env.*
+!.env.example
+
+# Ruido que solo invalida la caché de capas.
+.git
+.github
+coverage
+test-results
+playwright-report
+docs
+generated-docx
+archive
+prototypes
+*.md
+!README.md
