@@ -24,6 +24,33 @@ export { DomainError, type DomainErrorCode } from './errors.js';
 
 export { dayNumber, totalDays } from './event-duration.js';
 
+export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
+
+export {
+  add,
+  compare,
+  isNegative,
+  isZero,
+  meetsMinimumPercent,
+  money,
+  subtract,
+  sum,
+  toDecimalString,
+  type Money,
+} from './money.js';
+
+export {
+  chargeAmount,
+  freezeCharge,
+  isAdvanceRateAvailable,
+  isPackageOfferable,
+  unlocksHotelSelection,
+  type ChargeSnapshot,
+  type PackageVisibility,
+  type PaymentMode,
+  type PriceVersion,
+} from './pricing.js';
+
 export {
   authorize,
   can,

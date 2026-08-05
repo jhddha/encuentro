@@ -13,7 +13,13 @@ export type DomainErrorCode =
   | 'EVENT_OPERATIONS_BLOCKED'
   | 'EVENT_VERSION_CONFLICT'
   | 'EVENT_DATES_INVALID'
-  | 'FORBIDDEN';
+  | 'FORBIDDEN'
+  | 'MONEY_INVALID'
+  | 'MONEY_CURRENCY_MISMATCH'
+  | 'MINOR_NOT_ALLOWED'
+  | 'ADVANCE_RATE_EXPIRED'
+  | 'ADVANCE_BENEFIT_NOT_UNLOCKED'
+  | 'PRIVATE_PACKAGE_FORBIDDEN';
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;
