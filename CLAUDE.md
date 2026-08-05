@@ -13,9 +13,13 @@
 ## Reglas permanentes
 
 - No inventes reglas, proveedores, estados, rutas, permisos o descuentos.
-- DEC-001..004, DEC-013, DEC-014 y DEC-016 están aprobadas y deben aplicarse.
-- DEC-005..012, DEC-015 y DEC-017 permanecen pendientes cuando afecten el alcance.
+- DEC-001..017 están aprobadas. No queda ninguna `BLOCKING`.
 - Autenticación: Better Auth (DEC-016). La autorización vive en el dominio, no en la librería.
+- No se admiten menores de edad en v1 (DEC-006): es rechazo activo, no aviso.
+- No hay devoluciones de dinero (DEC-007/008): cancelación y sobrepago dejan saldo a favor.
+- La tasa de cambio se congela al cargar la evidencia (DEC-009).
+- `HELD` expira a los 30 minutos; `CONFIRMED` nunca expira (DEC-005).
+- Sin integración QR bancaria ni Google Sheets (DEC-015, DEC-017).
 - v1 usa pagos manuales; no agregues checkout automático.
 - Modalidad y canal de pago son conceptos distintos.
 - No prorratees por llegada tardía.

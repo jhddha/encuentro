@@ -52,42 +52,105 @@
     {
       "id": "DEC-005",
       "title": "Duración de `HELD` y reglas restantes de hospedaje",
-      "status": "BLOCKING"
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Una reserva en estado `HELD` expira a los 30 minutos. La retención cubre la selección de hotel, no la espera de revisión de un pago: HOS-005 establece que quien elige hotel es el peregrino con pago anticipado **ya aprobado**, así que el `HELD` funciona como un carrito de compra y no como una espera de aprobación. Al expirar, el cupo vuelve a disponibilidad. Una reserva `CONFIRMED` nunca expira por este mecanismo ni por llegada tardía (HOS-003, DEC-004).",
+      "consequences": [
+        "Un worker debe expirar los `HELD` con puntualidad; 30 minutos no tolera un job que corra cada hora.",
+        "La expiración es una transición auditada, no un borrado (GOV-009).",
+        "La selección de hotel debe ser transaccional y resolver el último cupo sin duplicar (HOS-008).",
+        "Si el flujo cambiara y el `HELD` pasara a cubrir la espera de revisión humana, 30 minutos sería insuficiente y la decisión debería revisarse."
+      ]
     },
     {
       "id": "DEC-006",
-      "title": "Menores, documento obligatorio y consentimiento",
-      "status": "BLOCKING"
+      "title": "Menores de edad",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "v1 no admite la inscripción de menores de 18 años. El sistema exige fecha de nacimiento y **rechaza activamente** la inscripción cuando la persona no alcanza la mayoría de edad en la fecha de inicio de la gestión. No es un aviso: es una regla dura con su error de dominio.",
+      "consequences": [
+        "La fecha de nacimiento pasa a ser obligatoria en la inscripción.",
+        "La edad se evalúa contra `events.start_at`, no contra la fecha de inscripción: quien cumple 18 antes del evento sí puede inscribirse.",
+        "No se implementan tutor, consentimiento ni documento de menor, porque no hay menores que registrar.",
+        "Riesgo operativo: si en la práctica asisten menores, quedarán fuera del sistema y sin trazabilidad. Revisar antes del piloto de P15."
+      ]
     },
     {
       "id": "DEC-007",
       "title": "Cancelaciones y reembolsos",
-      "status": "BLOCKING"
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "v1 no procesa devoluciones de dinero. Una cancelación deja el importe pagado como saldo a favor de la persona, aplicable a una gestión posterior. El saldo a favor es un registro contable, no un pago pendiente de salida.",
+      "consequences": [
+        "No se implementa `POST /payments/{id}/refunds` en v1; el endpoint queda documentado pero sin flujo productivo.",
+        "La cancelación de una inscripción es una transición auditada que conserva cargos y pagos históricos (GOV-005).",
+        "El estado de cuenta debe mostrar el saldo a favor de forma explícita.",
+        "Los estados `REFUNDED` y `PARTIALLY_REFUNDED` de la máquina de pagos quedan sin uso productivo en v1, pero permanecen en el contrato."
+      ]
     },
     {
       "id": "DEC-008",
       "title": "Tratamiento de sobrepagos",
-      "status": "BLOCKING"
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Un pago que excede el saldo del cargo no se devuelve ni se reasigna automáticamente. El excedente queda como saldo a favor de la persona, visible en su estado de cuenta. Coherente con DEC-007: v1 no mueve dinero hacia fuera.",
+      "consequences": [
+        "El estado calculado `OVERPAID` se usa efectivamente y debe reflejarse en la interfaz.",
+        "La asignación de un pago a cargos (PAY-008) puede dejar un remanente sin asignar; el saldo se calcula, nunca se edita a mano.",
+        "Aplicar el saldo a otro cargo es una acción explícita de una persona autorizada, no un efecto automático."
+      ]
     },
     {
       "id": "DEC-009",
       "title": "Fuente y momento del tipo de cambio",
-      "status": "BLOCKING"
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "La tasa de cambio es configurable por gestión y se **congela en el momento en que el peregrino carga la evidencia de pago**, no al aprobarla ni al emitir el comprobante. El importe convertido se guarda junto a la evidencia y no se recalcula después.",
+      "consequences": [
+        "Coherente con REG-004: quien carga dentro del plazo conserva las condiciones aunque la revisión ocurra días después.",
+        "La organización absorbe el movimiento cambiario entre la carga y la aprobación.",
+        "La tasa aplicada queda registrada en el cargo y en el comprobante; un cambio posterior de la tasa de la gestión no altera lo ya registrado.",
+        "Los importes se guardan en decimal exacto, nunca en `float` (requirements.md §10)."
+      ]
     },
     {
       "id": "DEC-010",
-      "title": "Equipo y tamaño exacto de credencial/recibo",
-      "status": "BLOCKING"
+      "title": "Equipo y tamaño de credencial y comprobante",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "El formato físico exacto se define al adquirir el equipo de impresión. El sistema genera PDF con **tamaño configurable por gestión**, de modo que la elección de hardware no obligue a cambiar código. Se implementa al menos una configuración de referencia utilizable con impresora común.",
+      "consequences": [
+        "El tamaño del comprobante y de la credencial son configuración, no constantes.",
+        "La vista térmica de 80 mm prevista en design-system.md §6 pasa a ser una configuración posible, no la única.",
+        "P08 no queda bloqueada: se implementa el documento y su generación; solo el formato por defecto queda parametrizado.",
+        "Pendiente para P15: confirmar el equipo real y fijar la configuración de producción."
+      ]
     },
     {
       "id": "DEC-011",
       "title": "Retención y anonimización",
-      "status": "BLOCKING"
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Los datos personales se conservan indefinidamente. No se implementa anonimización automática ni purga por antigüedad en v1.",
+      "consequences": [
+        "Se mantiene la continuidad histórica completa y la capacidad de reconocer peregrinos recurrentes entre gestiones.",
+        "La PII sigue enmascarada en logs, auditoría, QR y respuestas públicas: esta decisión afecta a la retención, no a la exposición.",
+        "**Riesgo registrado:** el volumen de PII crece sin límite. Si más adelante aplica una obligación de protección de datos, anonimizar retroactivamente será considerablemente más costoso que haberlo diseñado desde el inicio. Revisar antes de una segunda gestión productiva.",
+        "Los respaldos heredan la misma retención, así que el riesgo alcanza también al almacenamiento externo."
+      ]
     },
     {
       "id": "DEC-012",
-      "title": "RPO/RTO y proveedor de backup",
-      "status": "BLOCKING"
+      "title": "RPO, RTO y proveedor de backup",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "RPO de 1 hora y RTO de 4 horas. El respaldo es cifrado, se ejecuta al menos cada hora y se almacena **fuera del VPS**, conforme a DEC-001. La restauración debe ensayarse, no solo configurarse.",
+      "consequences": [
+        "Como máximo se pierde una hora de operación; durante el evento eso puede ser un bloque de cobros en caja, que debe poder reconstruirse desde los comprobantes emitidos.",
+        "El ensayo de restauración es parte del gate de P14: un respaldo no verificado no cuenta como respaldo.",
+        "La clave de cifrado del respaldo no puede vivir en el mismo VPS.",
+        "El objetivo de disponibilidad del 99,9% durante la ventana del evento (requirements.md §10) queda ligado a este RTO."
+      ]
     },
     {
       "id": "DEC-013",
@@ -116,8 +179,15 @@
     },
     {
       "id": "DEC-015",
-      "title": "Cierre formal del alcance QR Bolivia; v1 ya es manual por DEC-002",
-      "status": "BLOCKING"
+      "title": "Cierre del alcance de integración QR bancario Bolivia",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Se cierra formalmente el alcance. No existe integración automática con QR bancario en v1. DEC-002 ya estableció que el QR Simple de Bolivia es un **canal de pago** por el que el peregrino transfiere, y que la confirmación la hace una persona revisando la evidencia.",
+      "consequences": [
+        "No se implementan webhooks, conciliación automática ni SDK bancario.",
+        "Desaparece la ambigüedad entre «canal QR» e «integración QR», que eran conceptos distintos con el mismo nombre.",
+        "Una integración futura sería un cambio de alcance con nueva decisión y ADR."
+      ]
     },
     {
       "id": "DEC-016",
@@ -134,8 +204,15 @@
     },
     {
       "id": "DEC-017",
-      "title": "Alcance y frecuencia de Google Sheets",
-      "status": "BLOCKING"
+      "title": "Alcance de Google Sheets",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Fuera de alcance en v1. No hay integración con Google Sheets, ni manual ni automática. Los reportes se descargan desde el propio sistema.",
+      "consequences": [
+        "No se requieren credenciales de Google ni se expone PII a un servicio externo.",
+        "Las exportaciones de P13 producen archivos descargables desde el sistema, con su propio control de acceso.",
+        "Se evita una segunda fuente de verdad que se desincronizaría del sistema."
+      ]
     }
   ]
 }
