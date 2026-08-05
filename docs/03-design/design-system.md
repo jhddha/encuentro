@@ -27,6 +27,31 @@ Sobria, carismática, contemporánea, cálida y operacionalmente clara. La Mansi
 
 Nunca depender solo del color.
 
+### Contraste: combinaciones válidas
+
+Los valores de arriba son canónicos y no se modifican. Pero no todos alcanzan
+el 4.5:1 que exige WCAG 2.2 AA (`requirements.md` §10) al usarse como color de
+texto sobre `--color-ivory`:
+
+| Combinación | Contraste | Uso permitido |
+|---|---:|---|
+| `--color-ink` sobre `--color-ivory` | 15.8:1 | Cualquiera. Es el color de texto por defecto. |
+| `--color-ivory` sobre `--color-flame` | 4.14:1 | **Solo texto grande**: ≥18.66 px en negrita. Válido para botones primarios; no para texto corrido. |
+| `--color-warning` sobre `--color-ivory` | 2.46:1 | **Nunca como texto.** Solo bordes, iconos y superficies. |
+| `--color-gold` sobre `--color-ivory` | 2.2:1 | **Nunca como texto.** Solo bordes, iconos y superficies. |
+| `--color-success` sobre `--color-ivory` | 4.6:1 | Texto de cualquier tamaño. |
+| `--color-danger` sobre `--color-ivory` | 5.9:1 | Texto de cualquier tamaño. |
+| `--color-info` sobre `--color-ivory` | 5.2:1 | Texto de cualquier tamaño. |
+
+Regla práctica: **el color señala, la tinta comunica.** Cuando un tono no
+alcanza el umbral, va al borde y al icono, y la etiqueta se escribe en
+`--color-ink`. Eso ya era coherente con «nunca depender solo del color»: si el
+significado necesita el color para leerse, el componente está mal construido.
+
+El gate automático de accesibilidad verifica estas combinaciones en cada
+pantalla, así que una infracción rompe la compilación en vez de llegar a
+producción.
+
 ## 4. Responsive y accesibilidad
 
 390+ móvil, 768+ tableta, 1280+ laptop y 1440/1920 escritorio. Área táctil mínima 44×44 px. WCAG 2.2 AA en flujos críticos. Tablas hacen scroll dentro del componente.

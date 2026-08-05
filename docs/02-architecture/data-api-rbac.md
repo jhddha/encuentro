@@ -143,6 +143,16 @@
 | Alimentos | `food.read`, `food.manage`, `benefit.deliver` |
 | Materiales | `materials.read`, `materials.manage`, `benefit.deliver` |
 | Auditoría | `audit.read` |
+| Transporte | `transport.read`, `transport.manage`, `transport.assign` |
+| Contabilidad | `accounting.read`, `accounting.manage`, `accounting.reconcile`, `accounting.close` |
+| Reportes | `report.read`, `report.export` |
+| Notificaciones | `notification.read`, `notification.manage`, `notification.send` |
+| Credenciales | `credential.read`, `credential.issue`, `credential.revoke`, `credential.scan` |
+| Servidores | `server.read`, `server.manage`, `server.shift.assign` |
+
+Los permisos de Eventos incluyen además `event.timezone.update`, que gobierna el cambio de zona horaria de una gestión ya publicada.
+
+Los siete últimos dominios se incorporaron el 5 de agosto de 2026 para cerrar el hallazgo H-06 de la auditoría P00: sus módulos tenían rutas administrativas sin ningún permiso que las protegiera. Siguen la convención `<dominio-singular>.<acción>` del resto.
 
 ## 7. Verificación pública de comprobante
 
