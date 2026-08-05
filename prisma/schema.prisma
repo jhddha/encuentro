@@ -241,6 +241,9 @@ model Event {
   auditLogs     AuditLog[]
   packages      Package[]
   registrations Registration[]
+  lodgingPolicy EventLodgingPolicy?
+  hotels        Hotel[]
+  reservations  Reservation[]
 
   @@map("events")
 }
@@ -373,6 +376,9 @@ model PriceVersion {
   package       Package        @relation(fields: [packageId], references: [id], onDelete: Restrict)
   registrations Registration[]
 
+  /// Permite la clave foránea compuesta desde `registrations`, que garantiza
+  /// que una inscripción no use la versión de precio de otro paquete.
+  @@unique([id, packageId], map: "price_versions_package_unique")
   @@index([packageId, paymentMode])
   @@map("price_versions")
 }
@@ -410,8 +416,13 @@ model Registration {
   event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
   person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
   package      Package      @relation(fields: [packageId], references: [id], onDelete: Restrict)
-  priceVersion PriceVersion @relation(fields: [priceVersionId], references: [id], onDelete: Restrict)
+  /// Referencia **compuesta** a propósito: al incluir `packageId`, la base
+  /// impide que una inscripción use la versión de precio de otro paquete.
+  /// Declararla aquí y no solo en SQL evita que Prisma la vea como deriva y la
+  /// elimine en la siguiente migración, que es exactamente lo que ocurrió.
+  priceVersion PriceVersion  @relation(fields: [priceVersionId, packageId], references: [id, packageId], onDelete: Restrict)
   charges      Charge[]
+  reservations Reservation[]
 
   /// Una persona no se inscribe dos veces en la misma gestión.
   @@unique([eventId, personId])
@@ -441,4 +452,117 @@ model Charge {
 
   @@index([registrationId])
   @@map("charges")
+}
+
+// ---------------------------------------------------------------------------
+// Hospedaje — P06
+//
+// HOS-001..008 y DEC-005. La cantidad de noches es configuración, no cálculo;
+// la llegada tardía no reescribe nada; y el último cupo lo resuelve la base.
+// ---------------------------------------------------------------------------
+
+/// Política de hospedaje de una gestión.
+///
+/// HOS-001: cantidad **fija y configurable** de noches. La referencia actual
+/// son 7, pero ese número no aparece en el código ni por defecto aquí: se
+/// configura al preparar la gestión.
+model EventLodgingPolicy {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @unique @map("event_id") @db.Uuid
+
+  nightCount   Int      @map("night_count")
+  checkInDate  DateTime @map("check_in_date") @db.Date
+  checkOutDate DateTime @map("check_out_date") @db.Date
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@map("event_lodging_policies")
+}
+
+model Hotel {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+  code    String
+  name    String
+  address String?
+  status  String @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event        Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  rooms        Room[]
+  reservations Reservation[]
+
+  @@unique([eventId, code])
+  @@map("hotels")
+}
+
+/// Habitación con su capacidad.
+///
+/// HOS-008: la capacidad se controla por **inventario**, no por un contador
+/// que pueda desincronizarse. Cada plaza ocupada es una fila de `reservations`
+/// con su `bed_index`, y un índice único impide que dos personas ocupen la
+/// misma plaza.
+model Room {
+  id       String @id @default(uuid()) @db.Uuid
+  hotelId  String @map("hotel_id") @db.Uuid
+  code     String
+  capacity Int
+
+  status String @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  hotel        Hotel         @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  reservations Reservation[]
+
+  @@unique([hotelId, code])
+  @@map("rooms")
+}
+
+/// Reserva de hospedaje.
+///
+/// HOS-003: una reserva `CONFIRMED` no se libera por llegada tardía. El worker
+/// que expira retenciones filtra por `HELD`; nada más.
+///
+/// HOS-007: la habitación la asigna Hospedaje, así que `room_id` es nullable
+/// hasta que alguien con `lodging.assign_room` la fije.
+model Reservation {
+  id             String @id @default(uuid()) @db.Uuid
+  eventId        String @map("event_id") @db.Uuid
+  registrationId String @map("registration_id") @db.Uuid
+  hotelId        String @map("hotel_id") @db.Uuid
+
+  roomId String? @map("room_id") @db.Uuid
+
+  /// Plaza concreta dentro de la habitación. Junto al índice único sobre
+  /// (room_id, bed_index) es lo que impide vender dos veces el mismo cupo.
+  bedIndex Int? @map("bed_index")
+
+  checkInDate  DateTime @map("check_in_date") @db.Date
+  checkOutDate DateTime @map("check_out_date") @db.Date
+  nightCount   Int      @map("night_count")
+
+  status String @default("HELD")
+
+  /// DEC-005: solo aplica a `HELD`. Se calcula al crear la retención.
+  heldUntil DateTime? @map("held_until") @db.Timestamptz(6)
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  hotel        Hotel        @relation(fields: [hotelId], references: [id], onDelete: Restrict)
+  room         Room?        @relation(fields: [roomId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, status])
+  @@index([hotelId, status])
+  @@map("reservations")
 }

@@ -19,7 +19,10 @@ export type DomainErrorCode =
   | 'MINOR_NOT_ALLOWED'
   | 'ADVANCE_RATE_EXPIRED'
   | 'ADVANCE_BENEFIT_NOT_UNLOCKED'
-  | 'PRIVATE_PACKAGE_FORBIDDEN';
+  | 'PRIVATE_PACKAGE_FORBIDDEN'
+  | 'LODGING_POLICY_INVALID'
+  | 'LODGING_CAPACITY_EXHAUSTED'
+  | 'LODGING_NOT_ELIGIBLE';
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

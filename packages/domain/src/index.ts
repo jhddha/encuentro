@@ -27,6 +27,17 @@ export { dayNumber, totalDays } from './event-duration.js';
 export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
 
 export {
+  HELD_DURATION_MS,
+  assertPolicyConsistent,
+  hasAvailability,
+  heldExpiresAt,
+  remainingCapacity,
+  reservationAfterArrival,
+  shouldRelease,
+  type LodgingPolicy,
+} from './lodging.js';
+
+export {
   add,
   compare,
   isNegative,

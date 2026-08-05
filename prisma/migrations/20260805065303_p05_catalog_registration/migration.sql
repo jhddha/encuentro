@@ -182,8 +182,8 @@ ALTER TABLE "registrations"
 -- Una version de precio solo puede usarse en inscripciones de su propio
 -- paquete. Sin esto, un error de codigo podria congelar un cargo con el precio
 -- de otro paquete y el historico quedaria incoherente sin que nadie lo notara.
-ALTER TABLE "price_versions" ADD CONSTRAINT "price_versions_package_unique"
-  UNIQUE ("id", "package_id");
+CREATE UNIQUE INDEX "price_versions_package_unique"
+  ON "price_versions" ("id", "package_id");
 
 ALTER TABLE "registrations" ADD CONSTRAINT "registrations_price_matches_package"
   FOREIGN KEY ("price_version_id", "package_id")
