@@ -1,6 +1,6 @@
 {
   // Proyecto usado solo por ESLint. Cubre lo que los tsconfig de build dejan
-  // fuera a propósito: tests y archivos de configuración. No emite nada.
+  // fuera a propósito: tests, seed y archivos de configuración. No emite nada.
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "composite": false,
@@ -11,13 +11,28 @@
     "allowJs": true,
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": ["node"],
+
+    /*
+     * `tests/` y `prisma/` no son paquetes del workspace, así que pnpm no les
+     * enlaza `@encuentro/*`. Sin este mapeo TypeScript no resuelve esos
+     * imports, todo queda como `any`, y las reglas `no-unsafe-*` inundan la
+     * salida con errores que no señalan ningún problema real.
+     */
+    "paths": {
+      "@encuentro/domain": ["./packages/domain/src/index.ts"],
+      "@encuentro/application": ["./packages/application/src/index.ts"],
+      "@encuentro/infrastructure": ["./packages/infrastructure/src/index.ts"],
+      "@encuentro/config": ["./packages/config/src/index.ts"],
+      "@encuentro/ui": ["./packages/ui/src/index.ts"]
+    }
   },
   "include": [
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "apps/worker/src/**/*.ts",
     "tests/**/*.ts",
+    "prisma/**/*.ts",
     "*.ts",
     "*.mts",
     "*.mjs",

@@ -10,7 +10,10 @@ export type DomainErrorCode =
   | 'EVENT_CONTEXT_REQUIRED'
   | 'EVENT_TRANSITION_INVALID'
   | 'EVENT_TRANSITION_REASON_REQUIRED'
-  | 'EVENT_OPERATIONS_BLOCKED';
+  | 'EVENT_OPERATIONS_BLOCKED'
+  | 'EVENT_VERSION_CONFLICT'
+  | 'EVENT_DATES_INVALID'
+  | 'FORBIDDEN';
 
 export class DomainError extends Error {
   readonly code: DomainErrorCode;

@@ -1,4 +1,14 @@
+import { fileURLToPath } from 'node:url';
+
+import { config as loadEnvFile } from 'dotenv';
 import type { NextConfig } from 'next';
+
+/*
+ * El `.env` vive en la raíz del monorepo, no en `apps/web`, para que web,
+ * worker, Prisma y las pruebas compartan una única fuente. Next solo busca en
+ * el directorio de la app, así que hay que señalárselo.
+ */
+loadEnvFile({ path: fileURLToPath(new URL('../../.env', import.meta.url)), quiet: true });
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,

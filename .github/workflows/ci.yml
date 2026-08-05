@@ -11,8 +11,23 @@ concurrency:
 
 jobs:
   gate:
-    name: Gate P01
+    name: Gate
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: encuentro
+          POSTGRES_USER: encuentro
+          POSTGRES_PASSWORD: encuentro
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U encuentro -d encuentro"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro
 
     steps:
       - uses: actions/checkout@v6
@@ -44,6 +59,13 @@ jobs:
 
       - name: Pruebas unitarias
         run: pnpm test
+
+      - name: Aplicar migraciones
+        run: pnpm exec prisma migrate deploy
+
+      - name: Pruebas de integración
+        # Gate de P03: transiciones, concurrencia y aislamiento contra Postgres.
+        run: pnpm test:integration
 
       - name: Build
         run: pnpm build

@@ -22,6 +22,19 @@ export {
 
 export { DomainError, type DomainErrorCode } from './errors.js';
 
+export { dayNumber, totalDays } from './event-duration.js';
+
+export {
+  authorize,
+  can,
+  scopeCovers,
+  type Actor,
+  type ResourceContext,
+  type RoleAssignment,
+  type Scope,
+  type ScopeType,
+} from './rbac.js';
+
 export {
   PUBLIC_RECEIPT_FIELDS,
   toPublicReceiptVerification,

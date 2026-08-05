@@ -1,12 +1,14 @@
 // Esquema de datos — Sistema web ENCUENTRO v2.7
 //
-// Sin modelos todavía. Las tablas están especificadas en
-// `docs/02-architecture/data-api-rbac.md` §2 y se introducen en la fase que
-// las requiere, con su migración y sus pruebas: `events` y `audit_logs` en P03,
-// `packages`/`price_versions`/`registrations`/`charges` en P05, hospedaje en
-// P06, pagos y comprobantes en P07.
+// Las tablas se introducen en la fase que las requiere, con su migración y sus
+// pruebas. Este archivo cubre P03: gestiones, identidad mínima, RBAC y
+// auditoría. Catálogo e inscripciones llegan en P05, hospedaje en P06, pagos y
+// comprobantes en P07.
 //
-// Declararlas aquí por adelantado crearía migraciones sin requisito asociado.
+// Convenciones (requirements.md §10 y data-api-rbac.md §1):
+//   - Fechas en UTC; la presentación usa events.timezone.
+//   - Dinero en Decimal, nunca Float. Aún no hay columnas monetarias.
+//   - Sin borrado físico en tablas históricas (GOV-009).
 
 generator client {
   provider = "prisma-client-js"
@@ -15,4 +17,163 @@ generator client {
 // Prisma 7: la URL de conexión vive en `prisma.config.ts`, no aquí.
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identidad
+// ---------------------------------------------------------------------------
+
+/// Persona con acceso al sistema.
+///
+/// Deliberadamente sin credenciales, sesiones ni tokens: DEC-016 sigue
+/// BLOCKING y es la que decide el mecanismo de autenticación. Este registro es
+/// la identidad, no el mecanismo, y hace falta para que `audit_logs.actor_id`
+/// apunte a algo real.
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  email       String   @unique @db.Citext
+  displayName String   @map("display_name")
+  status      String   @default("ACTIVE")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assignments RoleAssignment[]
+  auditLogs   AuditLog[]
+
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC — requirements.md §10, ADR-003
+// ---------------------------------------------------------------------------
+
+model Role {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  permissions RolePermission[]
+  assignments RoleAssignment[]
+
+  @@map("roles")
+}
+
+/// Permiso concedido a un rol.
+///
+/// `permission` es texto libre a nivel de base y se valida contra
+/// `contracts/permissions.json` en la capa de aplicación. Un enum de Postgres
+/// obligaría a migrar el esquema cada vez que el contrato añade un permiso, y
+/// el contrato es la fuente de verdad, no la base.
+model RolePermission {
+  roleId     String @map("role_id") @db.Uuid
+  permission String
+
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+  @@map("role_permissions")
+}
+
+/// Asignación de un rol a una persona dentro de un ámbito.
+///
+/// Los cuatro scopes son global, gestión, comisión y caja. Las columnas de
+/// ámbito son nullable porque cada tipo usa unas u otras; la coherencia la
+/// garantiza un CHECK en la migración, no la aplicación.
+model RoleAssignment {
+  id            String  @id @default(uuid()) @db.Uuid
+  userId        String  @map("user_id") @db.Uuid
+  roleId        String  @map("role_id") @db.Uuid
+  scopeType     String  @map("scope_type")
+  eventId       String? @map("event_id") @db.Uuid
+  commissionId  String? @map("commission_id")
+  cashAccountId String? @map("cash_account_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role  Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([eventId])
+  @@map("role_assignments")
+}
+
+// ---------------------------------------------------------------------------
+// Gestiones — EVT-001..010
+// ---------------------------------------------------------------------------
+
+/// Edición anual del Encuentro.
+///
+/// `version` implementa el bloqueo optimista: toda transición hace
+/// compare-and-swap sobre ella, de modo que dos operaciones concurrentes no
+/// puedan aplicarse ambas (GOV-006, system-architecture.md §7).
+model Event {
+  id       String @id @default(uuid()) @db.Uuid
+  code     String @unique
+  year     Int    @unique
+  name     String
+  timezone String
+
+  startAt DateTime @map("start_at") @db.Timestamptz(6)
+  endAt   DateTime @map("end_at") @db.Timestamptz(6)
+
+  /// Moneda base de la gestión, ISO 4217.
+  currency String @db.Char(3)
+
+  status  String @default("DRAFT")
+  version Int    @default(1)
+
+  /// Marca la única gestión públicamente habilitada (EVT-006).
+  ///
+  /// Es `true` o `NULL`, nunca `false`: un índice único parcial sobre esta
+  /// columna deja que exista como mucho una fila con `true`. Un booleano normal
+  /// no puede expresar esa restricción sin un índice único parcial adicional.
+  publiclyEnabled Boolean? @map("publicly_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assignments RoleAssignment[]
+  auditLogs   AuditLog[]
+
+  @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// Auditoría — GOV-005, GOV-009
+// ---------------------------------------------------------------------------
+
+/// Registro append-only de mutaciones sensibles.
+///
+/// La migración instala un trigger que rechaza UPDATE y DELETE. Sin él, la
+/// regla «no se reescribe» dependería de que nadie escriba el código
+/// equivocado; con él, la base la impone aunque alguien lo intente desde psql.
+///
+/// `beforeRedacted` y `afterRedacted` guardan el estado ya redactado: la PII no
+/// debe llegar al registro (regla 03-security-rbac).
+model AuditLog {
+  id      String  @id @default(uuid()) @db.Uuid
+  eventId String? @map("event_id") @db.Uuid
+  actorId String  @map("actor_id") @db.Uuid
+
+  action   String
+  entity   String
+  entityId String @map("entity_id")
+  reason   String?
+
+  beforeRedacted Json? @map("before_redacted")
+  afterRedacted  Json? @map("after_redacted")
+
+  correlationId String? @map("correlation_id")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  actor User   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([eventId, createdAt])
+  @@index([entity, entityId])
+  @@map("audit_logs")
 }
