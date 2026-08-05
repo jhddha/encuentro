@@ -27,6 +27,29 @@ export { dayNumber, totalDays } from './event-duration.js';
 export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
 
 export {
+  accountBalance,
+  assertBalanced,
+  entryDifference,
+  isBalanced,
+  isReconciled,
+  reconciliationDifference,
+  signedAmount,
+  type AccountKind,
+  type EntrySide,
+  type JournalLine,
+} from './accounting.js';
+
+export {
+  MAX_DELIVERY_ATTEMPTS,
+  canTransitionNotification,
+  nextRetryDelayMs,
+  renderTemplate,
+  shouldRetry,
+  templateVariables,
+  type NotificationState,
+} from './notifications.js';
+
+export {
   decideMaterialDelivery,
   decideMealDelivery,
   deliveryIdempotencyKey,

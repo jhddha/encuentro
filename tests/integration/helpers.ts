@@ -30,9 +30,23 @@ export function testPrisma(): PrismaClient {
  * no debe serlo (pendiente de hardening en P14).
  */
 export async function resetDatabase(prisma: PrismaClient): Promise<void> {
-  await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, role_assignments, role_permissions, roles, events, users CASCADE',
+  /*
+   * Las tablas se descubren en el catálogo en lugar de enumerarlas.
+   *
+   * Con una lista escrita a mano, cada fase nueva deja tablas sin limpiar y el
+   * estado se filtra entre pruebas — que es exactamente lo que ocurrió al
+   * añadir `smtp_settings`: la fila singleton sobrevivía y hacía fallar la
+   * prueba siguiente por un motivo que no era el real.
+   */
+  const tables = await prisma.$queryRawUnsafe<{ tablename: string }[]>(
+    `SELECT tablename FROM pg_tables
+     WHERE schemaname = 'public' AND tablename <> '_prisma_migrations'`,
   );
+
+  if (tables.length === 0) return;
+
+  const list = tables.map((t) => `"${t.tablename}"`).join(', ');
+  await prisma.$executeRawUnsafe(`TRUNCATE ${list} CASCADE`);
 }
 
 export interface SeededActor {
