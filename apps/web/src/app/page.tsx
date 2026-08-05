@@ -44,7 +44,9 @@ export default async function HomePage() {
             </p>
             <Link
               href={`/e/${event.code}/inscripcion`}
-              className="inline-flex min-h-[var(--size-touch-target)] w-fit items-center rounded-md bg-[var(--color-flame)] px-5 text-[var(--color-ivory)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ink)]"
+              // 19px/700: mismo umbral de texto grande que el botón, por el
+              // contraste de --color-flame. Ver packages/ui/src/components/Button.tsx.
+              className="inline-flex min-h-[var(--size-touch-target)] w-fit items-center rounded-md bg-[var(--color-flame)] px-5 text-[19px] font-bold text-[var(--color-ivory)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ink)]"
             >
               Inscribirme
             </Link>

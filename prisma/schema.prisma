@@ -34,13 +34,114 @@ model User {
   email       String   @unique @db.Citext
   displayName String   @map("display_name")
   status      String   @default("ACTIVE")
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  /// DEC-013: la verificación de correo es obligatoria. La cuenta puede
+  /// existir sin verificar; lo que se bloquea es completar la inscripción.
+  emailVerified Boolean @default(false) @map("email_verified")
+
+  /// DEC-014: MFA obligatorio para toda cuenta con asignación de rol.
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+
+  image String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   assignments RoleAssignment[]
   auditLogs   AuditLog[]
+  sessions    Session[]
+  accounts    Account[]
+  twoFactors  TwoFactor[]
 
   @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Autenticación — DEC-016, ADR-010
+//
+// Better Auth resuelve identidad y sesión. La autorización sigue en el dominio:
+// estas tablas no contienen permisos ni scopes.
+// ---------------------------------------------------------------------------
+
+/// Sesión activa.
+///
+/// Se persiste en base y no solo en cookie firmada, para poder revocarla de
+/// inmediato. Una cookie firmada solo caduca; una fila se borra.
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Credencial asociada a una cuenta.
+///
+/// `password` guarda el hash, nunca la contraseña. El nombre lo fija Better
+/// Auth; el contenido es un hash con sal.
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at") @db.Timestamptz(6)
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at") @db.Timestamptz(6)
+  scope                 String?
+  idToken               String?   @map("id_token")
+  password              String?
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+/// Valor de verificación de un solo uso: correo, restablecimiento, reto MFA.
+///
+/// DEC-013: el token tiene vencimiento y se consume al usarse.
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String
+  value      String
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+/// Segundo factor TOTP — DEC-014.
+///
+/// `secret` y `backupCodes` se almacenan cifrados por Better Auth y nunca se
+/// devuelven en una respuesta ni se escriben en auditoría.
+model TwoFactor {
+  id          String @id @default(uuid()) @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  secret      String
+  backupCodes String @map("backup_codes")
+
+  verified                Boolean   @default(true)
+  failedVerificationCount Int       @default(0) @map("failed_verification_count")
+  lockedUntil             DateTime? @map("locked_until") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factors")
 }
 
 // ---------------------------------------------------------------------------

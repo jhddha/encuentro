@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
@@ -24,9 +24,29 @@ function pageFileFor(route: string): string {
   return `${appDir}${segments.join('/')}${segments.length > 0 ? '/' : ''}page.tsx`;
 }
 
+/** Todos los `page.tsx` bajo el directorio de la aplicación. */
+function listPageFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = `${dir}${entry.name}`;
+    if (entry.isDirectory()) return listPageFiles(`${full}/`);
+    return entry.name === 'page.tsx' ? [full] : [];
+  });
+}
+
 describe('rutas frente a contracts/routes.json', () => {
-  it('el contrato declara 28 rutas', () => {
-    expect(contractRoutes).toHaveLength(28);
+  it('el contrato declara 31 rutas', () => {
+    // 28 de P02 más las tres del flujo de autenticación (DEC-016).
+    expect(contractRoutes).toHaveLength(31);
+  });
+
+  it('no hay páginas fuera del contrato', () => {
+    // El contrato manda en ambas direcciones: una ruta implementada sin
+    // declarar es tan divergencia como una declarada sin implementar.
+    const declared = new Set(contractRoutes.map(pageFileFor));
+    const implemented = listPageFiles(appDir);
+    const extra = implemented.filter((file) => !declared.has(file));
+
+    expect(extra.map((f) => f.replace(appDir, ''))).toEqual([]);
   });
 
   it.each(contractRoutes)('%s tiene su página', (route) => {

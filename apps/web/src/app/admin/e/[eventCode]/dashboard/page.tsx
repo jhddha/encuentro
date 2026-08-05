@@ -2,7 +2,6 @@ import { acceptsRegistrationsAndPayments, dayNumber, totalDays } from '@encuentr
 import { Card, EmptyState, PageHeader, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { UnauthenticatedNotice } from '@/components/unauthenticated-notice';
 import { eventRepository } from '@/lib/container';
 
 export const metadata: Metadata = { title: 'Dashboard' };
@@ -37,8 +36,6 @@ export default async function DashboardPage({
         description={`Gestión ${event.code} · ${String(event.year)}`}
         actions={<StatusBadge tone={open ? 'success' : 'neutral'}>{event.status}</StatusBadge>}
       />
-
-      <UnauthenticatedNotice />
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>

@@ -2,7 +2,6 @@ import { totalDays } from '@encuentro/domain';
 import { Card, EmptyState, PageHeader, ReadonlyState, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { UnauthenticatedNotice } from '@/components/unauthenticated-notice';
 import { eventRepository } from '@/lib/container';
 
 export const metadata: Metadata = { title: 'Configuración de la gestión' };
@@ -73,8 +72,6 @@ export default async function EventConfigurationPage({
         description="Los valores son configurables por gestión. Ninguno está fijado en código."
         actions={<StatusBadge tone="neutral">{event.status}</StatusBadge>}
       />
-
-      <UnauthenticatedNotice />
 
       <Card>
         <dl className="flex flex-col gap-5">

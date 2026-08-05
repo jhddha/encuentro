@@ -14,6 +14,7 @@
     "@encuentro/domain": "workspace:*",
     "@encuentro/infrastructure": "workspace:*",
     "@encuentro/ui": "workspace:*",
+    "better-auth": "1.6.26",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",

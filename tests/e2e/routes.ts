@@ -18,13 +18,23 @@ export interface SampleRoute {
 export const SAMPLE_ROUTES: readonly SampleRoute[] = [
   { path: '/', shell: 'público' },
   { path: '/verificar/comprobante/tok_ejemplo', shell: 'público' },
+  { path: '/ingresar', shell: 'autenticación' },
+  { path: '/verificar-correo', shell: 'autenticación' },
+  { path: '/configurar-mfa', shell: 'autenticación' },
   { path: '/e/ENC2026', shell: 'peregrino' },
   { path: '/e/ENC2026/inscripcion', shell: 'peregrino · comparador de modalidad' },
   { path: '/e/ENC2026/mi-cuenta/pagos', shell: 'peregrino' },
-  { path: '/admin', shell: 'administración' },
-  { path: '/admin/e/ENC2026/configuracion', shell: 'administración · configuración' },
-  { path: '/admin/e/ENC2026/comprobantes', shell: 'administración' },
   { path: '/caja/e/ENC2026/CAJA-01', shell: 'caja' },
   { path: '/comision/e/ENC2026/INSCRIPCIONES', shell: 'comisión' },
   { path: '/scanner/e/ENC2026/EST-01', shell: 'estación' },
 ];
+
+/*
+ * Las rutas bajo /admin salieron de esta lista al implementarse P04: ahora
+ * redirigen a /ingresar sin sesión, así que recorrerlas aquí solo comprobaría
+ * la página de acceso una y otra vez.
+ *
+ * Pendiente: cubrirlas con un estado autenticado (fixture de sesión de
+ * Playwright). Hasta entonces, la accesibilidad de las pantallas de
+ * administración no está verificada automáticamente.
+ */

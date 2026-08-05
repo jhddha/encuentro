@@ -91,13 +91,28 @@
     },
     {
       "id": "DEC-013",
-      "title": "Verificación de email obligatoria",
-      "status": "BLOCKING"
+      "title": "Verificación de correo obligatoria",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "La verificación de correo es obligatoria para toda cuenta, incluida la del peregrino. Una inscripción no se completa mientras el correo no esté verificado. El token es de un solo uso, con vencimiento y almacenado por hash. El envío ocurre por el worker: una caída de SMTP no revierte la creación de la cuenta.",
+      "consequences": [
+        "La cuenta puede existir sin verificar; lo que se bloquea es completar la inscripción.",
+        "El reenvío del correo de verificación requiere rate limit por ser accesible sin sesión.",
+        "La inscripción presencial sin correo accesible queda como TBD dependiente de DEC-006."
+      ]
     },
     {
       "id": "DEC-014",
-      "title": "MFA para roles privilegiados",
-      "status": "BLOCKING"
+      "title": "MFA obligatorio para cuentas con permisos",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "El segundo factor es obligatorio para toda cuenta con al menos una asignación de rol, no solo para las que manejan dinero. El peregrino, sin asignaciones, no lo requiere. El método es TOTP, sin dependencia de SMS ni de proveedor externo. El secreto se almacena cifrado y nunca aparece en logs ni en auditoría.",
+      "consequences": [
+        "Una cuenta del personal sin MFA solo puede iniciar sesión para registrar su segundo factor.",
+        "Se emiten códigos de recuperación de un solo uso, guardados por hash.",
+        "El restablecimiento exige verificación presencial por ADMIN_MASTER y queda auditado; no hay canal automático por correo.",
+        "La verificación del segundo factor se audita; el secreto no."
+      ]
     },
     {
       "id": "DEC-015",
@@ -106,8 +121,16 @@
     },
     {
       "id": "DEC-016",
-      "title": "Auth.js estable o alternativa",
-      "status": "BLOCKING"
+      "title": "Mecanismo de autenticación: Better Auth",
+      "status": "APPROVED",
+      "date": "2026-08-05",
+      "decision": "Se adopta Better Auth 1.6.26. La premisa original de la decisión quedó resuelta por verificación: Auth.js no está estable — next-auth v5 lleva en beta desde 2023-10-24, @auth/core sigue en 0.x y lucia está deprecado. Better Auth es autoalojado, persiste en PostgreSQL vía Prisma y declara soporte de Next 16, React 19 y Prisma 7. Resuelve identidad y sesión; la autorización permanece en el dominio (packages/domain/src/rbac.ts).",
+      "consequences": [
+        "Cambiar de proveedor afecta solo a packages/infrastructure; el dominio no conoce la librería.",
+        "Las sesiones se persisten en base de datos para poder revocarlas de inmediato.",
+        "Se desbloquea la autenticación productiva, impedida desde P01.",
+        "Ver ADR-010."
+      ]
     },
     {
       "id": "DEC-017",

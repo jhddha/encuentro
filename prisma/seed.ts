@@ -64,6 +64,14 @@ async function main(): Promise<void> {
     },
   });
 
+  /*
+   * Cuenta administrativa inicial.
+   *
+   * Se crea **sin credencial**: darle una contraseña por defecto dejaría una
+   * cuenta con acceso conocido en cualquier entorno donde corriera el seed.
+   * El alta real de la credencial se hace por el flujo de registro, que exige
+   * verificación de correo (DEC-013) y segundo factor (DEC-014).
+   */
   const admin = await prisma.user.upsert({
     where: { email: 'admin@encuentro.local' },
     update: {},

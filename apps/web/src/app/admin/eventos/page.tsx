@@ -3,7 +3,6 @@ import { EmptyState, PageHeader, ScrollableTable, StatusBadge } from '@encuentro
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
-import { UnauthenticatedNotice } from '@/components/unauthenticated-notice';
 import { eventRepository } from '@/lib/container';
 
 export const metadata: Metadata = { title: 'Gestiones' };
@@ -31,8 +30,6 @@ export default async function EventsPage() {
         title="Gestiones"
         description="Cada gestión es una edición anual. Las transiciones son manuales y auditadas."
       />
-
-      <UnauthenticatedNotice />
 
       {events.length === 0 ? (
         <EmptyState

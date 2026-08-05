@@ -9,7 +9,7 @@
   },
   "packageManager": "pnpm@11.15.1",
   "scripts": {
-    "build": "pnpm -r --filter \"./apps/*\" build",
+    "build": "tsc --build && pnpm -r --filter \"./apps/*\" build",
     "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
     "lint": "eslint .",
     "typecheck": "tsc --build --pretty && pnpm --filter @encuentro/web typecheck",

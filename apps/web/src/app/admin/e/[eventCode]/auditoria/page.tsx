@@ -1,7 +1,6 @@
 import { EmptyState, PageHeader, ScrollableTable } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { UnauthenticatedNotice } from '@/components/unauthenticated-notice';
 import { eventRepository, prisma } from '@/lib/container';
 
 export const metadata: Metadata = { title: 'Auditoría' };
@@ -51,8 +50,6 @@ export default async function AuditPage({ params }: { params: Promise<{ eventCod
         title={`Auditoría · ${event.name}`}
         description="Registro append-only. Las últimas 100 entradas."
       />
-
-      <UnauthenticatedNotice />
 
       {entries.length === 0 ? (
         <EmptyState

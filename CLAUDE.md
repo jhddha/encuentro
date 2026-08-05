@@ -13,8 +13,9 @@
 ## Reglas permanentes
 
 - No inventes reglas, proveedores, estados, rutas, permisos o descuentos.
-- DEC-001..004 están aprobadas y deben aplicarse.
-- DEC-005..017 permanecen pendientes cuando afecten el alcance.
+- DEC-001..004, DEC-013, DEC-014 y DEC-016 están aprobadas y deben aplicarse.
+- DEC-005..012, DEC-015 y DEC-017 permanecen pendientes cuando afecten el alcance.
+- Autenticación: Better Auth (DEC-016). La autorización vive en el dominio, no en la librería.
 - v1 usa pagos manuales; no agregues checkout automático.
 - Modalidad y canal de pago son conceptos distintos.
 - No prorratees por llegada tardía.
