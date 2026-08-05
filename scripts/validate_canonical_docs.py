@@ -13,18 +13,18 @@ required=[
 ]
 for rel in required:
     if not (root/rel).exists(): errors.append(f'MISSING {rel}')
-version=(root/'VERSION').read_text().strip()
+version=(root/'VERSION').read_text(encoding='utf-8').strip()
 for rel in required:
     p=root/rel
     if p.suffix in {'.md','.json','.yaml'} and p.exists() and rel!='VERSION':
         txt=p.read_text(encoding='utf-8')
         if rel not in {'.mcp.json','.claude/settings.json','contracts/openapi.yaml'} and version not in txt:
             errors.append(f'VERSION_NOT_REFERENCED {rel}')
-req=json.loads((root/'contracts/requirements.json').read_text())
-decs=json.loads((root/'contracts/decisions.json').read_text())
-routes=json.loads((root/'contracts/routes.json').read_text())
-perms=json.loads((root/'contracts/permissions.json').read_text())
-states=json.loads((root/'contracts/states.json').read_text())
+req=json.loads((root/'contracts/requirements.json').read_text(encoding='utf-8'))
+decs=json.loads((root/'contracts/decisions.json').read_text(encoding='utf-8'))
+routes=json.loads((root/'contracts/routes.json').read_text(encoding='utf-8'))
+perms=json.loads((root/'contracts/permissions.json').read_text(encoding='utf-8'))
+states=json.loads((root/'contracts/states.json').read_text(encoding='utf-8'))
 ids=[x['id'] for x in req['requirements']]
 if len(ids)!=len(set(ids)): errors.append('DUPLICATE_REQUIREMENT_ID')
 for d in ['DEC-001','DEC-002','DEC-003','DEC-004']:
