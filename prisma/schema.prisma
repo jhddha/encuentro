@@ -1,9 +1,9 @@
 // Esquema de datos — Sistema web ENCUENTRO v2.7
 //
 // Las tablas se introducen en la fase que las requiere, con su migración y sus
-// pruebas. Este archivo cubre P03: gestiones, identidad mínima, RBAC y
-// auditoría. Catálogo e inscripciones llegan en P05, hospedaje en P06, pagos y
-// comprobantes en P07.
+// pruebas. Cubre P03 (gestiones, identidad, RBAC y auditoría), P04
+// (autenticación) y P05 (catálogo e inscripción). Hospedaje llega en P06, y
+// pagos y comprobantes en P07.
 //
 // Convenciones (requirements.md §10 y data-api-rbac.md §1):
 //   - Fechas en UTC; la presentación usa events.timezone.
@@ -52,6 +52,7 @@ model User {
   sessions    Session[]
   accounts    Account[]
   twoFactors  TwoFactor[]
+  person      Person?
 
   @@map("users")
 }
@@ -236,8 +237,10 @@ model Event {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  assignments RoleAssignment[]
-  auditLogs   AuditLog[]
+  assignments   RoleAssignment[]
+  auditLogs     AuditLog[]
+  packages      Package[]
+  registrations Registration[]
 
   @@map("events")
 }
@@ -277,4 +280,165 @@ model AuditLog {
   @@index([eventId, createdAt])
   @@index([entity, entityId])
   @@map("audit_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Catálogo e inscripción — P05
+//
+// PKG-001..005 y REG-001..008. Los importes son `Decimal`, nunca `Float`
+// (requirements.md §10); el dominio los maneja como enteros de centavos.
+// ---------------------------------------------------------------------------
+
+/// Persona física.
+///
+/// Se separa de `User` a propósito: `User` es una cuenta con credenciales,
+/// `Person` es el ser humano que asiste. Alguien inscrito presencialmente puede
+/// existir como persona antes de tener cuenta.
+///
+/// `birthDate` es obligatoria por DEC-006: sin ella no se puede rechazar a un
+/// menor, y rechazarlo es una regla dura.
+model Person {
+  id     String  @id @default(uuid()) @db.Uuid
+  userId String? @unique @map("user_id") @db.Uuid
+
+  fullName  String   @map("full_name")
+  birthDate DateTime @map("birth_date") @db.Date
+
+  /// PAY-012: el Comprobante de pago **no** muestra documento ni país. Se
+  /// guardan para identificación interna, no para exhibirlos.
+  documentNumber String? @map("document_number")
+  country        String? @db.Char(2)
+  phone          String?
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user          User?          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  registrations Registration[]
+
+  @@map("persons")
+}
+
+/// Paquete comercial de una gestión.
+///
+/// PKG-002: `visibility` admite `PUBLIC` y `PRIVATE`. El portal solo lista los
+/// públicos; los privados los asigna Inscripciones con `catalog.private.assign`.
+model Package {
+  id         String @id @default(uuid()) @db.Uuid
+  eventId    String @map("event_id") @db.Uuid
+  code       String
+  name       String
+  visibility String @default("PUBLIC")
+  status     String @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  priceVersions PriceVersion[]
+  registrations Registration[]
+
+  @@unique([eventId, code])
+  @@index([eventId, visibility])
+  @@map("packages")
+}
+
+/// Versión histórica de precio.
+///
+/// PKG-004: la tarifa anticipada y la normal son importes **explícitos**, no un
+/// descuento derivado. De ahí que no exista ninguna columna de porcentaje de
+/// descuento: son dos filas independientes, una por modalidad.
+///
+/// PKG-001: cambiar el precio crea una fila nueva. Las existentes no se tocan,
+/// porque hay cargos congelados que las referencian.
+model PriceVersion {
+  id          String @id @default(uuid()) @db.Uuid
+  packageId   String @map("package_id") @db.Uuid
+  paymentMode String @map("payment_mode")
+
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @db.Char(3)
+
+  /// Vigencia de la tarifa anticipada. `ARRIVAL` no la usa.
+  startsAt DateTime? @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime? @map("ends_at") @db.Timestamptz(6)
+
+  /// PKG-005: mínimo de pago que desbloquea el beneficio, y vencimiento del saldo.
+  minPaymentPercent Int?      @map("min_payment_percent")
+  balanceDueAt      DateTime? @map("balance_due_at") @db.Timestamptz(6)
+
+  status    String   @default("ACTIVE")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  package       Package        @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  registrations Registration[]
+
+  @@index([packageId, paymentMode])
+  @@map("price_versions")
+}
+
+/// Inscripción de una persona en una gestión.
+///
+/// REG-002: congela paquete, versión de precio, modalidad e importe. El
+/// histórico no se reescribe (GOV-005).
+model Registration {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+
+  /// Código visible de la inscripción. Aparece en el Comprobante (PAY-012).
+  code String
+
+  personId       String @map("person_id") @db.Uuid
+  packageId      String @map("package_id") @db.Uuid
+  priceVersionId String @map("price_version_id") @db.Uuid
+
+  /// REG-001: exactamente una modalidad. No confundir con el canal de pago.
+  paymentMode String @map("payment_mode")
+
+  status           String @default("DRAFT")
+  attendanceStatus String @default("NOT_ARRIVED") @map("attendance_status")
+
+  /// HOS-002: la llegada real no reescribe la reserva ni el importe.
+  actualArrivalAt DateTime? @map("actual_arrival_at") @db.Timestamptz(6)
+
+  termsAcceptedAt DateTime? @map("terms_accepted_at") @db.Timestamptz(6)
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
+  package      Package      @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  priceVersion PriceVersion @relation(fields: [priceVersionId], references: [id], onDelete: Restrict)
+  charges      Charge[]
+
+  /// Una persona no se inscribe dos veces en la misma gestión.
+  @@unique([eventId, personId])
+  @@unique([eventId, code])
+  @@index([eventId, status])
+  @@map("registrations")
+}
+
+/// Cargo congelado de una inscripción.
+///
+/// REG-002: el snapshot conserva las condiciones del momento. Un cambio
+/// posterior de tarifa no lo altera.
+model Charge {
+  id             String @id @default(uuid()) @db.Uuid
+  registrationId String @map("registration_id") @db.Uuid
+
+  concept  String
+  amount   Decimal @db.Decimal(12, 2)
+  currency String  @db.Char(3)
+
+  /// Condiciones congeladas: paquete, versión, modalidad e importe (REG-002).
+  snapshot Json @map("snapshot_json")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@index([registrationId])
+  @@map("charges")
 }

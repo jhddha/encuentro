@@ -14,3 +14,11 @@ export {
   type TransitionEventCommand,
   type TransitionEventDeps,
 } from './transition-event.js';
+
+export {
+  formatRegistrationCode,
+  prepareRegistration,
+  type CreateRegistrationCommand,
+  type RegistrationContext,
+  type RegistrationDraft,
+} from './create-registration.js';
