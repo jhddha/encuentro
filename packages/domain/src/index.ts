@@ -27,6 +27,27 @@ export { dayNumber, totalDays } from './event-duration.js';
 export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
 
 export {
+  ADVANCE_CHANNELS,
+  ARRIVAL_CHANNELS,
+  RATE_SCALE,
+  assertAllocationsWithinPayment,
+  canTransitionProof,
+  cashDifference,
+  computeBalance,
+  convert,
+  creditFromOverpayment,
+  formatReceiptNumber,
+  isReviewable,
+  totalCollected,
+  unallocatedAmount,
+  type AdvanceChannel,
+  type ArrivalChannel,
+  type Balance,
+  type BalanceInput,
+  type PaymentChannel,
+} from './billing.js';
+
+export {
   HELD_DURATION_MS,
   assertPolicyConsistent,
   hasAvailability,

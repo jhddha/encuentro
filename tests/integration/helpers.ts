@@ -88,7 +88,7 @@ export async function seedEvent(
     readonly startAt?: Date;
     readonly endAt?: Date;
   },
-): Promise<{ id: string; version: number; startAt: Date; endAt: Date }> {
+): Promise<{ id: string; code: string; version: number; startAt: Date; endAt: Date }> {
   const row = await prisma.event.create({
     data: {
       code: options.code,
@@ -102,5 +102,11 @@ export async function seedEvent(
     },
   });
 
-  return { id: row.id, version: row.version, startAt: row.startAt, endAt: row.endAt };
+  return {
+    id: row.id,
+    code: row.code,
+    version: row.version,
+    startAt: row.startAt,
+    endAt: row.endAt,
+  };
 }
