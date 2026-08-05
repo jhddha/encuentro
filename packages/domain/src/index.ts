@@ -27,6 +27,20 @@ export { dayNumber, totalDays } from './event-duration.js';
 export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
 
 export {
+  decideMaterialDelivery,
+  decideMealDelivery,
+  deliveryIdempotencyKey,
+  hasServiceAvailability,
+  isWithinServiceWindow,
+  stockFromMovements,
+  type DeliveryDecision,
+  type DeliveryRejection,
+  type InventoryMovement,
+  type MealService,
+  type MovementKind,
+} from './benefits.js';
+
+export {
   ADVANCE_CHANNELS,
   ARRIVAL_CHANNELS,
   RATE_SCALE,

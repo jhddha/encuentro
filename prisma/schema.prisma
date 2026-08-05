@@ -30,10 +30,10 @@ datasource db {
 /// la identidad, no el mecanismo, y hace falta para que `audit_logs.actor_id`
 /// apunte a algo real.
 model User {
-  id          String   @id @default(uuid()) @db.Uuid
-  email       String   @unique @db.Citext
-  displayName String   @map("display_name")
-  status      String   @default("ACTIVE")
+  id          String @id @default(uuid()) @db.Uuid
+  email       String @unique @db.Citext
+  displayName String @map("display_name")
+  status      String @default("ACTIVE")
 
   /// DEC-013: la verificación de correo es obligatoria. La cuenta puede
   /// existir sin verificar; lo que se bloquea es completar la inscripción.
@@ -248,6 +248,11 @@ model Event {
   payments      Payment[]
   receipts      Receipt[]
   cashSessions  CashSession[]
+  credentials   Credential[]
+  stations      Station[]
+  mealServices  MealService[]
+  inventory     InventoryItem[]
+  vehicles      Vehicle[]
 
   @@map("events")
 }
@@ -271,7 +276,7 @@ model AuditLog {
 
   action   String
   entity   String
-  entityId String @map("entity_id")
+  entityId String  @map("entity_id")
   reason   String?
 
   beforeRedacted Json? @map("before_redacted")
@@ -417,18 +422,21 @@ model Registration {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  person       Person       @relation(fields: [personId], references: [id], onDelete: Restrict)
-  package      Package      @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  event              Event              @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  person             Person             @relation(fields: [personId], references: [id], onDelete: Restrict)
+  package            Package            @relation(fields: [packageId], references: [id], onDelete: Restrict)
   /// Referencia **compuesta** a propósito: al incluir `packageId`, la base
   /// impide que una inscripción use la versión de precio de otro paquete.
   /// Declararla aquí y no solo en SQL evita que Prisma la vea como deriva y la
   /// elimine en la siguiente migración, que es exactamente lo que ocurrió.
-  priceVersion PriceVersion  @relation(fields: [priceVersionId, packageId], references: [id, packageId], onDelete: Restrict)
-  charges       Charge[]
-  reservations  Reservation[]
-  paymentProofs PaymentProof[]
-  payments      Payment[]
+  priceVersion       PriceVersion       @relation(fields: [priceVersionId, packageId], references: [id, packageId], onDelete: Restrict)
+  charges            Charge[]
+  reservations       Reservation[]
+  paymentProofs      PaymentProof[]
+  payments           Payment[]
+  credential         Credential?
+  mealDeliveries     MealDelivery[]
+  materialDeliveries MaterialDelivery[]
 
   /// Una persona no se inscribe dos veces en la misma gestión.
   @@unique([eventId, personId])
@@ -491,12 +499,12 @@ model EventLodgingPolicy {
 }
 
 model Hotel {
-  id      String @id @default(uuid()) @db.Uuid
-  eventId String @map("event_id") @db.Uuid
+  id      String  @id @default(uuid()) @db.Uuid
+  eventId String  @map("event_id") @db.Uuid
   code    String
   name    String
   address String?
-  status  String @default("ACTIVE")
+  status  String  @default("ACTIVE")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -774,4 +782,232 @@ model Receipt {
   @@unique([eventId, number])
   @@index([eventId, issuedAt])
   @@map("receipts")
+}
+
+// ---------------------------------------------------------------------------
+// Credenciales, alimentos, materiales y transporte — P08 a P11
+//
+// **Advertencia de procedencia.** Solo FOOD-001..004 y MAT-001..003 tienen
+// requisitos en `contracts/requirements.json`. Credenciales, escaneo offline y
+// transporte se construyen por inferencia desde `system-architecture.md` §5 y
+// los prompts P08–P10, por decisión explícita del responsable del proyecto.
+// Las reglas inferidas están marcadas con «INFERIDO» y listadas en el informe
+// de la fase para poder auditarlas una a una.
+// ---------------------------------------------------------------------------
+
+/// Credencial de una inscripción — INFERIDO (P08).
+///
+/// El token sigue el mismo patrón que el del Comprobante (DEC-003): opaco,
+/// almacenado por hash, sin PII. Esa parte no es inferencia — requirements.md
+/// §10 lo exige para todo QR del sistema.
+model Credential {
+  id             String @id @default(uuid()) @db.Uuid
+  eventId        String @map("event_id") @db.Uuid
+  registrationId String @unique @map("registration_id") @db.Uuid
+
+  code String
+
+  /// requirements.md §10: los tokens de QR se almacenan por hash y no
+  /// contienen PII.
+  tokenHash String @unique @map("token_hash")
+
+  status String @default("ACTIVE")
+
+  issuedAt     DateTime  @default(now()) @map("issued_at") @db.Timestamptz(6)
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedBy    String?   @map("revoked_by") @db.Uuid
+  revokeReason String?   @map("revoke_reason")
+
+  event        Event        @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+
+  @@unique([eventId, code])
+  @@map("credentials")
+}
+
+/// Estación de escaneo — INFERIDO (P09).
+model Station {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+  code    String
+  name    String
+  kind    String @default("GENERAL")
+  status  String @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event              Event              @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  mealDeliveries     MealDelivery[]
+  materialDeliveries MaterialDelivery[]
+
+  @@unique([eventId, code])
+  @@map("stations")
+}
+
+/// Servicio de alimentación — FOOD-001.
+///
+/// Requisito real: fecha, tipo, hora inicial y final, y cantidad disponible.
+model MealService {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+
+  serviceDate DateTime @map("service_date") @db.Date
+  type        String
+
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt   DateTime @map("ends_at") @db.Timestamptz(6)
+
+  /// FOOD-003: pedido, recepción, desperdicio y entrega son movimientos
+  /// separados y reconciliables.
+  availableCount Int @map("available_count")
+  orderedCount   Int @default(0) @map("ordered_count")
+  receivedCount  Int @default(0) @map("received_count")
+  wastedCount    Int @default(0) @map("wasted_count")
+
+  status String @default("ACTIVE")
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event      Event          @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  deliveries MealDelivery[]
+
+  @@unique([eventId, serviceDate, type])
+  @@index([eventId, serviceDate])
+  @@map("meal_services")
+}
+
+/// Entrega de una comida — FOOD-004.
+///
+/// Una persona recibe una vez cada servicio: lo garantiza el índice único
+/// (service_id, registration_id), no una comprobación en código.
+model MealDelivery {
+  id             String @id @default(uuid()) @db.Uuid
+  serviceId      String @map("service_id") @db.Uuid
+  registrationId String @map("registration_id") @db.Uuid
+  stationId      String @map("station_id") @db.Uuid
+
+  /// ADR-008: idempotencia por estación y operación. Reenviar el mismo escaneo
+  /// tras recuperar la conexión no entrega dos veces.
+  operationUuid String @map("operation_uuid")
+
+  deliveredAt DateTime @default(now()) @map("delivered_at") @db.Timestamptz(6)
+
+  /// FOOD-004 admite override autorizado; queda registrado quién lo hizo.
+  overriddenBy   String? @map("overridden_by") @db.Uuid
+  overrideReason String? @map("override_reason")
+
+  service      MealService  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  station      Station      @relation(fields: [stationId], references: [id], onDelete: Restrict)
+
+  @@unique([serviceId, registrationId])
+  @@unique([stationId, operationUuid])
+  @@index([serviceId])
+  @@map("meal_deliveries")
+}
+
+/// Artículo de inventario — MAT-003.
+model InventoryItem {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+  code    String
+  name    String
+  status  String @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event      Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  movements  InventoryMovement[]
+  deliveries MaterialDelivery[]
+
+  @@unique([eventId, code])
+  @@map("inventory_items")
+}
+
+/// Movimiento de inventario — MAT-003.
+///
+/// «Stock deriva de movimientos». No hay columna de existencias que alguien
+/// pueda corregir a mano, igual que no hay columna de saldo en facturación.
+model InventoryMovement {
+  id     String @id @default(uuid()) @db.Uuid
+  itemId String @map("item_id") @db.Uuid
+
+  kind     String
+  quantity Int
+
+  reason    String?
+  actorId   String   @map("actor_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  item InventoryItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+
+  @@index([itemId, createdAt])
+  @@map("inventory_movements")
+}
+
+/// Entrega de material — MAT-001, MAT-002.
+model MaterialDelivery {
+  id             String @id @default(uuid()) @db.Uuid
+  itemId         String @map("item_id") @db.Uuid
+  registrationId String @map("registration_id") @db.Uuid
+  stationId      String @map("station_id") @db.Uuid
+
+  operationUuid String @map("operation_uuid")
+  quantity      Int    @default(1)
+
+  deliveredAt DateTime @default(now()) @map("delivered_at") @db.Timestamptz(6)
+
+  item         InventoryItem @relation(fields: [itemId], references: [id], onDelete: Restrict)
+  registration Registration  @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  station      Station       @relation(fields: [stationId], references: [id], onDelete: Restrict)
+
+  @@unique([itemId, registrationId])
+  @@unique([stationId, operationUuid])
+  @@map("material_deliveries")
+}
+
+/// Vehículo de transporte — INFERIDO (P10).
+///
+/// El prompt P10 nombra «vehículos, choferes, horarios, asignaciones y QR» y
+/// pide un gate de solapamientos y capacidad. No hay requisitos TRANS-* en el
+/// contrato: todo este modelo es inferencia.
+model Vehicle {
+  id         String  @id @default(uuid()) @db.Uuid
+  eventId    String  @map("event_id") @db.Uuid
+  code       String
+  plate      String?
+  capacity   Int
+  driverName String? @map("driver_name")
+  status     String  @default("ACTIVE")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  event Event  @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  trips Trip[]
+
+  @@unique([eventId, code])
+  @@map("vehicles")
+}
+
+/// Traslado — INFERIDO (P10).
+model Trip {
+  id        String @id @default(uuid()) @db.Uuid
+  vehicleId String @map("vehicle_id") @db.Uuid
+
+  origin      String
+  destination String
+
+  departsAt DateTime @map("departs_at") @db.Timestamptz(6)
+  arrivesAt DateTime @map("arrives_at") @db.Timestamptz(6)
+
+  status String @default("SCHEDULED")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+
+  @@index([vehicleId, departsAt])
+  @@map("trips")
 }
