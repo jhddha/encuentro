@@ -1,0 +1,24 @@
+node_modules/
+dist/
+.next/
+coverage/
+pnpm-lock.yaml
+
+# Documentación canónica y contratos: su formato es parte de la fuente y está
+# cubierto por MANIFEST.sha256. Prettier no debe tocarlos.
+docs/
+contracts/
+prompts/
+prototypes/
+archive/
+generated-docx/
+scripts/
+*.md
+MANIFEST.sha256
+VERSION
+VALIDATION_REPORT.txt
+Encuentro_Prototipo_Integral_v2.7.html
+
+# Generado por Next en cada build.
+apps/web/next-env.d.ts
+apps/web/tsconfig.json

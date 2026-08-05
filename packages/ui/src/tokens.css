@@ -1,0 +1,34 @@
+/*
+ * Tokens de identidad — docs/03-design/design-system.md §3.
+ * Los valores son canónicos: no ajustar sin actualizar antes ese documento.
+ */
+
+@theme {
+  --color-ink: #171312;
+  --color-ivory: #f7f2ea;
+  --color-flame: #d63b2f;
+  --color-fire: #f08a24;
+  --color-gold: #d6a12e;
+  --color-wine: #5b2328;
+  --color-success: #2e7d32;
+  --color-warning: #d98e04;
+  --color-danger: #c62828;
+  --color-info: #2563eb;
+
+  /* §2 — Playfair Display para títulos, Source Sans 3 para UI. */
+  --font-display: 'Playfair Display', Georgia, serif;
+  --font-sans: 'Source Sans 3', 'Segoe UI', Arial, sans-serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* §4 — 390 móvil, 768 tableta, 1280 laptop, 1440/1920 escritorio. */
+  --breakpoint-sm: 390px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1280px;
+  --breakpoint-xl: 1440px;
+  --breakpoint-2xl: 1920px;
+}
+
+/* §4 — área táctil mínima 44x44 px. */
+:root {
+  --size-touch-target: 44px;
+}

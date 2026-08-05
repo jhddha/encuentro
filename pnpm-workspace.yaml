@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  # Motores de consulta de Prisma; se descargan en postinstall.
+  '@prisma/engines': true
+  # Acelerador nativo opcional de msgpackr, usado por BullMQ.
+  msgpackr-extract: true
+  prisma: true
+  # Resolvedor nativo de módulos que usa el plugin de imports de ESLint.
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - bullmq@6.0.7

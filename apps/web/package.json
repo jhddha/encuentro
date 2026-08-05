@@ -1,0 +1,27 @@
+{
+  "name": "@encuentro/web",
+  "version": "2.7.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@encuentro/application": "workspace:*",
+    "@encuentro/config": "workspace:*",
+    "@encuentro/domain": "workspace:*",
+    "@encuentro/ui": "workspace:*",
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint-config-next": "16.3.0",
+    "tailwindcss": "4.3.3"
+  }
+}

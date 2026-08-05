@@ -1,0 +1,16 @@
+@import 'tailwindcss';
+@import '@encuentro/ui/tokens.css';
+
+body {
+  background-color: var(--color-ivory);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+/* §4 — área táctil mínima en controles interactivos. */
+button,
+a[role='button'],
+input[type='submit'] {
+  min-block-size: var(--size-touch-target);
+  min-inline-size: var(--size-touch-target);
+}

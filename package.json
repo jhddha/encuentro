@@ -1,0 +1,39 @@
+{
+  "name": "encuentro",
+  "version": "2.7.0",
+  "private": true,
+  "description": "Sistema web ENCUENTRO",
+  "engines": {
+    "node": "24.19.0",
+    "pnpm": ">=11.15.1"
+  },
+  "packageManager": "pnpm@11.15.1",
+  "scripts": {
+    "build": "pnpm -r --filter \"./apps/*\" build",
+    "dev": "pnpm -r --parallel --filter \"./apps/*\" dev",
+    "lint": "eslint .",
+    "typecheck": "tsc --build --pretty && pnpm --filter @encuentro/web typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "docs:validate": "python scripts/validate_canonical_docs.py",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "26.1.2",
+    "@vitest/coverage-v8": "4.1.10",
+    "eslint": "9.39.5",
+    "prettier": "3.9.6",
+    "prisma": "7.9.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0",
+    "vitest": "4.1.10"
+  }
+}

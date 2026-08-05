@@ -1,0 +1,26 @@
+{
+  // Proyecto usado solo por ESLint. Cubre lo que los tsconfig de build dejan
+  // fuera a propósito: tests y archivos de configuración. No emite nada.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "allowJs": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node"]
+  },
+  "include": [
+    "packages/*/src/**/*.ts",
+    "packages/*/src/**/*.tsx",
+    "apps/worker/src/**/*.ts",
+    "*.ts",
+    "*.mts",
+    "*.mjs",
+    "apps/*/*.mjs"
+  ],
+  "exclude": ["node_modules", "**/dist/**", "**/.next/**"]
+}
