@@ -47,3 +47,18 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Instalar navegador para E2E
+        run: pnpm exec playwright install chromium --with-deps
+
+      - name: Accesibilidad y responsive
+        # Gate de P02: WCAG 2.2 AA sobre los cinco viewports canónicos.
+        run: pnpm test:e2e
+
+      - name: Publicar reporte de fallos
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

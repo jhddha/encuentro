@@ -17,6 +17,7 @@
     "packages/*/src/**/*.ts",
     "packages/*/src/**/*.tsx",
     "apps/worker/src/**/*.ts",
+    "tests/**/*.ts",
     "*.ts",
     "*.mts",
     "*.mjs",

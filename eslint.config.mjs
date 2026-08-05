@@ -33,6 +33,11 @@ export default tseslint.config(
         { 'ts-expect-error': 'allow-with-description', 'ts-ignore': true, 'ts-nocheck': true },
       ],
       '@typescript-eslint/consistent-type-imports': 'error',
+      // Permite marcar un parámetro aún sin usar con `_`, sin desactivar la regla.
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' },
+      ],
       // requirements.md §10: los importes usan decimal exacto, nunca `float`.
       'no-loss-of-precision': 'error',
     },

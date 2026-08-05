@@ -26,7 +26,9 @@
     "db:studio": "prisma studio"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@eslint/js": "9.39.5",
+    "@playwright/test": "1.62.1",
     "@types/node": "26.1.2",
     "@vitest/coverage-v8": "4.1.10",
     "dotenv": "17.4.2",

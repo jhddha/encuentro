@@ -21,3 +21,10 @@ export {
 } from './states.js';
 
 export { DomainError, type DomainErrorCode } from './errors.js';
+
+export {
+  PUBLIC_RECEIPT_FIELDS,
+  toPublicReceiptVerification,
+  type PublicReceiptStatus,
+  type PublicReceiptVerification,
+} from './receipt.js';

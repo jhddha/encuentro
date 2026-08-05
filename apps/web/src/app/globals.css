@@ -1,6 +1,10 @@
 @import 'tailwindcss';
 @import '@encuentro/ui/tokens.css';
 
+/* Tailwind 4 solo escanea el proyecto actual; hay que declararle el paquete
+   de componentes del workspace o sus clases no se generan. */
+@source '../../../../packages/ui/src';
+
 body {
   background-color: var(--color-ivory);
   color: var(--color-ink);

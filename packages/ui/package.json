@@ -12,6 +12,9 @@
     "build": "tsc --build",
     "clean": "tsc --build --clean"
   },
+  "dependencies": {
+    "@encuentro/domain": "workspace:*"
+  },
   "peerDependencies": {
     "react": "19.2.8"
   },
