@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf /:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(prisma migrate reset:*)",
+      "Bash(docker system prune -a:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(docker compose up -d:*)",
+      "Bash(pnpm run deploy:*)"
+    ]
+  }
+}

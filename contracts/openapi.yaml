@@ -1,0 +1,31 @@
+openapi: 3.1.0
+info:
+  title: ENCUENTRO API
+  version: 2.7.0
+paths:
+  /api/v1/registrations/{id}/payment-proofs:
+    post:
+      summary: Cargar evidencia de pago manual
+      responses:
+        '201': { description: Evidencia recibida }
+  /api/v1/payment-proofs/{id}/review:
+    post:
+      summary: Aprobar, rechazar o pedir corrección
+      responses:
+        '200': { description: Revisión aplicada }
+  /api/v1/public/receipts/verify/{token}:
+    get:
+      summary: Verificación pública mínima de Comprobante de pago
+      responses:
+        '200': { description: Resultado seguro }
+        '404': { description: No encontrado }
+  /api/v1/events/{id}/lodging-policy:
+    put:
+      summary: Configurar periodo y noches de hospedaje
+      responses:
+        '200': { description: Política actualizada }
+  /api/v1/events/{id}/meal-services:
+    post:
+      summary: Crear servicio de alimentación con fecha, horario y cantidad
+      responses:
+        '201': { description: Servicio creado }

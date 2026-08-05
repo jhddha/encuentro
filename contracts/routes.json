@@ -1,0 +1,33 @@
+{
+  "version": "2.7",
+  "routes": [
+    "/",
+    "/e/[eventCode]",
+    "/e/[eventCode]/inscripcion",
+    "/verificar/comprobante/[token]",
+    "/e/[eventCode]/mi-cuenta",
+    "/e/[eventCode]/mi-cuenta/pagos",
+    "/e/[eventCode]/mi-cuenta/hospedaje",
+    "/e/[eventCode]/mi-cuenta/credencial",
+    "/e/[eventCode]/mi-cuenta/notificaciones",
+    "/admin",
+    "/admin/eventos",
+    "/admin/configuracion/correo",
+    "/admin/e/[eventCode]/dashboard",
+    "/admin/e/[eventCode]/configuracion",
+    "/admin/e/[eventCode]/catalogo",
+    "/admin/e/[eventCode]/inscripciones",
+    "/admin/e/[eventCode]/pagos",
+    "/admin/e/[eventCode]/comprobantes",
+    "/admin/e/[eventCode]/hospedaje",
+    "/admin/e/[eventCode]/alimentos",
+    "/admin/e/[eventCode]/materiales",
+    "/admin/e/[eventCode]/transporte",
+    "/admin/e/[eventCode]/contabilidad",
+    "/admin/e/[eventCode]/reportes",
+    "/admin/e/[eventCode]/auditoria",
+    "/caja/e/[eventCode]/[cashCode]",
+    "/comision/e/[eventCode]/[commissionCode]",
+    "/scanner/e/[eventCode]/[stationCode]"
+  ]
+}

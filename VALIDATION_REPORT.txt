@@ -1,0 +1,1 @@
+OK ENCUENTRO docs v2.7: 65 requirement IDs, 28 routes, 36 permissions

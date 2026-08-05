@@ -1,0 +1,118 @@
+{
+  "version": "2.7",
+  "decisions": [
+    {
+      "id": "DEC-001",
+      "title": "Infraestructura productiva y estrategia de despliegue",
+      "status": "APPROVED",
+      "date": "2026-07-13",
+      "decision": "Usar OVHcloud VPS-3 como infraestructura productiva inicial. El servidor ejecutará Ubuntu Server 24.04 LTS, Docker Engine y Docker Compose v2. La aplicación Next.js y el worker BullMQ serán procesos/contenedores separados. PostgreSQL y Redis no se expondrán públicamente. El acceso público se limitará a 80/443 y SSH restringido. Cloudflare podrá actuar como DNS/CDN/WAF. Los respaldos cifrados se almacenarán fuera del VPS. La versión canónica se desplegará en la nube después de cada entrega aprobada; un entorno de desarrollo puede coexistir, pero no sustituye al despliegue verificable.",
+      "consequences": [
+        "El deploy deja de ser proveedor-neutral.",
+        "Se requieren runbooks de backup, restore, monitoreo y hardening.",
+        "El sistema conserva capacidad de migrar a otra infraestructura mediante Docker y contratos de puertos."
+      ]
+    },
+    {
+      "id": "DEC-002",
+      "title": "Modalidades y canales de pago de v1",
+      "status": "APPROVED",
+      "date": "2026-07-14",
+      "decision": "v1 no tendrá checkout automático ni confirmación automática por pasarela. Existen dos modalidades comerciales: (1) pago anticipado, con precio reducido hasta una fecha configurable y derecho a escoger hotel después de aprobar al menos el 50%; y (2) pago al llegar, con precio normal y elección de hotel entre la disponibilidad restante. El pago anticipado se realiza mediante QR Simple bancario en Bolivia o cuenta/enlace externo de Estados Unidos. El peregrino carga comprobante y una persona autorizada lo aprueba o rechaza. El comprobante cargado dentro del plazo conserva la tarifa anticipada aunque la revisión ocurra después. El saldo restante tiene vencimiento configurable y puede pagarse al llegar sin repricing. Al llegar se aceptan efectivo y QR configurables por gestión.",
+      "consequences": [
+        "No se implementan webhooks ni proveedores automáticos en v1.",
+        "Se crea bandeja de evidencias, revisión humana, auditoría y detección de duplicados.",
+        "La modalidad comercial se separa del canal de pago."
+      ]
+    },
+    {
+      "id": "DEC-003",
+      "title": "Comprobante de pago, numeración y verificación",
+      "status": "APPROVED",
+      "date": "2026-07-22",
+      "decision": "El documento emitido por el sistema se llama “Comprobante de pago” y su pie dice “Documento de control interno”. Se distinguen: comprobante bancario cargado, Comprobante de pago emitido y estado de cuenta. Cada pago aprobado genera un comprobante propio con secuencia única por gestión `REC-{EVENT_CODE}-{NNNNNN}`. En datos del peregrino solo aparecen nombre completo, código de inscripción y paquete. El QR usa token opaco y abre una verificación pública mínima sin autenticación; el detalle personal/financiero exige sesión y permiso. El documento emitido es inmutable; una corrección se resuelve por anulación auditada y nueva emisión.",
+      "consequences": [
+        "PDF como formato principal.",
+        "Vista térmica prevista en 80 mm, sujeta a DEC-010.",
+        "El QR no enlaza directamente al PDF ni expone PII."
+      ]
+    },
+    {
+      "id": "DEC-004",
+      "title": "Llegada durante IN_PROGRESS, duración y servicios",
+      "status": "APPROVED",
+      "date": "2026-07-22",
+      "decision": "Durante `IN_PROGRESS` no hay prorrateo ni diferencia de costo por días transcurridos, exista o no anticipo. El importe completo corresponde al paquete asignado. No hay tarifas tardías automáticas. Pueden existir paquetes privados, no públicos, visibles y asignables solo por usuarios autorizados de Inscripciones. La duración total del evento es configurable; referencia actual: 8 días. El periodo de hospedaje tiene una cantidad fija y configurable de noches; referencia actual: 7 noches, desde la noche del día 1 hasta la noche del día 7. Una reserva `CONFIRMED` no se libera por llegada tardía. Alimentos configura por día cada servicio, cantidad y horario; el QR valida fecha y ventana horaria. Materiales no pierde elegibilidad automáticamente por actividades pasadas.",
+      "consequences": [
+        "DEC-005 queda limitado a duración/política de `HELD` y otros aspectos no definidos.",
+        "Los escenarios E2E de día 1, 3 y último día usan el mismo precio.",
+        "La configuración de evento, hospedaje y alimentos se vuelve explícita."
+      ]
+    },
+    {
+      "id": "DEC-005",
+      "title": "Duración de `HELD` y reglas restantes de hospedaje",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-006",
+      "title": "Menores, documento obligatorio y consentimiento",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-007",
+      "title": "Cancelaciones y reembolsos",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-008",
+      "title": "Tratamiento de sobrepagos",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-009",
+      "title": "Fuente y momento del tipo de cambio",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-010",
+      "title": "Equipo y tamaño exacto de credencial/recibo",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-011",
+      "title": "Retención y anonimización",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-012",
+      "title": "RPO/RTO y proveedor de backup",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-013",
+      "title": "Verificación de email obligatoria",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-014",
+      "title": "MFA para roles privilegiados",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-015",
+      "title": "Cierre formal del alcance QR Bolivia; v1 ya es manual por DEC-002",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-016",
+      "title": "Auth.js estable o alternativa",
+      "status": "BLOCKING"
+    },
+    {
+      "id": "DEC-017",
+      "title": "Alcance y frecuencia de Google Sheets",
+      "status": "BLOCKING"
+    }
+  ]
+}

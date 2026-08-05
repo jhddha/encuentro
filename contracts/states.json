@@ -1,0 +1,48 @@
+{
+  "version": "2.7",
+  "event": [
+    "DRAFT",
+    "READY",
+    "ACTIVE",
+    "IN_PROGRESS",
+    "OPERATIONALLY_CLOSED",
+    "FINANCIALLY_CLOSED",
+    "ARCHIVED"
+  ],
+  "registration": [
+    "DRAFT",
+    "SUBMITTED",
+    "CONFIRMED",
+    "CANCELLED"
+  ],
+  "paymentComputed": [
+    "UNPAID",
+    "PARTIAL",
+    "PAID",
+    "OVERPAID",
+    "REFUNDED"
+  ],
+  "attendance": [
+    "NOT_ARRIVED",
+    "CHECKED_IN",
+    "NO_SHOW",
+    "COMPLETED"
+  ],
+  "paymentProof": [
+    "PENDING_UPLOAD",
+    "SUBMITTED",
+    "UNDER_REVIEW",
+    "APPROVED",
+    "REJECTED",
+    "CORRECTION_REQUESTED",
+    "REPLACED",
+    "CANCELLED"
+  ],
+  "lodging": [
+    "HELD",
+    "CONFIRMED",
+    "RELEASED",
+    "CANCELLED",
+    "EXPIRED"
+  ]
+}
