@@ -83,7 +83,7 @@ Tres avisos que conviene destacar:
 
 1. **La subida del respaldo fuera del VPS no está implementada.** Es el requisito central de DEC-012 y depende de elegir proveedor. **Sin esto no hay go.**
 2. **El rol de la aplicación no debe ser propietario de las tablas.** Es la mitigación pendiente desde P03: `TRUNCATE` esquiva los triggers append-only, y solo el propietario puede ejecutarlo.
-3. **No hay worker de expiración de `HELD`** (P06) ni worker de envío de correo (P13). Ambos son procesos que el despliegue asume existentes.
+3. ~~**No hay worker de expiración de `HELD`** (P06) ni worker de envío de correo (P13).~~ **Cerrado el 5-ago-2026** en [`16-background-workers.md`](16-background-workers.md): ambas colas existen, con pruebas unitarias, de integración y arranque real verificado.
 4. **La imagen del worker pesa 1.49 GB** porque no se podan las dependencias de desarrollo: `pnpm prune --prod` rompe los enlaces internos del workspace. Se prefirió una imagen grande a un arranque que falle por un módulo ausente.
 5. **No se ha ejecutado prueba de carga.** El prompt P14 la pide y no se hizo.
 6. **Falta configurar el firewall del VPS y el acceso SSH restringido.** DEC-001 lo exige; es configuración del servidor, fuera de este repositorio.
@@ -97,3 +97,5 @@ Según los criterios de `execution-plan.md` §6, **el veredicto sería no-go**, 
 - quedan 120 requisitos de la v2.6 sin migrar, y con ellos módulos enteros sin reglas.
 
 No es un juicio sobre la calidad de lo construido, sino la aplicación literal de los criterios que el propio plan define.
+
+**Actualización del 5-ago-2026.** El pendiente 3 quedó cerrado (ver [`16-background-workers.md`](16-background-workers.md)). Sobre el segundo motivo del no-go, existe ahora un borrador de los 120 requisitos en [`requirements-candidates-v26.md`](../01-product/requirements-candidates-v26.md), **derivado y sin aprobar**: no cuenta como migración hasta que el responsable del proyecto lo revise. El veredicto sigue siendo **no-go**.

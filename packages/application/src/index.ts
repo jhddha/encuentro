@@ -5,9 +5,28 @@ export type {
   AuditPort,
   Clock,
   CreateEventInput,
+  EmailMessage,
+  EmailSender,
   EventRecord,
   EventRepository,
+  ExpireReservationInput,
+  NotificationRepository,
+  PendingNotification,
+  ReservationRecord,
+  ReservationRepository,
 } from './ports.js';
+
+export {
+  expireHeldReservations,
+  type ExpireHeldReservationsDeps,
+  type ExpireHeldReservationsResult,
+} from './expire-held-reservations.js';
+
+export {
+  dispatchNotifications,
+  type DispatchNotificationsDeps,
+  type DispatchNotificationsResult,
+} from './dispatch-notifications.js';
 
 export {
   transitionEvent,

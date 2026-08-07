@@ -1,4 +1,4 @@
-import type { Actor, EventState } from '@encuentro/domain';
+import type { Actor, EventState, LodgingState } from '@encuentro/domain';
 
 /**
  * Puertos de la capa de aplicación.
@@ -93,4 +93,96 @@ export interface ApplyTransitionInput {
 /** Resuelve el actor de la petición y sus asignaciones de rol. */
 export interface ActorResolver {
   resolve(userId: string): Promise<Actor | null>;
+}
+
+// ---------------------------------------------------------------------------
+// Procesos de fondo — DEC-001
+//
+// Los dos puertos que siguen los consume el worker, no la web. Están aquí y no
+// en `apps/worker` porque la dirección de dependencias no cambia por el hecho
+// de que quien invoque el caso de uso sea un proceso en vez de una petición.
+// ---------------------------------------------------------------------------
+
+/** Reserva candidata a expirar, tal como la ve la capa de aplicación. */
+export interface ReservationRecord {
+  readonly id: string;
+  readonly eventId: string;
+  readonly status: LodgingState;
+  readonly createdAt: Date;
+  /** DEC-005. La base garantiza que solo es no nulo mientras el estado es `HELD`. */
+  readonly heldUntil: Date | null;
+  readonly version: number;
+}
+
+export interface ExpireReservationInput {
+  readonly reservationId: string;
+  readonly expectedVersion: number;
+  readonly actorId: string;
+  readonly reason: string;
+}
+
+export interface ReservationRepository {
+  /**
+   * Reservas que la base considera vencidas: `HELD` con `held_until` pasado.
+   *
+   * Devuelve candidatas, no sentencias. Quien decide si se expiran es el
+   * dominio, que vuelve a aplicar la regla de DEC-005 sobre `createdAt`.
+   */
+  findExpiryCandidates(now: Date, limit: number): Promise<readonly ReservationRecord[]>;
+
+  /**
+   * Expira una reserva con compare-and-swap sobre `version` y `status`.
+   *
+   * Devuelve `false` si otra operación se adelantó —típicamente una
+   * confirmación de pago que llegó en el mismo segundo—. Perder esa carrera es
+   * el resultado correcto: HOS-012 prohíbe liberar una reserva `CONFIRMED`.
+   */
+  expire(input: ExpireReservationInput): Promise<boolean>;
+}
+
+/**
+ * Envío pendiente, con su plantilla sin renderizar.
+ *
+ * La sustitución de variables la hace el dominio (`renderTemplate`), no el
+ * repositorio: es una regla, no un detalle de almacenamiento.
+ */
+export interface PendingNotification {
+  readonly id: string;
+  readonly eventId: string | null;
+  readonly toEmail: string;
+  readonly subjectTemplate: string;
+  readonly bodyTemplate: string;
+  readonly variables: Readonly<Record<string, string>>;
+  readonly attempts: number;
+}
+
+export interface NotificationRepository {
+  /**
+   * Toma envíos vencidos y los marca `SENDING` de forma atómica.
+   *
+   * Reclamar y leer deben ser la misma operación. Si fueran dos, dos réplicas
+   * del worker leerían la misma fila y el peregrino recibiría el correo dos
+   * veces.
+   */
+  claimDue(now: Date, limit: number): Promise<readonly PendingNotification[]>;
+
+  markSent(id: string, sentAt: Date): Promise<void>;
+
+  /**
+   * Marca el envío como fallido.
+   *
+   * `retryAt` nulo significa que no habrá reintento: o se agotaron los intentos
+   * o el fallo es determinista y repetirlo daría el mismo resultado.
+   */
+  markFailed(id: string, error: string, retryAt: Date | null): Promise<void>;
+}
+
+export interface EmailMessage {
+  readonly to: string;
+  readonly subject: string;
+  readonly body: string;
+}
+
+export interface EmailSender {
+  send(message: EmailMessage): Promise<void>;
 }
