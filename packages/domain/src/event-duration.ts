@@ -3,8 +3,8 @@ import { DomainError } from './errors.js';
 /**
  * Duración de una gestión.
  *
- * EVT-007: `start_at` y `end_at` son configurables y la UI calcula el total de
- * días. EVT-008: la referencia actual son 8 días, **sin valor fijo en código**.
+ * EVT-016: `start_at` y `end_at` son configurables y la UI calcula el total de
+ * días. EVT-016: la referencia actual son 8 días, **sin valor fijo en código**.
  *
  * De ahí que aquí no exista ninguna constante 8. El único número presente es el
  * 1 de «el día de inicio cuenta como día 1», que es la definición de contar
@@ -35,7 +35,7 @@ export function totalDays(startAt: Date, endAt: Date): number {
 /**
  * Número de día dentro de la gestión, empezando en 1.
  *
- * Sirve para mostrar «día 3 de 8», nunca para calcular precio: REG-006 prohíbe
+ * Sirve para mostrar «día 3 de 8», nunca para calcular precio: REG-023 prohíbe
  * prorratear y DEC-004 fija que durante `IN_PROGRESS` se cobra el paquete
  * completo, sea cual sea el día de llegada.
  *

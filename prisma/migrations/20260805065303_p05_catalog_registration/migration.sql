@@ -129,12 +129,12 @@ ALTER TABLE "charges" ADD CONSTRAINT "charges_registration_id_fkey" FOREIGN KEY 
 -- Invariantes de catalogo e inscripcion.
 -- ---------------------------------------------------------------------------
 
--- PKG-002: visibilidad canonica.
+-- PKG-009: visibilidad canonica.
 ALTER TABLE "packages"
   ADD CONSTRAINT "packages_visibility_canonical"
   CHECK ("visibility" IN ('PUBLIC', 'PRIVATE'));
 
--- REG-001: exactamente dos modalidades, ni una mas.
+-- REG-019: exactamente dos modalidades, ni una mas.
 ALTER TABLE "price_versions"
   ADD CONSTRAINT "price_versions_payment_mode_canonical"
   CHECK ("payment_mode" IN ('ADVANCE', 'ARRIVAL'));
@@ -150,7 +150,7 @@ ALTER TABLE "price_versions"
 ALTER TABLE "charges"
   ADD CONSTRAINT "charges_amount_non_negative" CHECK ("amount" >= 0);
 
--- PKG-005: el minimo de pago es un porcentaje real.
+-- PKG-013: el minimo de pago es un porcentaje real.
 ALTER TABLE "price_versions"
   ADD CONSTRAINT "price_versions_min_percent_range"
   CHECK ("min_payment_percent" IS NULL
@@ -161,9 +161,9 @@ ALTER TABLE "price_versions"
   ADD CONSTRAINT "price_versions_window_ordered"
   CHECK ("starts_at" IS NULL OR "ends_at" IS NULL OR "ends_at" >= "starts_at");
 
--- PKG-004: la tarifa anticipada necesita vigencia y minimo de pago; sin ellos
--- no se puede decidir si conserva tarifa (REG-004) ni si desbloquea hotel
--- (REG-003), y el dominio tendria que adivinar.
+-- PKG-012: la tarifa anticipada necesita vigencia y minimo de pago; sin ellos
+-- no se puede decidir si conserva tarifa (REG-021) ni si desbloquea hotel
+-- (REG-020), y el dominio tendria que adivinar.
 ALTER TABLE "price_versions"
   ADD CONSTRAINT "price_versions_advance_is_complete" CHECK (
     "payment_mode" <> 'ADVANCE'
@@ -193,7 +193,7 @@ ALTER TABLE "registrations" ADD CONSTRAINT "registrations_price_matches_package"
 -- se impone con trigger para que la regla no dependa del codigo que escribe.
 CREATE OR REPLACE FUNCTION charges_immutable() RETURNS TRIGGER AS $$
 BEGIN
-  RAISE EXCEPTION 'charges es inmutable: % no esta permitido (GOV-005, REG-002)', TG_OP
+  RAISE EXCEPTION 'charges es inmutable: % no esta permitido (GOV-005, PAY-001)', TG_OP
     USING ERRCODE = 'restrict_violation';
 END;
 $$ LANGUAGE plpgsql;

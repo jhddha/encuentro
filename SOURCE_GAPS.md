@@ -10,6 +10,6 @@ Se reconstruyó a partir de:
 
 ## Límite verificable
 
-La documentación v2.6 declaraba 185 requisitos. El contrato de esta reconstrucción contiene 65 requisitos consolidados, principalmente los afectados por las decisiones aprobadas. Por ello, v2.7 se entrega como **candidato canónico para revisión**, no como sustitución definitiva de v2.6.
+El documento de requisitos v2.6 se localizó el 7 de agosto de 2026 y contiene **185 requisitos**. Con los 13 del parche canónico DEC-004, la línea base es de **198**. La migración requisito por requisito está clasificada en [`requirement-migration-v2.6-to-current.md`](docs/04-delivery/requirement-migration-v2.6-to-current.md); el contrato se renumeró a la numeración canónica de v2.6.
 
 Los documentos originales v2.6 deben conservarse hasta completar una migración requisito por requisito. La matriz se encuentra en `docs/04-delivery/source-migration-matrix.md`.

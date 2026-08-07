@@ -54,7 +54,7 @@ describe('rutas frente a contracts/routes.json', () => {
   });
 
   it('la ruta pública de verificación usa el segmento exacto del contrato', () => {
-    // PAY-013: es la URL que abre el QR impreso. Cambiarla invalida los
+    // PAY-031: es la URL que abre el QR impreso. Cambiarla invalida los
     // comprobantes ya emitidos, así que se fija por prueba.
     expect(contractRoutes).toContain('/verificar/comprobante/[token]');
   });

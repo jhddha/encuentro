@@ -7,7 +7,7 @@ export const metadata: Metadata = { title: 'Caja' };
 /**
  * Punto de cobro presencial.
  *
- * CASH-001: todo cobro ocurre dentro de una sesión de caja abierta. El scope
+ * PAY-011: todo cobro ocurre dentro de una sesión de caja abierta. El scope
  * `cashCode` acota el permiso del cajero (regla 03-security-rbac).
  */
 export default async function CashPage({
@@ -22,7 +22,7 @@ export default async function CashPage({
       <PendingScreen
         title={`Caja ${cashCode} · gestión ${eventCode}`}
         phase="P07"
-        scope="Sesión de caja, cobro en efectivo o QR y arqueo de cierre (CASH-001, CASH-002)."
+        scope="Sesión de caja, cobro en efectivo o QR y arqueo de cierre (PAY-011, PAY-012)."
       />
     </Shell>
   );

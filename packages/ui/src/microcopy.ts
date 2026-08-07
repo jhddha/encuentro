@@ -22,7 +22,7 @@ export const MICROCOPY = {
  * Término prohibido.
  *
  * `design-system.md` §6: «No usar "pago online" como sinónimo de pago
- * automático». v1 no tiene checkout automático (DEC-002, PAY-001), así que la
+ * automático». v1 no tiene checkout automático (DEC-002, PAY-022), así que la
  * expresión induciría a error sobre lo que ocurre al pagar.
  */
 export const FORBIDDEN_PAYMENT_TERM = 'pago online';

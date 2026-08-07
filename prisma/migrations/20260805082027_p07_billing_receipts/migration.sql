@@ -202,7 +202,7 @@ ALTER TABLE "payments"
     'PENDING', 'SUCCEEDED', 'CANCELLED', 'PARTIALLY_REFUNDED', 'REFUNDED'
   ));
 
--- PAY-006: una evidencia revisada registra quien, cuando y por que. Sin esto,
+-- PAY-026: una evidencia revisada registra quien, cuando y por que. Sin esto,
 -- una aprobacion podria quedar sin responsable identificable.
 ALTER TABLE "payment_proofs"
   ADD CONSTRAINT "payment_proofs_review_is_complete" CHECK (
@@ -210,20 +210,20 @@ ALTER TABLE "payment_proofs"
     OR ("reviewed_at" IS NOT NULL AND "reviewed_by" IS NOT NULL)
   );
 
--- PAY-006: rechazar o pedir correccion exige motivo. Aprobar no lo necesita.
+-- PAY-026: rechazar o pedir correccion exige motivo. Aprobar no lo necesita.
 ALTER TABLE "payment_proofs"
   ADD CONSTRAINT "payment_proofs_rejection_needs_reason" CHECK (
     "status" NOT IN ('REJECTED', 'CORRECTION_REQUESTED')
     OR ("review_reason" IS NOT NULL AND length(trim("review_reason")) > 0)
   );
 
--- CASH-001: un cobro presencial vive dentro de una sesion de caja.
+-- PAY-011: un cobro presencial vive dentro de una sesion de caja.
 ALTER TABLE "payments"
   ADD CONSTRAINT "payments_cash_needs_session" CHECK (
     "method" NOT IN ('CASH', 'CASH_QR') OR "cash_session_id" IS NOT NULL
   );
 
--- CASH-002: al cerrar hay que declarar esperado y contado; si difieren, motivo.
+-- PAY-012: al cerrar hay que declarar esperado y contado; si difieren, motivo.
 ALTER TABLE "cash_sessions"
   ADD CONSTRAINT "cash_sessions_close_is_complete" CHECK (
     "status" <> 'CLOSED'
@@ -237,7 +237,7 @@ ALTER TABLE "cash_sessions"
   ADD CONSTRAINT "cash_sessions_status_canonical"
   CHECK ("status" IN ('OPEN', 'CLOSED'));
 
--- PAY-015: anular exige motivo y responsable. Un comprobante anulado sin
+-- PAY-033: anular exige motivo y responsable. Un comprobante anulado sin
 -- explicacion no serviria para auditar nada.
 ALTER TABLE "receipts"
   ADD CONSTRAINT "receipts_void_is_complete" CHECK (
@@ -249,13 +249,13 @@ ALTER TABLE "receipts"
 ALTER TABLE "receipts"
   ADD CONSTRAINT "receipts_sequence_positive" CHECK ("sequence" >= 1);
 
--- PAY-010: el numero debe corresponder a la secuencia. Sin esto, un error de
+-- PAY-014: el numero debe corresponder a la secuencia. Sin esto, un error de
 -- formato produciria dos comprobantes con numeros distintos y misma secuencia.
 ALTER TABLE "receipts"
   ADD CONSTRAINT "receipts_number_matches_sequence"
   CHECK ("number" LIKE 'REC-%-' || lpad("sequence"::text, 6, '0'));
 
--- PAY-015 y GOV-005: pagos, asignaciones y comprobantes son inmutables.
+-- PAY-033 y GOV-005: pagos, asignaciones y comprobantes son inmutables.
 --
 -- El unico cambio admitido en un comprobante es su anulacion, que rellena
 -- voided_at, voided_by y void_reason. Todo lo demas queda congelado: el
@@ -286,7 +286,7 @@ CREATE TRIGGER payment_allocations_no_delete
 CREATE OR REPLACE FUNCTION receipts_only_void() RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'DELETE' THEN
-    RAISE EXCEPTION 'receipts es inmutable: DELETE no esta permitido (PAY-015)'
+    RAISE EXCEPTION 'receipts es inmutable: DELETE no esta permitido (PAY-033)'
       USING ERRCODE = 'restrict_violation';
   END IF;
 
@@ -298,12 +298,12 @@ BEGIN
      OR NEW."snapshot_json"::text IS DISTINCT FROM OLD."snapshot_json"::text
      OR NEW."verification_token_hash" IS DISTINCT FROM OLD."verification_token_hash"
      OR NEW."issued_at" IS DISTINCT FROM OLD."issued_at" THEN
-    RAISE EXCEPTION 'Un comprobante emitido solo admite anulacion (PAY-015)'
+    RAISE EXCEPTION 'Un comprobante emitido solo admite anulacion (PAY-033)'
       USING ERRCODE = 'restrict_violation';
   END IF;
 
   IF OLD."voided_at" IS NOT NULL THEN
-    RAISE EXCEPTION 'Un comprobante ya anulado no admite mas cambios (PAY-015)'
+    RAISE EXCEPTION 'Un comprobante ya anulado no admite mas cambios (PAY-033)'
       USING ERRCODE = 'restrict_violation';
   END IF;
 

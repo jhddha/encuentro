@@ -66,7 +66,7 @@ La escritura del estado y la de su auditoría comparten transacción. Separarlas
 
 Cuenta **días naturales en UTC**, no bloques de 24 horas: un evento de las 18:00 del día 1 a las 09:00 del día 2 abarca dos días, aunque la resta dé 15 horas. Probado con duraciones de 1, 5, 8, 12 y 30 días, cruce de mes, cruce de año y 29 de febrero.
 
-`dayNumber` devuelve `null` fuera del rango en vez de un número negativo o mayor al total, para que quien lo use decida qué mostrar. Sirve para «día 3 de 8», nunca para calcular importe: REG-006 prohíbe prorratear y DEC-004 fija el paquete completo sea cual sea el día de llegada.
+`dayNumber` devuelve `null` fuera del rango en vez de un número negativo o mayor al total, para que quien lo use decida qué mostrar. Sirve para «día 3 de 8», nunca para calcular importe: REG-023 prohíbe prorratear y DEC-004 fija el paquete completo sea cual sea el día de llegada.
 
 ## 6. Redacción de auditoría
 

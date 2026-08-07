@@ -18,7 +18,7 @@ import { money, toDecimalString } from './money.js';
 
 const USD = (text: string) => money(text, 'USD');
 
-describe('canales manuales (PAY-002, PAY-003, DEC-015)', () => {
+describe('canales manuales (PAY-023, PAY-024, DEC-015)', () => {
   it('los canales anticipados son los tres declarados', () => {
     expect([...ADVANCE_CHANNELS]).toEqual([
       'BOLIVIA_QR_MANUAL',
@@ -39,7 +39,7 @@ describe('canales manuales (PAY-002, PAY-003, DEC-015)', () => {
   });
 });
 
-describe('ciclo de la evidencia (PAY-005, PAY-006)', () => {
+describe('ciclo de la evidencia (PAY-025, PAY-026)', () => {
   it('la evidencia recorre carga, revisión y aprobación', () => {
     expect(canTransitionProof('PENDING_UPLOAD', 'SUBMITTED')).toBe(true);
     expect(canTransitionProof('SUBMITTED', 'UNDER_REVIEW')).toBe(true);
@@ -47,13 +47,13 @@ describe('ciclo de la evidencia (PAY-005, PAY-006)', () => {
   });
 
   it('no se aprueba sin pasar por revisión', () => {
-    // PAY-005: subir evidencia no confirma el pago.
+    // PAY-025: subir evidencia no confirma el pago.
     expect(canTransitionProof('SUBMITTED', 'APPROVED')).toBe(false);
     expect(canTransitionProof('PENDING_UPLOAD', 'APPROVED')).toBe(false);
   });
 
   it('una evidencia aprobada es terminal', () => {
-    // Rehacerla significaría anular el pago, que es otra operación (PAY-015).
+    // Rehacerla significaría anular el pago, que es otra operación (PAY-033).
     expect(canTransitionProof('APPROVED', 'REJECTED')).toBe(false);
     expect(canTransitionProof('APPROVED', 'UNDER_REVIEW')).toBe(false);
   });
@@ -71,7 +71,7 @@ describe('ciclo de la evidencia (PAY-005, PAY-006)', () => {
   });
 });
 
-describe('número de comprobante (PAY-010, DEC-003)', () => {
+describe('número de comprobante (PAY-014, DEC-003)', () => {
   it('usa el formato REC-{EVENT_CODE}-{NNNNNN}', () => {
     expect(formatReceiptNumber('ENC2026', 1)).toBe('REC-ENC2026-000001');
     expect(formatReceiptNumber('ENC2026', 42)).toBe('REC-ENC2026-000042');
@@ -85,7 +85,7 @@ describe('número de comprobante (PAY-010, DEC-003)', () => {
   });
 });
 
-describe('saldo calculado (PAY-008)', () => {
+describe('saldo calculado (PAY-002)', () => {
   it('sin pagos, el saldo es UNPAID', () => {
     const balance = computeBalance({ charges: [USD('350.00')], allocations: [], currency: 'USD' });
     expect(balance.state).toBe('UNPAID');
@@ -144,7 +144,7 @@ describe('saldo a favor, nunca devolución (DEC-007, DEC-008)', () => {
   });
 });
 
-describe('asignación de pagos (PAY-008)', () => {
+describe('asignación de pagos (PAY-002)', () => {
   it('admite asignar parte del pago', () => {
     expect(() => {
       assertAllocationsWithinPayment(USD('200.00'), [USD('150.00')]);
@@ -196,7 +196,7 @@ describe('tasa de cambio congelada (DEC-009)', () => {
   });
 });
 
-describe('arqueo de caja (CASH-002)', () => {
+describe('arqueo de caja (PAY-012)', () => {
   it('la diferencia se calcula, no se declara', () => {
     expect(toDecimalString(cashDifference(USD('500.00'), USD('495.00')))).toBe('-5.00');
     expect(toDecimalString(cashDifference(USD('500.00'), USD('505.00')))).toBe('5.00');

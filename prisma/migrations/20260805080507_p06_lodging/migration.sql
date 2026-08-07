@@ -100,7 +100,7 @@ ALTER TABLE "reservations" ADD CONSTRAINT "reservations_room_id_fkey" FOREIGN KE
 -- Invariantes de hospedaje.
 -- ---------------------------------------------------------------------------
 
--- HOS-001: al menos una noche, y fechas coherentes con la cantidad declarada.
+-- HOS-011: al menos una noche, y fechas coherentes con la cantidad declarada.
 ALTER TABLE "event_lodging_policies"
   ADD CONSTRAINT "lodging_policy_night_count_positive" CHECK ("night_count" >= 1);
 
@@ -125,13 +125,13 @@ ALTER TABLE "reservations"
 
 -- DEC-005: `held_until` solo tiene sentido mientras la reserva este en HELD.
 -- Dejarlo puesto en una reserva CONFIRMED invitaria a que un worker mal escrito
--- la expirara, que es justo lo que HOS-003 prohibe.
+-- la expirara, que es justo lo que HOS-012 prohibe.
 ALTER TABLE "reservations"
   ADD CONSTRAINT "reservations_held_until_only_when_held"
   CHECK (("status" = 'HELD' AND "held_until" IS NOT NULL)
          OR ("status" <> 'HELD' AND "held_until" IS NULL));
 
--- HOS-008: el ultimo cupo.
+-- HOS-002: el ultimo cupo.
 --
 -- Una plaza ocupada es una fila con (room_id, bed_index). El indice unico
 -- parcial hace que Postgres decida quien gana cuando dos personas piden la
@@ -155,7 +155,7 @@ BEGIN
   SELECT "capacity" INTO room_capacity FROM "rooms" WHERE "id" = NEW."room_id";
 
   IF NEW."bed_index" < 1 OR NEW."bed_index" > room_capacity THEN
-    RAISE EXCEPTION 'La plaza % excede la capacidad % de la habitacion (HOS-008)',
+    RAISE EXCEPTION 'La plaza % excede la capacidad % de la habitacion (HOS-002)',
       NEW."bed_index", room_capacity
       USING ERRCODE = 'check_violation';
   END IF;

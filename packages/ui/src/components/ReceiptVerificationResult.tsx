@@ -10,7 +10,7 @@ import { StatusBadge } from './StatusBadge.js';
  * dominio construye campo por campo. Este componente no puede filtrar PII
  * porque nunca la recibe: el tipo no la contiene.
  *
- * PAY-011 exige el pie «Documento de control interno».
+ * PAY-029 exige el pie «Documento de control interno».
  */
 export function ReceiptVerificationResult({
   receipt,

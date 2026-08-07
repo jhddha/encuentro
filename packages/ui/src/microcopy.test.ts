@@ -18,7 +18,7 @@ describe('microcopy frente a design-system.md §8', () => {
   );
 
   it('no usa «pago online», que sugeriría checkout automático', () => {
-    // DEC-002 y PAY-001: v1 procesa pagos manuales verificados por una persona.
+    // DEC-002 y PAY-022: v1 procesa pagos manuales verificados por una persona.
     const allCopy = Object.values(MICROCOPY).join(' ').toLowerCase();
     expect(allCopy).not.toContain(FORBIDDEN_PAYMENT_TERM);
   });
@@ -29,7 +29,7 @@ describe('microcopy frente a design-system.md §8', () => {
   });
 
   it('el aviso de anticipado pendiente no promete el beneficio antes de aprobar', () => {
-    // PAY-005: subir evidencia no confirma el pago; solo APPROVED lo hace.
+    // PAY-025: subir evidencia no confirma el pago; solo APPROVED lo hace.
     expect(MICROCOPY.advancePending).toContain('cuando sea aprobado');
   });
 });

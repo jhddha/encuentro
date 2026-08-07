@@ -11,7 +11,7 @@ import type { PaymentComputedState, PaymentProofState } from './states.js';
  */
 
 /**
- * Canales de pago — PAY-002 y PAY-003.
+ * Canales de pago — PAY-023 y PAY-024.
  *
  * Todos manuales, por definición. DEC-015 cerró formalmente el alcance de una
  * integración automática con QR bancario: el QR es el medio por el que la
@@ -32,7 +32,7 @@ export type PaymentChannel = AdvanceChannel | ArrivalChannel;
 /**
  * Transiciones de una evidencia de pago.
  *
- * PAY-005: subir una evidencia **no confirma nada**. Solo `APPROVED` crea o
+ * PAY-025: subir una evidencia **no confirma nada**. Solo `APPROVED` crea o
  * confirma un pago, y esa transición es la única que mueve dinero.
  */
 const PROOF_TRANSITIONS: Readonly<Record<PaymentProofState, readonly PaymentProofState[]>> = {
@@ -42,7 +42,7 @@ const PROOF_TRANSITIONS: Readonly<Record<PaymentProofState, readonly PaymentProo
   CORRECTION_REQUESTED: ['SUBMITTED', 'CANCELLED', 'REPLACED'],
   REJECTED: ['REPLACED'],
   // Terminales: una evidencia aprobada ya produjo un pago, y rehacerla
-  // significaría anular el pago, que es otra operación auditada (PAY-015).
+  // significaría anular el pago, que es otra operación auditada (PAY-033).
   APPROVED: [],
   REPLACED: [],
   CANCELLED: [],
@@ -58,7 +58,7 @@ export function isReviewable(state: PaymentProofState): boolean {
 }
 
 /**
- * Número de Comprobante de pago — PAY-010, DEC-003.
+ * Número de Comprobante de pago — PAY-014, DEC-003.
  *
  * `REC-{EVENT_CODE}-{NNNNNN}`, único **por gestión**. La secuencia la asigna la
  * base dentro de la transacción; aquí solo se da forma.
@@ -74,7 +74,7 @@ export function formatReceiptNumber(eventCode: string, sequence: number): string
 /**
  * Saldo de una inscripción.
  *
- * PAY-008: el saldo se **calcula**, nunca se edita a mano. Esta función es la
+ * PAY-002: el saldo se **calcula**, nunca se edita a mano. Esta función es la
  * única fuente de esa cifra.
  */
 export interface BalanceInput {
@@ -127,7 +127,7 @@ export function creditFromOverpayment(outstanding: Money): Money {
 /**
  * Reparto de un pago entre cargos.
  *
- * PAY-008: un pago puede asignarse parcial o totalmente. Lo que **no** puede es
+ * PAY-002: un pago puede asignarse parcial o totalmente. Lo que **no** puede es
  * asignarse por encima de su propio importe: eso crearía dinero.
  */
 export function assertAllocationsWithinPayment(
@@ -150,7 +150,7 @@ export function unallocatedAmount(paymentAmount: Money, allocations: readonly Mo
  * Conversión de moneda con la tasa congelada — DEC-009.
  *
  * La tasa se fija **cuando el peregrino carga la evidencia**, no cuando alguien
- * la aprueba ni cuando se emite el comprobante. REG-004 ya protege a quien
+ * la aprueba ni cuando se emite el comprobante. REG-021 ya protege a quien
  * carga dentro del plazo aunque la revisión llegue después; congelar aquí es
  * coherente con esa idea.
  *
@@ -172,7 +172,7 @@ export function convert(amount: Money, targetCurrency: string, rateMicros: numbe
 }
 
 /**
- * Total efectivamente cobrado en una sesión de caja — CASH-002.
+ * Total efectivamente cobrado en una sesión de caja — PAY-012.
  *
  * El cierre compara lo esperado con lo contado. La diferencia se calcula, no se
  * declara: si alguien pudiera escribir la diferencia directamente, el arqueo

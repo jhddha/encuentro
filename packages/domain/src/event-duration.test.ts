@@ -5,7 +5,7 @@ import { dayNumber, totalDays } from './event-duration.js';
 
 const utc = (iso: string) => new Date(iso);
 
-describe('duración configurable (EVT-007, EVT-008)', () => {
+describe('duración configurable (EVT-016, EVT-016)', () => {
   it('calcula los 8 días de la referencia actual', () => {
     expect(totalDays(utc('2026-11-01T00:00:00Z'), utc('2026-11-08T23:59:59Z'))).toBe(8);
   });
@@ -58,7 +58,7 @@ describe('número de día dentro de la gestión', () => {
   });
 
   it('identifica los días 3 y final, los del escenario de IN_PROGRESS', () => {
-    // REG-006 y DEC-004: los tres cobran el paquete completo. Este número solo
+    // REG-023 y DEC-004: los tres cobran el paquete completo. Este número solo
     // sirve para mostrar «día 3 de 8», nunca para calcular importe.
     expect(dayNumber(start, end, utc('2026-11-03T14:00:00Z'))).toBe(3);
     expect(dayNumber(start, end, utc('2026-11-08T22:00:00Z'))).toBe(8);

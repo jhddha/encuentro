@@ -25,7 +25,7 @@
 
 	# Rate limit del endpoint público de verificación.
 	#
-	# Es la única superficie del sistema accesible sin sesión (PAY-013), y el
+	# Es la única superficie del sistema accesible sin sesión (PAY-031), y el
 	# token es lo único que la protege. Sin límite, alguien podría probar tokens
 	# a gran velocidad.
 	@verificacion path /verificar/comprobante/*

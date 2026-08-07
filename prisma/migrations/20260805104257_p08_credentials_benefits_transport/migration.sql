@@ -218,7 +218,7 @@ ALTER TABLE "trips" ADD CONSTRAINT "trips_vehicle_id_fkey" FOREIGN KEY ("vehicle
 -- Invariantes de credenciales, alimentos, materiales y transporte.
 -- ---------------------------------------------------------------------------
 
--- FOOD-001: ventana valida y cantidades no negativas.
+-- FOD-001: ventana valida y cantidades no negativas.
 ALTER TABLE "meal_services"
   ADD CONSTRAINT "meal_services_window_ordered" CHECK ("ends_at" > "starts_at");
 
@@ -228,7 +228,7 @@ ALTER TABLE "meal_services"
     AND "received_count" >= 0 AND "wasted_count" >= 0
   );
 
--- FOOD-004: un override debe llevar responsable y motivo. Una excepcion sin
+-- FOD-003: un override debe llevar responsable y motivo. Una excepcion sin
 -- explicacion no serviria para auditar por que alguien comio dos veces.
 ALTER TABLE "meal_deliveries"
   ADD CONSTRAINT "meal_deliveries_override_is_complete" CHECK (
@@ -287,7 +287,7 @@ CREATE TRIGGER inventory_movements_no_delete
   FOR EACH ROW EXECUTE FUNCTION deliveries_append_only();
 
 -- INFERIDO (P08): revocar una credencial exige responsable y motivo, por
--- coherencia con la anulacion de comprobantes (PAY-015). No hay requisito que
+-- coherencia con la anulacion de comprobantes (PAY-033). No hay requisito que
 -- lo exija; se aplica el mismo criterio que al resto de acciones destructivas.
 ALTER TABLE "credentials"
   ADD CONSTRAINT "credentials_revoke_is_complete" CHECK (

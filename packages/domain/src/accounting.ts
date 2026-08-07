@@ -112,7 +112,7 @@ export function accountBalance(
 /**
  * Conciliación de una sesión de caja contra lo registrado.
  *
- * CASH-002 sí es un requisito real: el cierre compara esperado contra contado y
+ * PAY-012 sí es un requisito real: el cierre compara esperado contra contado y
  * la diferencia exige motivo. Esta función expresa la misma comparación desde
  * el lado contable.
  */

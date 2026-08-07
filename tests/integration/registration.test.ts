@@ -72,7 +72,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('visibilidad del catálogo (PKG-002)', () => {
+describe('visibilidad del catálogo (PKG-009)', () => {
   it('el listado por defecto no incluye paquetes privados', async () => {
     const event = await seedEvent(prisma, { code: 'ENC2026', year: 2026 });
     await seedCatalog(event.id);
@@ -242,7 +242,7 @@ describe('alta de inscripción', () => {
   });
 });
 
-describe('el cargo congelado no cambia (REG-002, PKG-001)', () => {
+describe('el cargo congelado no cambia (PAY-001, PKG-001)', () => {
   it('sobrevive a un cambio posterior de tarifa', async () => {
     const event = await seedEvent(prisma, { code: 'ENC2026', year: 2026, status: 'ACTIVE' });
     const { publico, alLlegar } = await seedCatalog(event.id);
@@ -340,7 +340,7 @@ describe('invariantes de catálogo impuestas por la base', () => {
       data: { eventId: event.id, code: 'X', name: 'X', visibility: 'PUBLIC' },
     });
 
-    // Sin ventana ni mínimo, el dominio no podría decidir REG-003 ni REG-004.
+    // Sin ventana ni mínimo, el dominio no podría decidir REG-020 ni REG-021.
     await expect(
       prisma.priceVersion.create({
         data: { packageId: pkg.id, paymentMode: 'ADVANCE', amount: '100.00', currency: 'USD' },

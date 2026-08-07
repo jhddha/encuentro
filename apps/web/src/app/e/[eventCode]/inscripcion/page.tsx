@@ -42,7 +42,7 @@ export default function RegistrationPage() {
             points: [
               MICROCOPY.arrivalMode,
               'Canales: efectivo o QR en caja, según habilite la gestión.',
-              'No reserva hotel por anticipado (HOS-006).',
+              'No reserva hotel por anticipado (HOS-017).',
             ],
           },
         ]}

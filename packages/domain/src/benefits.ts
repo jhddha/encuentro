@@ -3,18 +3,18 @@ import { DomainError } from './errors.js';
 /**
  * Entrega de beneficios: alimentos y materiales.
  *
- * Requisitos reales: FOOD-001..004 y MAT-001..003. Las reglas de este módulo
+ * Requisitos reales: FOD-001..004 y MAT-005..003. Las reglas de este módulo
  * están en el contrato, no inferidas.
  *
  * Dos de ellas van contra la intuición y conviene tenerlas presentes:
  *
- *  - **MAT-002**: llegar tarde **no** elimina el material incluido en el
+ *  - **MAT-004**: llegar tarde **no** elimina el material incluido en el
  *    paquete. Quien llega el último día conserva su derecho.
- *  - **MAT-001**: la elegibilidad depende de paquete, inventario e historial de
+ *  - **MAT-005**: la elegibilidad depende de paquete, inventario e historial de
  *    entregas. **No** depende de haber participado en actividades pasadas.
  */
 
-/** Ventana de un servicio de alimentación — FOOD-001. */
+/** Ventana de un servicio de alimentación — FOD-001. */
 export interface MealService {
   readonly id: string;
   readonly serviceDate: Date;
@@ -28,7 +28,7 @@ export interface MealService {
 /**
  * ¿Puede entregarse este servicio ahora?
  *
- * FOOD-002: el QR valida gestión, beneficio, fecha, horario, disponibilidad y
+ * FOD-006: el QR valida gestión, beneficio, fecha, horario, disponibilidad y
  * duplicidad. Fuera de la ventana se rechaza — el microcopy aprobado dice
  * «Este servicio no está disponible en este horario».
  *
@@ -54,7 +54,7 @@ export interface DeliveryDecision {
 /**
  * Decide si se entrega una comida.
  *
- * FOOD-004: una persona recibe **una vez** cada servicio, salvo override
+ * FOD-003: una persona recibe **una vez** cada servicio, salvo override
  * autorizado. El orden de comprobaciones importa para que el operador de la
  * estación reciba el motivo más útil: primero elegibilidad, luego duplicado,
  * después horario y por último disponibilidad.
@@ -81,10 +81,10 @@ export function decideMealDelivery(input: {
 }
 
 /**
- * Elegibilidad de material — MAT-001, MAT-002.
+ * Elegibilidad de material — MAT-005, MAT-004.
  *
  * Depende del paquete, del inventario y de si ya se entregó. **No** depende de
- * la fecha de llegada ni de haber asistido a actividades previas: MAT-002 es
+ * la fecha de llegada ni de haber asistido a actividades previas: MAT-004 es
  * explícito en que la llegada tardía no elimina el material incluido.
  *
  * La firma no acepta fecha de llegada, por la misma razón que `chargeAmount` en

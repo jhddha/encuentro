@@ -10,8 +10,8 @@ Esta es la primera entrega que mezcla reglas del contrato con reglas inferidas. 
 
 | Requisito | Qué gobierna |
 |---|---|
-| FOOD-001..004 | Servicios por fecha, tipo, horario y cantidad; entrega única; movimientos separados |
-| MAT-001..003 | Elegibilidad, llegada tardía y stock por movimientos |
+| FOD-001..004 | Servicios por fecha, tipo, horario y cantidad; entrega única; movimientos separados |
+| MAT-005..003 | Elegibilidad, llegada tardía y stock por movimientos |
 | ADR-008 | Idempotencia por estación y `operation_uuid` |
 | requirements.md §10 | Tokens de QR por hash y sin PII |
 
@@ -20,7 +20,7 @@ Esta es la primera entrega que mezcla reglas del contrato con reglas inferidas. 
 | Regla inferida | Fuente de la inferencia | Riesgo si es incorrecta |
 |---|---|---|
 | Modelo `Credential` con token por hash y revocación | `system-architecture.md` §5 «Credentials», prompt P08 | Bajo: el token por hash sí lo exige §10 |
-| Revocar una credencial exige responsable y motivo | Coherencia con PAY-015 | Bajo: solo añade exigencia |
+| Revocar una credencial exige responsable y motivo | Coherencia con PAY-033 | Bajo: solo añade exigencia |
 | Modelo `Station` para el escaneo | Prompt P09, ruta `/scanner/...` del contrato | Bajo |
 | Modelo `Vehicle` con capacidad | Prompt P10, «vehículos, choferes, horarios» | **Medio**: la capacidad no está especificada |
 | Modelo `Trip` con origen, destino y horario | Prompt P10, gate «solapamientos/capacidad» | **Medio**: la forma del traslado es invención |
@@ -39,19 +39,19 @@ Esta es la primera entrega que mezcla reglas del contrato con reglas inferidas. 
 
 ## 2. Entrega única y doble escaneo
 
-FOOD-004 pide que una persona reciba una vez cada servicio. La garantía es un índice único `(service_id, registration_id)`, no una comprobación en código.
+FOD-003 pide que una persona reciba una vez cada servicio. La garantía es un índice único `(service_id, registration_id)`, no una comprobación en código.
 
 Eso resuelve de paso el escenario que ADR-008 nombra explícitamente: **dos estaciones intentando entregar a la misma persona a la vez**. Probado con dos creaciones simultáneas desde estaciones distintas — sobrevive una.
 
 La idempotencia offline es un segundo índice, `(station_id, operation_uuid)`: una estación que recupera la conexión y reenvía el mismo escaneo no entrega dos veces.
 
-Un override sí está permitido —FOOD-004 lo contempla— pero exige responsable y motivo por `CHECK`. Una excepción sin explicación no serviría para auditar por qué alguien comió dos veces.
+Un override sí está permitido —FOD-003 lo contempla— pero exige responsable y motivo por `CHECK`. Una excepción sin explicación no serviría para auditar por qué alguien comió dos veces.
 
 ## 3. Materiales y llegada tardía
 
-`decideMaterialDelivery` **no acepta fecha de llegada**, por la misma razón que `chargeAmount` en P05: MAT-002 dice que la llegada tardía no elimina el material incluido, y aceptar la fecha invitaría a usarla para excluir a quien llega el último día.
+`decideMaterialDelivery` **no acepta fecha de llegada**, por la misma razón que `chargeAmount` en P05: MAT-004 dice que la llegada tardía no elimina el material incluido, y aceptar la fecha invitaría a usarla para excluir a quien llega el último día.
 
-MAT-001 es igual de explícito en que la elegibilidad **no depende de actividades pasadas**, solo de paquete, inventario e historial de entregas.
+MAT-005 es igual de explícito en que la elegibilidad **no depende de actividades pasadas**, solo de paquete, inventario e historial de entregas.
 
 ## 4. Stock derivado
 

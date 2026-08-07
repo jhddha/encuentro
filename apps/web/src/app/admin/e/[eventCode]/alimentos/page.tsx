@@ -9,7 +9,7 @@ export default function Page() {
     <PendingScreen
       title="Alimentos"
       phase="P11"
-      scope="Servicios por fecha, horario y cantidad (FOOD-001..004)."
+      scope="Servicios por fecha, horario y cantidad (FOD-001..004)."
     />
   );
 }

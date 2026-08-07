@@ -9,7 +9,7 @@ export default function Page() {
     <PendingScreen
       title="Hospedaje"
       phase="P06"
-      scope="Hoteles, inventario y asignación de habitación (HOS-001..008)."
+      scope="Hoteles, inventario y asignación de habitación (HOS-011..008)."
     />
   );
 }

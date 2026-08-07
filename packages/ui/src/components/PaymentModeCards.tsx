@@ -3,7 +3,7 @@ import { Card } from './layout.js';
 /**
  * Comparador de modalidad comercial.
  *
- * REG-001: el peregrino elige **exactamente una** modalidad. Se renderiza como
+ * REG-019: el peregrino elige **exactamente una** modalidad. Se renderiza como
  * un grupo de radio, no como dos botones sueltos, para que la exclusividad sea
  * real también para lectores de pantalla y navegación por teclado.
  *
@@ -12,7 +12,7 @@ import { Card } from './layout.js';
  * después y es un dato distinto.
  *
  * Los importes llegan desde `price_versions` (P05). Aquí no se calculan
- * descuentos: PKG-004 exige montos explícitos, no un porcentaje derivado.
+ * descuentos: PKG-012 exige montos explícitos, no un porcentaje derivado.
  */
 
 export type PaymentMode = 'ADVANCE' | 'ARRIVAL';

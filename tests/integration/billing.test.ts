@@ -91,7 +91,7 @@ async function issuePayment(ctx: Awaited<ReturnType<typeof seedBillingContext>>,
         sequence,
         number: formatReceiptNumber(ctx.event.code, sequence),
         snapshot: {
-          // PAY-012: solo nombre, código de inscripción y paquete.
+          // PAY-030: solo nombre, código de inscripción y paquete.
           pilgrimName: ctx.person.fullName,
           registrationCode: ctx.registration.code,
           packageName: 'General',
@@ -115,12 +115,12 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('pago parcial (PAY-008, PAY-009)', () => {
+describe('pago parcial (PAY-002, PAY-028)', () => {
   it('un pago parcial genera su propio comprobante', async () => {
     const ctx = await seedBillingContext();
     const { receipt } = await issuePayment(ctx, '200.00');
 
-    // PAY-009 es explícito: un pago parcial produce su propio comprobante.
+    // PAY-028 es explícito: un pago parcial produce su propio comprobante.
     expect(receipt.number).toBe('REC-ENC2026-000001');
   });
 
@@ -161,7 +161,7 @@ describe('pago parcial (PAY-008, PAY-009)', () => {
   });
 });
 
-describe('secuencia de comprobante bajo concurrencia (PAY-010)', () => {
+describe('secuencia de comprobante bajo concurrencia (PAY-014)', () => {
   it('cinco emisiones simultáneas no duplican número', async () => {
     const ctx = await seedBillingContext();
 
@@ -221,7 +221,7 @@ describe('secuencia de comprobante bajo concurrencia (PAY-010)', () => {
   });
 });
 
-describe('inmutabilidad financiera (PAY-015, GOV-005)', () => {
+describe('inmutabilidad financiera (PAY-033, GOV-005)', () => {
   it('un pago no se puede modificar ni borrar', async () => {
     const ctx = await seedBillingContext();
     await issuePayment(ctx, '100.00');
@@ -292,7 +292,7 @@ describe('inmutabilidad financiera (PAY-015, GOV-005)', () => {
   });
 });
 
-describe('revisión de evidencia (PAY-005, PAY-006, PAY-007)', () => {
+describe('revisión de evidencia (PAY-025, PAY-026, PAY-027)', () => {
   it('rechaza dos evidencias con la misma referencia en una gestión', async () => {
     const ctx = await seedBillingContext();
 
@@ -371,7 +371,7 @@ describe('revisión de evidencia (PAY-005, PAY-006, PAY-007)', () => {
   });
 });
 
-describe('caja (CASH-001, CASH-002)', () => {
+describe('caja (PAY-011, PAY-012)', () => {
   it('un cobro en efectivo exige sesión de caja', async () => {
     const ctx = await seedBillingContext();
 
@@ -453,7 +453,7 @@ describe('caja (CASH-001, CASH-002)', () => {
   });
 });
 
-describe('verificación pública sin PII (PAY-013, PAY-014, DEC-003)', () => {
+describe('verificación pública sin PII (PAY-031, PAY-032, DEC-003)', () => {
   it('el token se guarda por hash y no se puede recuperar en claro', async () => {
     const ctx = await seedBillingContext();
     const token = randomBytes(32).toString('hex');
@@ -490,14 +490,14 @@ describe('verificación pública sin PII (PAY-013, PAY-014, DEC-003)', () => {
     expect(found?.id).toBe(stored.id);
   });
 
-  it('el snapshot del comprobante no incluye documento ni país (PAY-012)', async () => {
+  it('el snapshot del comprobante no incluye documento ni país (PAY-030)', async () => {
     const ctx = await seedBillingContext();
     const { receipt } = await issuePayment(ctx, '100.00');
 
     const claves = Object.keys(receipt.snapshot as Record<string, unknown>);
     expect(claves).not.toContain('documentNumber');
     expect(claves).not.toContain('country');
-    // Sí incluye lo que PAY-012 autoriza.
+    // Sí incluye lo que PAY-030 autoriza.
     expect(claves).toContain('pilgrimName');
     expect(claves).toContain('registrationCode');
   });

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
  * Verificación pública de Comprobante de pago.
  *
  * Única ruta del sistema accesible sin sesión con datos de una transacción.
- * DEC-003 y PAY-013 la limitan a validez, número, evento, fecha, monto, moneda
+ * DEC-003 y PAY-031 la limitan a validez, número, evento, fecha, monto, moneda
  * y estado. El token nunca se muestra en pantalla: identifica el comprobante y
  * repetirlo en el cuerpo solo amplía su superficie de exposición.
  */

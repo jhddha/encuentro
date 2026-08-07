@@ -16,7 +16,7 @@ Estas dos fases **no tienen ningún requisito** en `contracts/requirements.json`
 | El envío ocurre por outbox y worker, nunca en la petición | ADR-007 |
 | La contabilidad no se reescribe | GOV-005 |
 | Sin presupuestos ni centros de costo visibles | requirements.md §2 |
-| El cierre de caja compara esperado contra contado | CASH-002 |
+| El cierre de caja compara esperado contra contado | PAY-012 |
 
 ### Inferido — **debe validarse antes de producción**
 

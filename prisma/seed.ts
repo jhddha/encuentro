@@ -57,7 +57,7 @@ async function main(): Promise<void> {
       name: 'Encuentro 2026',
       timezone: 'America/La_Paz',
       currency: 'USD',
-      // 8 días es la referencia actual (EVT-008), aquí como dato, no como regla.
+      // 8 días es la referencia actual (EVT-016), aquí como dato, no como regla.
       startAt: new Date('2026-11-01T00:00:00Z'),
       endAt: new Date('2026-11-08T23:59:59Z'),
       status: 'DRAFT',

@@ -90,8 +90,8 @@ export function compare(a: Money, b: Money): number {
 /**
  * ¿Alcanza `paid` el porcentaje mínimo de `total`?
  *
- * REG-003: el pago anticipado aprobado al 50% conserva la tarifa y habilita
- * elegir hotel. El umbral es configurable por versión de precio (PKG-005), así
+ * REG-020: el pago anticipado aprobado al 50% conserva la tarifa y habilita
+ * elegir hotel. El umbral es configurable por versión de precio (PKG-013), así
  * que el 50 no está fijado aquí.
  *
  * Se compara `paid * 100 >= total * percent` con enteros, sin dividir, para no

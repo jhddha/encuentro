@@ -50,7 +50,7 @@ export default async function DashboardPage({
           <p className="text-sm">
             {today === null
               ? 'Fuera del rango del evento'
-              : `de ${String(days)}. El día no altera el precio (REG-006).`}
+              : `de ${String(days)}. El día no altera el precio (REG-023).`}
           </p>
         </Card>
 

@@ -300,7 +300,7 @@ model AuditLog {
 // ---------------------------------------------------------------------------
 // Catálogo e inscripción — P05
 //
-// PKG-001..005 y REG-001..008. Los importes son `Decimal`, nunca `Float`
+// PKG-001..005 y REG-019..008. Los importes son `Decimal`, nunca `Float`
 // (requirements.md §10); el dominio los maneja como enteros de centavos.
 // ---------------------------------------------------------------------------
 
@@ -319,7 +319,7 @@ model Person {
   fullName  String   @map("full_name")
   birthDate DateTime @map("birth_date") @db.Date
 
-  /// PAY-012: el Comprobante de pago **no** muestra documento ni país. Se
+  /// PAY-030: el Comprobante de pago **no** muestra documento ni país. Se
   /// guardan para identificación interna, no para exhibirlos.
   documentNumber String? @map("document_number")
   country        String? @db.Char(2)
@@ -336,7 +336,7 @@ model Person {
 
 /// Paquete comercial de una gestión.
 ///
-/// PKG-002: `visibility` admite `PUBLIC` y `PRIVATE`. El portal solo lista los
+/// PKG-009: `visibility` admite `PUBLIC` y `PRIVATE`. El portal solo lista los
 /// públicos; los privados los asigna Inscripciones con `catalog.private.assign`.
 model Package {
   id         String @id @default(uuid()) @db.Uuid
@@ -360,7 +360,7 @@ model Package {
 
 /// Versión histórica de precio.
 ///
-/// PKG-004: la tarifa anticipada y la normal son importes **explícitos**, no un
+/// PKG-012: la tarifa anticipada y la normal son importes **explícitos**, no un
 /// descuento derivado. De ahí que no exista ninguna columna de porcentaje de
 /// descuento: son dos filas independientes, una por modalidad.
 ///
@@ -378,7 +378,7 @@ model PriceVersion {
   startsAt DateTime? @map("starts_at") @db.Timestamptz(6)
   endsAt   DateTime? @map("ends_at") @db.Timestamptz(6)
 
-  /// PKG-005: mínimo de pago que desbloquea el beneficio, y vencimiento del saldo.
+  /// PKG-013: mínimo de pago que desbloquea el beneficio, y vencimiento del saldo.
   minPaymentPercent Int?      @map("min_payment_percent")
   balanceDueAt      DateTime? @map("balance_due_at") @db.Timestamptz(6)
 
@@ -397,26 +397,26 @@ model PriceVersion {
 
 /// Inscripción de una persona en una gestión.
 ///
-/// REG-002: congela paquete, versión de precio, modalidad e importe. El
+/// PAY-001: congela paquete, versión de precio, modalidad e importe. El
 /// histórico no se reescribe (GOV-005).
 model Registration {
   id      String @id @default(uuid()) @db.Uuid
   eventId String @map("event_id") @db.Uuid
 
-  /// Código visible de la inscripción. Aparece en el Comprobante (PAY-012).
+  /// Código visible de la inscripción. Aparece en el Comprobante (PAY-030).
   code String
 
   personId       String @map("person_id") @db.Uuid
   packageId      String @map("package_id") @db.Uuid
   priceVersionId String @map("price_version_id") @db.Uuid
 
-  /// REG-001: exactamente una modalidad. No confundir con el canal de pago.
+  /// REG-019: exactamente una modalidad. No confundir con el canal de pago.
   paymentMode String @map("payment_mode")
 
   status           String @default("DRAFT")
   attendanceStatus String @default("NOT_ARRIVED") @map("attendance_status")
 
-  /// HOS-002: la llegada real no reescribe la reserva ni el importe.
+  /// HOS-013: la llegada real no reescribe la reserva ni el importe.
   actualArrivalAt DateTime? @map("actual_arrival_at") @db.Timestamptz(6)
 
   termsAcceptedAt DateTime? @map("terms_accepted_at") @db.Timestamptz(6)
@@ -450,7 +450,7 @@ model Registration {
 
 /// Cargo congelado de una inscripción.
 ///
-/// REG-002: el snapshot conserva las condiciones del momento. Un cambio
+/// PAY-001: el snapshot conserva las condiciones del momento. Un cambio
 /// posterior de tarifa no lo altera.
 model Charge {
   id             String @id @default(uuid()) @db.Uuid
@@ -460,7 +460,7 @@ model Charge {
   amount   Decimal @db.Decimal(12, 2)
   currency String  @db.Char(3)
 
-  /// Condiciones congeladas: paquete, versión, modalidad e importe (REG-002).
+  /// Condiciones congeladas: paquete, versión, modalidad e importe (PAY-001).
   snapshot Json @map("snapshot_json")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
@@ -475,13 +475,13 @@ model Charge {
 // ---------------------------------------------------------------------------
 // Hospedaje — P06
 //
-// HOS-001..008 y DEC-005. La cantidad de noches es configuración, no cálculo;
+// HOS-011..008 y DEC-005. La cantidad de noches es configuración, no cálculo;
 // la llegada tardía no reescribe nada; y el último cupo lo resuelve la base.
 // ---------------------------------------------------------------------------
 
 /// Política de hospedaje de una gestión.
 ///
-/// HOS-001: cantidad **fija y configurable** de noches. La referencia actual
+/// HOS-011: cantidad **fija y configurable** de noches. La referencia actual
 /// son 7, pero ese número no aparece en el código ni por defecto aquí: se
 /// configura al preparar la gestión.
 model EventLodgingPolicy {
@@ -522,7 +522,7 @@ model Hotel {
 
 /// Habitación con su capacidad.
 ///
-/// HOS-008: la capacidad se controla por **inventario**, no por un contador
+/// HOS-002: la capacidad se controla por **inventario**, no por un contador
 /// que pueda desincronizarse. Cada plaza ocupada es una fila de `reservations`
 /// con su `bed_index`, y un índice único impide que dos personas ocupen la
 /// misma plaza.
@@ -545,10 +545,10 @@ model Room {
 
 /// Reserva de hospedaje.
 ///
-/// HOS-003: una reserva `CONFIRMED` no se libera por llegada tardía. El worker
+/// HOS-012: una reserva `CONFIRMED` no se libera por llegada tardía. El worker
 /// que expira retenciones filtra por `HELD`; nada más.
 ///
-/// HOS-007: la habitación la asigna Hospedaje, así que `room_id` es nullable
+/// HOS-001: la habitación la asigna Hospedaje, así que `room_id` es nullable
 /// hasta que alguien con `lodging.assign_room` la fije.
 model Reservation {
   id             String @id @default(uuid()) @db.Uuid
@@ -588,14 +588,14 @@ model Reservation {
 // ---------------------------------------------------------------------------
 // Facturación — P07
 //
-// PAY-001..015, CASH-001..002 y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
+// PAY-022..015, PAY-011..002 y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
 //
 // v1 no tiene checkout automático: nada confirma un pago salvo una persona
 // revisando una evidencia. No hay tabla de proveedores ni de webhooks porque no
 // existe tal cosa en el alcance.
 // ---------------------------------------------------------------------------
 
-/// Canal por el que entra el dinero — PAY-002, PAY-003.
+/// Canal por el que entra el dinero — PAY-023, PAY-024.
 ///
 /// El canal **no es la modalidad**: alguien con modalidad anticipada puede
 /// pagar por cualquier canal habilitado (DEC-002).
@@ -617,10 +617,10 @@ model PaymentChannel {
   @@map("payment_channels")
 }
 
-/// Evidencia de pago cargada por el peregrino — PAY-004..007.
+/// Evidencia de pago cargada por el peregrino — PAY-018..007.
 ///
-/// PAY-005: subirla **no confirma nada**. Solo la aprobación crea un pago.
-/// PAY-004: el archivo es privado y se guarda su checksum.
+/// PAY-025: subirla **no confirma nada**. Solo la aprobación crea un pago.
+/// PAY-018: el archivo es privado y se guarda su checksum.
 model PaymentProof {
   id             String @id @default(uuid()) @db.Uuid
   eventId        String @map("event_id") @db.Uuid
@@ -631,7 +631,7 @@ model PaymentProof {
   currency       String   @db.Char(3)
   paidAt         DateTime @map("paid_at") @db.Timestamptz(6)
 
-  /// PAY-007: referencia bancaria. Un índice único por gestión impide cargar
+  /// PAY-027: referencia bancaria. Un índice único por gestión impide cargar
   /// dos veces el mismo comprobante.
   reference String
   payerName String? @map("payer_name")
@@ -665,9 +665,9 @@ model PaymentProof {
   @@map("payment_proofs")
 }
 
-/// Sesión de caja — CASH-001, CASH-002.
+/// Sesión de caja — PAY-011, PAY-012.
 ///
-/// CASH-001: todo cobro presencial ocurre dentro de una sesión abierta.
+/// PAY-011: todo cobro presencial ocurre dentro de una sesión abierta.
 model CashSession {
   id      String @id @default(uuid()) @db.Uuid
   eventId String @map("event_id") @db.Uuid
@@ -681,7 +681,7 @@ model CashSession {
   closedBy String?   @map("closed_by") @db.Uuid
   closedAt DateTime? @map("closed_at") @db.Timestamptz(6)
 
-  /// CASH-002: el cierre compara esperado contra contado. La diferencia se
+  /// PAY-012: el cierre compara esperado contra contado. La diferencia se
   /// calcula; si difiere, exige motivo.
   expectedAmount Decimal? @map("expected_amount") @db.Decimal(12, 2)
   countedAmount  Decimal? @map("counted_amount") @db.Decimal(12, 2)
@@ -731,7 +731,7 @@ model Payment {
   @@map("payments")
 }
 
-/// Asignación de un pago a un cargo — PAY-008.
+/// Asignación de un pago a un cargo — PAY-002.
 ///
 /// El saldo se deriva de estas filas. Nunca se edita a mano.
 model PaymentAllocation {
@@ -752,11 +752,11 @@ model PaymentAllocation {
   @@map("payment_allocations")
 }
 
-/// Comprobante de pago — PAY-009..015, DEC-003.
+/// Comprobante de pago — PAY-028..015, DEC-003.
 ///
-/// PAY-009: cada pago aprobado genera el suyo, incluido un pago parcial.
-/// PAY-010: secuencia `REC-{EVENT_CODE}-{NNNNNN}` única por gestión.
-/// PAY-015: inmutable. Una corrección se resuelve anulando y emitiendo otro.
+/// PAY-028: cada pago aprobado genera el suyo, incluido un pago parcial.
+/// PAY-014: secuencia `REC-{EVENT_CODE}-{NNNNNN}` única por gestión.
+/// PAY-033: inmutable. Una corrección se resuelve anulando y emitiendo otro.
 model Receipt {
   id        String @id @default(uuid()) @db.Uuid
   eventId   String @map("event_id") @db.Uuid
@@ -765,7 +765,7 @@ model Receipt {
   sequence Int
   number   String
 
-  /// Contenido congelado en el momento de emitir. PAY-012 limita los datos del
+  /// Contenido congelado en el momento de emitir. PAY-030 limita los datos del
   /// peregrino a nombre, código de inscripción y paquete: sin documento ni país.
   snapshot Json @map("snapshot_json")
 
@@ -790,7 +790,7 @@ model Receipt {
 // ---------------------------------------------------------------------------
 // Credenciales, alimentos, materiales y transporte — P08 a P11
 //
-// **Advertencia de procedencia.** Solo FOOD-001..004 y MAT-001..003 tienen
+// **Advertencia de procedencia.** Solo FOD-001..004 y MAT-005..003 tienen
 // requisitos en `contracts/requirements.json`. Credenciales, escaneo offline y
 // transporte se construyen por inferencia desde `system-architecture.md` §5 y
 // los prompts P08–P10, por decisión explícita del responsable del proyecto.
@@ -847,7 +847,7 @@ model Station {
   @@map("stations")
 }
 
-/// Servicio de alimentación — FOOD-001.
+/// Servicio de alimentación — FOD-001.
 ///
 /// Requisito real: fecha, tipo, hora inicial y final, y cantidad disponible.
 model MealService {
@@ -860,7 +860,7 @@ model MealService {
   startsAt DateTime @map("starts_at") @db.Timestamptz(6)
   endsAt   DateTime @map("ends_at") @db.Timestamptz(6)
 
-  /// FOOD-003: pedido, recepción, desperdicio y entrega son movimientos
+  /// FOD-002: pedido, recepción, desperdicio y entrega son movimientos
   /// separados y reconciliables.
   availableCount Int @map("available_count")
   orderedCount   Int @default(0) @map("ordered_count")
@@ -881,7 +881,7 @@ model MealService {
   @@map("meal_services")
 }
 
-/// Entrega de una comida — FOOD-004.
+/// Entrega de una comida — FOD-003.
 ///
 /// Una persona recibe una vez cada servicio: lo garantiza el índice único
 /// (service_id, registration_id), no una comprobación en código.
@@ -897,7 +897,7 @@ model MealDelivery {
 
   deliveredAt DateTime @default(now()) @map("delivered_at") @db.Timestamptz(6)
 
-  /// FOOD-004 admite override autorizado; queda registrado quién lo hizo.
+  /// FOD-003 admite override autorizado; queda registrado quién lo hizo.
   overriddenBy   String? @map("overridden_by") @db.Uuid
   overrideReason String? @map("override_reason")
 
@@ -950,7 +950,7 @@ model InventoryMovement {
   @@map("inventory_movements")
 }
 
-/// Entrega de material — MAT-001, MAT-002.
+/// Entrega de material — MAT-005, MAT-004.
 model MaterialDelivery {
   id             String @id @default(uuid()) @db.Uuid
   itemId         String @map("item_id") @db.Uuid

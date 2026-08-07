@@ -30,7 +30,7 @@ const arrival: PriceVersion = {
   amount: money('420.00', 'USD'),
 };
 
-describe('tarifa anticipada y su plazo (REG-004)', () => {
+describe('tarifa anticipada y su plazo (REG-021)', () => {
   it('está vigente dentro del rango', () => {
     expect(isAdvanceRateAvailable(advance, new Date('2026-09-01T12:00:00Z'))).toBe(true);
   });
@@ -45,7 +45,7 @@ describe('tarifa anticipada y su plazo (REG-004)', () => {
   });
 
   it('se evalúa por la fecha de carga, no por la de revisión', () => {
-    // REG-004: cargado el último día, aprobado semanas después, conserva tarifa.
+    // REG-021: cargado el último día, aprobado semanas después, conserva tarifa.
     const uploaded = new Date('2026-10-15T20:00:00Z');
     expect(isAdvanceRateAvailable(advance, uploaded)).toBe(true);
   });
@@ -55,7 +55,7 @@ describe('tarifa anticipada y su plazo (REG-004)', () => {
   });
 });
 
-describe('desbloqueo de elección de hotel (REG-003, HOS-005)', () => {
+describe('desbloqueo de elección de hotel (REG-020, HOS-016)', () => {
   it('el 50% exacto desbloquea', () => {
     expect(unlocksHotelSelection(advance, money('175.00', 'USD'))).toBe(true);
   });
@@ -68,7 +68,7 @@ describe('desbloqueo de elección de hotel (REG-003, HOS-005)', () => {
     expect(unlocksHotelSelection(advance, money('400.00', 'USD'))).toBe(true);
   });
 
-  it('pagar al llegar no desbloquea elección anticipada (HOS-006)', () => {
+  it('pagar al llegar no desbloquea elección anticipada (HOS-017)', () => {
     expect(unlocksHotelSelection(arrival, money('420.00', 'USD'))).toBe(false);
   });
 
@@ -78,7 +78,7 @@ describe('desbloqueo de elección de hotel (REG-003, HOS-005)', () => {
   });
 });
 
-describe('sin prorrateo durante IN_PROGRESS (REG-006, REG-007, DEC-004)', () => {
+describe('sin prorrateo durante IN_PROGRESS (REG-023, PKG-011, DEC-004)', () => {
   it('el importe es el del paquete completo', () => {
     expect(toDecimalString(chargeAmount(advance))).toBe('350.00');
     expect(toDecimalString(chargeAmount(arrival))).toBe('420.00');
@@ -100,7 +100,7 @@ describe('sin prorrateo durante IN_PROGRESS (REG-006, REG-007, DEC-004)', () => 
   });
 });
 
-describe('cargo congelado (REG-002, PKG-001)', () => {
+describe('cargo congelado (PAY-001, PKG-001)', () => {
   it('congela paquete, versión, modalidad e importe', () => {
     const at = new Date('2026-09-01T10:00:00Z');
     expect(freezeCharge(advance, at)).toEqual({
@@ -125,7 +125,7 @@ describe('cargo congelado (REG-002, PKG-001)', () => {
   });
 });
 
-describe('visibilidad de paquetes (PKG-002, PKG-003)', () => {
+describe('visibilidad de paquetes (PKG-009, PKG-010)', () => {
   it('el portal público solo ofrece PUBLIC', () => {
     expect(isPackageOfferable('PUBLIC', { isPublicPortal: true, canAssignPrivate: false })).toBe(
       true,

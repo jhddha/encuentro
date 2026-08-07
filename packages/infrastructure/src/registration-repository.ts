@@ -87,7 +87,7 @@ export function createRegistrationRepository(prisma: PrismaClient): Registration
             concept: 'PACKAGE',
             amount: toDecimalString(draft.charge.amount),
             currency: draft.charge.amount.currency,
-            // REG-002: el snapshot conserva las condiciones exactas del alta.
+            // PAY-001: el snapshot conserva las condiciones exactas del alta.
             snapshot: {
               packageId: draft.charge.packageId,
               priceVersionId: draft.charge.priceVersionId,

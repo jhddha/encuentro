@@ -86,7 +86,7 @@ export default async function EventsPage() {
                       {event.endAt.toISOString().slice(0, 10)}
                     </time>
                   </td>
-                  {/* EVT-007: el total se calcula, no se almacena ni se fija. */}
+                  {/* EVT-016: el total se calcula, no se almacena ni se fija. */}
                   <td className="p-3 font-mono">{totalDays(event.startAt, event.endAt)}</td>
                   <td className="p-3">
                     <StatusBadge tone={STATUS_TONE[event.status]}>{event.status}</StatusBadge>

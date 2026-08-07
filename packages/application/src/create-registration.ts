@@ -70,7 +70,7 @@ export function prepareRegistration(
   //    evento: quien cumple 18 antes de que empiece sí puede asistir.
   assertEligibleByAge(command.birthDate, context.eventStartAt);
 
-  // 3. Visibilidad del paquete. PKG-002 y PKG-003: los privados no se ofrecen
+  // 3. Visibilidad del paquete. PKG-009 y PKG-010: los privados no se ofrecen
   //    en el portal y solo los asigna quien tiene `catalog.private.assign`.
   const canAssignPrivate =
     actor?.assignments.some(
@@ -102,7 +102,7 @@ export function prepareRegistration(
     );
   }
 
-  // 5. Una persona, una inscripción por gestión (REG-002, GOV-001).
+  // 5. Una persona, una inscripción por gestión (PAY-001, GOV-001).
   if (context.hasExistingRegistration) {
     throw new DomainError(
       'EVENT_CONTEXT_REQUIRED',
@@ -115,7 +115,7 @@ export function prepareRegistration(
     personId: command.personId,
     packageId: command.packageId,
     priceVersionId: command.priceVersionId,
-    // REG-002: el cargo congela paquete, versión, modalidad e importe.
+    // PAY-001: el cargo congela paquete, versión, modalidad e importe.
     charge: freezeCharge(context.priceVersion, now),
   };
 }

@@ -77,7 +77,7 @@ describe('mezcla de monedas', () => {
   });
 });
 
-describe('porcentaje mínimo sin dividir (REG-003)', () => {
+describe('porcentaje mínimo sin dividir (REG-020)', () => {
   it('el 50% exacto cumple', () => {
     expect(meetsMinimumPercent(money('175.00', 'USD'), money('350.00', 'USD'), 50)).toBe(true);
   });

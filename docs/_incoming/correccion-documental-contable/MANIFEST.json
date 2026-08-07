@@ -1,0 +1,50 @@
+{
+  "package": "Claude correction v2.7 RC1",
+  "files": [
+    {
+      "path": "00_LEEME_PRIMERO.md",
+      "sha256": "ac5407bfdb36c06c7b9e2c028a9c937132bafe9529534d7664b6bf85b43ea2ae",
+      "size": 2453
+    },
+    {
+      "path": "01_INSTRUCCION_BLOQUEANTE_CLAUDE_CODE.md",
+      "sha256": "a0a677baa414e123526c3414d4e7633977dd8db71a7f77ba618e2b0b7629bddf",
+      "size": 6112
+    },
+    {
+      "path": "Politica_Contable_y_Migracion_Requisitos_v2.7_RC1.docx",
+      "sha256": "578de410dc1c78ac53d6343497609c4455aae52805f79fd3a9a89bd051ed2df6",
+      "size": 43061
+    },
+    {
+      "path": "READINESS_REPORT_TEMPLATE.md",
+      "sha256": "d8861487e2281ce69ac4b48f9bba1f2aa244dbaf27d266729873ab5f216c269c",
+      "size": 1720
+    },
+    {
+      "path": "contracts/accounting-rules.DRAFT.json",
+      "sha256": "ecda2e0d1eee280eaea666c3334f91b9cc8435f81026528fa4e766dbc340fb3d",
+      "size": 32053
+    },
+    {
+      "path": "contracts/accounting-rules.schema.json",
+      "sha256": "61dcd682739f16b925fde520320e7be6eb6b45bb25027479cbeff9bfabc22c02",
+      "size": 3166
+    },
+    {
+      "path": "docs/01-product/accounting-policy-DRAFT.md",
+      "sha256": "30345a877c093711888f92a92aa87b4742b8e7177de8ee50f10c2f55f6e28d93",
+      "size": 8501
+    },
+    {
+      "path": "docs/04-delivery/decisions/DEC-XXX-accounting-recognition-DRAFT.md",
+      "sha256": "9483af8a4a2bc2f86e0aef03d55b095e2e17fd88c1a18fb2b142b821b469ab5f",
+      "size": 3319
+    },
+    {
+      "path": "docs/04-delivery/requirement-migration-v2.6-to-current-TEMPLATE.md",
+      "sha256": "65a884a6ad824bc9b12069d492cc4d08d3ef4b62652976842c0f3aebc8b11858",
+      "size": 2786
+    }
+  ]
+}

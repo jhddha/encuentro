@@ -1,7 +1,7 @@
 # P07 — Pagos manuales, cajas y comprobantes
 
 **Fecha:** 5 de agosto de 2026
-**Alcance:** PAY-001..015, CASH-001..002, y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
+**Alcance:** PAY-022..015, PAY-011..002, y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
 
 ## 1. Gate ejecutado
 
@@ -14,7 +14,7 @@
 
 ## 2. Lo que no existe, y es lo importante
 
-PAY-001 y DEC-002 excluyen el checkout automático de v1. DEC-015 cerró además el alcance de una integración con QR bancario. En consecuencia, en este módulo **no hay** tabla de proveedores, ni webhooks, ni callbacks, ni SDK de pasarela.
+PAY-022 y DEC-002 excluyen el checkout automático de v1. DEC-015 cerró además el alcance de una integración con QR bancario. En consecuencia, en este módulo **no hay** tabla de proveedores, ni webhooks, ni callbacks, ni SDK de pasarela.
 
 Un pago existe por una sola razón: una persona autorizada aprobó una evidencia, o cobró en caja. El QR de Bolivia es el medio por el que el peregrino transfiere, no un sistema que confirme por su cuenta. Los tres canales anticipados llevan el sufijo `_MANUAL` en su propio nombre, y una prueba lo verifica.
 
@@ -31,7 +31,7 @@ Además:
 
 ## 4. Concurrencia en la secuencia
 
-PAY-010 exige `REC-{EVENT_CODE}-{NNNNNN}` único **por gestión**. La secuencia se cuenta dentro de la transacción y el índice único `(event_id, sequence)` decide la carrera.
+PAY-014 exige `REC-{EVENT_CODE}-{NNNNNN}` único **por gestión**. La secuencia se cuenta dentro de la transacción y el índice único `(event_id, sequence)` decide la carrera.
 
 Verificado con cinco emisiones simultáneas: las que colisionan fallan, y **ningún número ni secuencia se repite**. Verificado también que dos gestiones distintas empiezan cada una en 1 sin interferir.
 
@@ -39,7 +39,7 @@ Verificado con cinco emisiones simultáneas: las que colisionan fallan, y **ning
 
 El token de verificación se almacena **por hash**. El valor en claro solo existe dentro del QR impreso; la base no puede devolverlo aunque alguien la consulte entera. La verificación funciona buscando por hash, que es lo que hace el endpoint público.
 
-El snapshot del comprobante contiene nombre, código de inscripción y paquete —lo que PAY-012 autoriza— y una prueba comprueba que **no** contiene documento ni país.
+El snapshot del comprobante contiene nombre, código de inscripción y paquete —lo que PAY-030 autoriza— y una prueba comprueba que **no** contiene documento ni país.
 
 La proyección pública `toPublicReceiptVerification`, escrita en P02, sigue siendo la única forma en que un comprobante sale al exterior.
 
@@ -47,18 +47,18 @@ La proyección pública `toPublicReceiptVerification`, escrita en P02, sigue sie
 
 | Invariante | Requisito |
 |---|---|
-| Aprobar, rechazar o pedir corrección exige revisor y fecha | PAY-006 |
-| Rechazar o pedir corrección exige motivo; aprobar no | PAY-006 |
-| Referencia bancaria única por gestión | PAY-007 |
-| Un cobro en efectivo o QR de caja exige sesión de caja | CASH-001 |
-| Cerrar caja exige esperado, contado, y motivo si difieren | CASH-002 |
+| Aprobar, rechazar o pedir corrección exige revisor y fecha | PAY-026 |
+| Rechazar o pedir corrección exige motivo; aprobar no | PAY-026 |
+| Referencia bancaria única por gestión | PAY-027 |
+| Un cobro en efectivo o QR de caja exige sesión de caja | PAY-011 |
+| Cerrar caja exige esperado, contado, y motivo si difieren | PAY-012 |
 | Importes estrictamente positivos | §10 |
 
 ## 7. Dinero y tasa de cambio
 
 La tasa se guarda en **millonésimas** y se congela al cargar la evidencia (DEC-009). Dividir en coma flotante justo donde se convierte dinero es la clase de error que reaparece como un céntimo de descuadre en el cierre de caja.
 
-El saldo se **deriva** de las asignaciones; no hay ninguna columna de saldo que alguien pueda escribir. Es lo que PAY-008 pide, y también lo que hace que el arqueo sea un control real y no una declaración.
+El saldo se **deriva** de las asignaciones; no hay ninguna columna de saldo que alguien pueda escribir. Es lo que PAY-002 pide, y también lo que hace que el arqueo sea un control real y no una declaración.
 
 DEC-007 y DEC-008: no se devuelve dinero. `creditFromOverpayment` convierte el saldo negativo en saldo a favor positivo, y devuelve cero cuando no hay sobrepago — un «saldo a favor negativo» no significa nada.
 

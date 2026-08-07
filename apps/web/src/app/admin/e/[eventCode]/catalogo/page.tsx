@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
  * Catálogo de la gestión.
  *
  * Incluye los paquetes `PRIVATE`, así que exige `catalog.private.assign`
- * además de estar dentro de administración. PKG-003: verlos y asignarlos es
+ * además de estar dentro de administración. PKG-010: verlos y asignarlos es
  * una capacidad acotada, no algo que baste con llegar a la URL.
  */
 export default async function CatalogPage({ params }: { params: Promise<{ eventCode: string }> }) {
@@ -38,7 +38,7 @@ export default async function CatalogPage({ params }: { params: Promise<{ eventC
     <div className="flex flex-col gap-6">
       <PageHeader
         title={`Catálogo · ${event.name}`}
-        description="Los precios anticipado y normal son importes explícitos, no un descuento derivado (PKG-004)."
+        description="Los precios anticipado y normal son importes explícitos, no un descuento derivado (PKG-012)."
       />
 
       {packages.length === 0 ? (

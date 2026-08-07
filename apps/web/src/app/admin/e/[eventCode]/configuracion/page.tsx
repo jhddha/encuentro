@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 /**
  * Configuración de gestión (design-system.md §6).
  *
- * EVT-007 y EVT-008: el total de días se **calcula** a partir de `start_at` y
+ * EVT-016 y EVT-016: el total de días se **calcula** a partir de `start_at` y
  * `end_at`. La referencia son 8 días, pero el número que se ve aquí sale de las
  * fechas reales de la gestión: si alguien la configura con otra duración, esta
  * pantalla lo refleja sin tocar código.
@@ -46,11 +46,11 @@ export default async function EventConfigurationPage({
       value: event.startAt.toISOString(),
       note: 'Guardado en UTC; se presenta en la zona de la gestión.',
     },
-    { label: 'Fin', value: event.endAt.toISOString(), note: 'Configurable (EVT-007).' },
+    { label: 'Fin', value: event.endAt.toISOString(), note: 'Configurable (EVT-016).' },
     {
       label: 'Duración calculada',
       value: `${String(days)} días`,
-      note: 'Derivada de las fechas. No hay ningún valor fijo en código (EVT-008).',
+      note: 'Derivada de las fechas. No hay ningún valor fijo en código (EVT-016).',
     },
     {
       label: 'Zona horaria',

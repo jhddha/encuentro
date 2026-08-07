@@ -20,7 +20,7 @@ const policy: LodgingPolicy = {
   checkOutDate: new Date('2026-11-08T00:00:00Z'),
 };
 
-describe('política de noches configurable (HOS-001)', () => {
+describe('política de noches configurable (HOS-011)', () => {
   it('acepta la referencia actual de 7 noches', () => {
     expect(() => {
       assertPolicyConsistent(policy);
@@ -81,7 +81,7 @@ describe('expiración de HELD (DEC-005)', () => {
   });
 });
 
-describe('una reserva CONFIRMED no se libera nunca (HOS-003, DEC-004)', () => {
+describe('una reserva CONFIRMED no se libera nunca (HOS-012, DEC-004)', () => {
   const created = new Date('2026-09-01T10:00:00Z');
   const mucho_despues = new Date('2027-01-01T00:00:00Z');
 
@@ -90,7 +90,7 @@ describe('una reserva CONFIRMED no se libera nunca (HOS-003, DEC-004)', () => {
   });
 
   it('no expira el primer día del evento con la persona ausente', () => {
-    // El escenario que HOS-003 nombra explícitamente: no-show al inicio.
+    // El escenario que HOS-012 nombra explícitamente: no-show al inicio.
     expect(shouldRelease('CONFIRMED', created, new Date('2026-11-01T23:59:00Z'))).toBe(false);
   });
 
@@ -104,12 +104,12 @@ describe('una reserva CONFIRMED no se libera nunca (HOS-003, DEC-004)', () => {
   it('shouldRelease no admite la fecha de llegada real', () => {
     // Garantía estructural: acepta estado, creación y ahora. Nada más.
     // Aceptar la llegada real invitaría a usarla, y usarla sería justo la
-    // regla que HOS-003 prohíbe.
+    // regla que HOS-012 prohíbe.
     expect(shouldRelease).toHaveLength(3);
   });
 });
 
-describe('la llegada real no reescribe la reserva (HOS-002)', () => {
+describe('la llegada real no reescribe la reserva (HOS-013)', () => {
   it('devuelve la reserva intacta', () => {
     const reserva = { state: 'CONFIRMED' as const, nightCount: 7 };
     expect(reservationAfterArrival(reserva)).toEqual(reserva);
@@ -122,7 +122,7 @@ describe('la llegada real no reescribe la reserva (HOS-002)', () => {
   });
 });
 
-describe('disponibilidad por inventario (HOS-008)', () => {
+describe('disponibilidad por inventario (HOS-002)', () => {
   it('hay sitio mientras la ocupación sea menor que la capacidad', () => {
     expect(hasAvailability(10, 9)).toBe(true);
     expect(hasAvailability(10, 10)).toBe(false);

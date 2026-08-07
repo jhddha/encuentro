@@ -68,7 +68,7 @@ function actorWith(permissions: readonly string[], eventId = EVENT_ID): Actor {
 }
 
 describe('alta correcta', () => {
-  it('congela el cargo con las condiciones del momento (REG-002)', () => {
+  it('congela el cargo con las condiciones del momento (PAY-001)', () => {
     const draft = prepareRegistration(null, command, context, NOW);
 
     expect(draft.charge.packageId).toBe('pkg-1');
@@ -85,7 +85,7 @@ describe('alta correcta', () => {
       { ...context, eventStatus: 'IN_PROGRESS' },
       NOW,
     );
-    // Y por el mismo importe: no hay prorrateo (REG-006).
+    // Y por el mismo importe: no hay prorrateo (REG-023).
     expect(toDecimalString(draft.charge.amount)).toBe('350.00');
   });
 });
@@ -125,7 +125,7 @@ describe('edad mínima (DEC-006)', () => {
   });
 });
 
-describe('paquetes privados (PKG-002, PKG-003)', () => {
+describe('paquetes privados (PKG-009, PKG-010)', () => {
   const privado: RegistrationContext = { ...context, packageVisibility: 'PRIVATE' };
 
   it('el portal público no puede usarlos ni con permiso', () => {

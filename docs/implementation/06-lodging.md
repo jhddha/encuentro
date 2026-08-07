@@ -1,7 +1,7 @@
 # P06 — Hospedaje
 
 **Fecha:** 5 de agosto de 2026
-**Alcance:** HOS-001..008 y DEC-005.
+**Alcance:** HOS-011..008 y DEC-005.
 
 ## 1. Gate ejecutado
 
@@ -18,11 +18,11 @@
 
 Un sistema de reservas corriente, ante alguien que llega tarde, recorta el rango, baja el precio y libera la habitación. Aquí las tres cosas están prohibidas, y el código está escrito para que romperlas sea difícil:
 
-- **HOS-001**: la cantidad de noches es **configuración**, no un cálculo derivado de la llegada y la salida de cada persona. Referencia actual, 7 noches; el número no aparece en el código.
-- **HOS-002**: `actual_arrival_at` no reescribe la reserva. Se registra como asistencia y nada más.
-- **HOS-003**: una reserva `CONFIRMED` **no se libera nunca** por este mecanismo, y en particular no por ausencia el primer día.
+- **HOS-011**: la cantidad de noches es **configuración**, no un cálculo derivado de la llegada y la salida de cada persona. Referencia actual, 7 noches; el número no aparece en el código.
+- **HOS-013**: `actual_arrival_at` no reescribe la reserva. Se registra como asistencia y nada más.
+- **HOS-012**: una reserva `CONFIRMED` **no se libera nunca** por este mecanismo, y en particular no por ausencia el primer día.
 
-`shouldRelease` recibe estado, creación y momento actual. **No recibe la fecha de llegada real**, y eso es deliberado: aceptarla invitaría a usarla, y usarla sería exactamente la regla que HOS-003 prohíbe. Una prueba fija la aridad.
+`shouldRelease` recibe estado, creación y momento actual. **No recibe la fecha de llegada real**, y eso es deliberado: aceptarla invitaría a usarla, y usarla sería exactamente la regla que HOS-012 prohíbe. Una prueba fija la aridad.
 
 ## 3. `held_until` solo existe mientras la reserva esté en `HELD`
 
@@ -30,7 +30,7 @@ Un `CHECK` obliga a que `held_until` sea nulo en cualquier estado distinto de `H
 
 ## 4. El último cupo
 
-HOS-008 exige controlar la capacidad por inventario y no por un contador. La implementación modela cada plaza como una fila `(room_id, bed_index)` con un **índice único parcial** sobre las reservas vivas (`HELD` y `CONFIRMED`).
+HOS-002 exige controlar la capacidad por inventario y no por un contador. La implementación modela cada plaza como una fila `(room_id, bed_index)` con un **índice único parcial** sobre las reservas vivas (`HELD` y `CONFIRMED`).
 
 Consecuencias:
 
@@ -64,11 +64,11 @@ Con eso, la garantía está en el modelo y no volverá a desaparecer. La prueba 
 |---|---|
 | Worker que expira las retenciones | La consulta está probada, pero el proceso periódico pertenece a la infraestructura de colas. DEC-005 avisa de que 30 minutos no toleran un job horario. |
 | Pantallas de hospedaje | La ruta existe desde P02; conectarla requiere el flujo de selección del peregrino, que depende del 50% aprobado (P07). |
-| Selección de hotel por el peregrino | HOS-005 la sitúa después de aprobar el pago, que es P07. |
-| Asignación de habitación | HOS-007 la reserva a Hospedaje con `lodging.assign_room`; el modelo lo soporta (`room_id` nullable), falta la interfaz. |
+| Selección de hotel por el peregrino | HOS-016 la sitúa después de aprobar el pago, que es P07. |
+| Asignación de habitación | HOS-001 la reserva a Hospedaje con `lodging.assign_room`; el modelo lo soporta (`room_id` nullable), falta la interfaz. |
 
 ## 7. Riesgos y pendientes
 
 1. **No hay worker de expiración.** Sin él, las retenciones `HELD` no se liberan solas y el inventario queda retenido. Es lo primero que hay que resolver cuando exista la selección de hotel.
-2. **DEC-005 depende de una lectura del flujo.** 30 minutos funcionan porque HOS-005 pone la elección después de la aprobación. Si eso cambiara, el plazo sería insuficiente; queda escrito en el propio módulo para que se note.
+2. **DEC-005 depende de una lectura del flujo.** 30 minutos funcionan porque HOS-016 pone la elección después de la aprobación. Si eso cambiara, el plazo sería insuficiente; queda escrito en el propio módulo para que se note.
 3. La migración `p06b` existe solo para restaurar lo que `p06` borró. No se fusionaron porque el historial de migraciones no se reescribe.

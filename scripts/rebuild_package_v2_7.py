@@ -250,8 +250,8 @@ Excluye checkout automático, facturación fiscal, presupuestos, centros de cost
 | EVT-004 | `ACTIVE` publica y habilita inscripción/pago. | Landing resuelve una única gestión pública. |
 | EVT-005 | `IN_PROGRESS` mantiene inscripción, pago y operación completa. | No crea una tarifa por día transcurrido. |
 | EVT-006 | Solo una gestión puede estar públicamente habilitada. | Constraint/lock impide dos. |
-| EVT-007 | `start_at` y `end_at` son configurables. | La UI calcula y muestra el total de días. |
-| EVT-008 | La referencia actual es 8 días, sin valor fijo en código. | Prueba con otra duración. |
+| EVT-016 | `start_at` y `end_at` son configurables. | La UI calcula y muestra el total de días. |
+| EVT-016 | La referencia actual es 8 días, sin valor fijo en código. | Prueba con otra duración. |
 | EVT-009 | El cierre operativo valida cajas, sync y bloqueos. | No cierra con pendientes críticos. |
 | EVT-010 | El cierre guarda snapshot inmutable. | Reproducible desde auditoría. |
 
@@ -260,64 +260,64 @@ Excluye checkout automático, facturación fiscal, presupuestos, centros de cost
 | ID | Requisito | Criterio |
 |---|---|---|
 | PKG-001 | Cada paquete pertenece a una gestión y tiene versiones históricas. | Cambiar precio no altera cargos existentes. |
-| PKG-002 | `visibility` admite `PUBLIC` y `PRIVATE`. | El portal solo lista `PUBLIC`. |
-| PKG-003 | Paquetes privados solo pueden ser vistos/asignados por Inscripciones con permiso. | Intento sin permiso falla y asignación queda auditada. |
-| PKG-004 | Cada paquete puede definir tarifa anticipada y tarifa normal. | Ambas son montos explícitos, no descuento calculado obligatorio. |
-| PKG-005 | La tarifa anticipada tiene inicio/fin, moneda, mínimo de pago y vencimiento de saldo. | Configuración versionada. |
-| REG-001 | El peregrino selecciona exactamente una modalidad: anticipado o al llegar. | No se confunde con canal de pago. |
-| REG-002 | El cargo congela paquete, versión de precio, moneda e importe. | Histórico inmutable. |
-| REG-003 | El pago anticipado aprobado al 50% conserva tarifa y habilita elección de hotel. | La carga sin aprobación no habilita. |
-| REG-004 | Comprobante cargado dentro del plazo conserva tarifa aunque se revise después. | Prueba de borde de fecha. |
-| REG-005 | Saldo restante puede pagarse al llegar sin repricing. | Mantiene el cargo original. |
-| REG-006 | Durante `IN_PROGRESS` el importe no se prorratea. | Día 1, 3 y último día cobran el paquete completo. |
-| REG-007 | No existen tarifas tardías automáticas. | Solo paquete normal o privado previamente configurado. |
-| REG-008 | El peregrino elige hotel; Hospedaje asigna habitación. | UI pública no promete habitación específica. |
+| PKG-009 | `visibility` admite `PUBLIC` y `PRIVATE`. | El portal solo lista `PUBLIC`. |
+| PKG-010 | Paquetes privados solo pueden ser vistos/asignados por Inscripciones con permiso. | Intento sin permiso falla y asignación queda auditada. |
+| PKG-012 | Cada paquete puede definir tarifa anticipada y tarifa normal. | Ambas son montos explícitos, no descuento calculado obligatorio. |
+| PKG-013 | La tarifa anticipada tiene inicio/fin, moneda, mínimo de pago y vencimiento de saldo. | Configuración versionada. |
+| REG-019 | El peregrino selecciona exactamente una modalidad: anticipado o al llegar. | No se confunde con canal de pago. |
+| PAY-001 | El cargo congela paquete, versión de precio, moneda e importe. | Histórico inmutable. |
+| REG-020 | El pago anticipado aprobado al 50% conserva tarifa y habilita elección de hotel. | La carga sin aprobación no habilita. |
+| REG-021 | Comprobante cargado dentro del plazo conserva tarifa aunque se revise después. | Prueba de borde de fecha. |
+| REG-022 | Saldo restante puede pagarse al llegar sin repricing. | Mantiene el cargo original. |
+| REG-023 | Durante `IN_PROGRESS` el importe no se prorratea. | Día 1, 3 y último día cobran el paquete completo. |
+| PKG-011 | No existen tarifas tardías automáticas. | Solo paquete normal o privado previamente configurado. |
+| HOS-015 | El peregrino elige hotel; Hospedaje asigna habitación. | UI pública no promete habitación específica. |
 
 ## 7. Pagos, evidencias, cajas y comprobantes
 
 | ID | Requisito | Criterio |
 |---|---|---|
-| PAY-001 | v1 procesa pagos manuales, no checkout automático. | No existen webhooks productivos ni SDK obligatorio de pasarela. |
-| PAY-002 | Canales anticipados: `BOLIVIA_QR_MANUAL`, `US_ACCOUNT_MANUAL`, `US_PAYMENT_LINK_MANUAL`. | Configurables y auditados. |
-| PAY-003 | Canales al llegar: efectivo y QR, habilitables por gestión/caja. | Cajero solo usa canales activos. |
-| PAY-004 | Evidencia registra monto, moneda, fecha, banco/plataforma, referencia, pagador y archivo privado. | Archivo no público; checksum. |
-| PAY-005 | Subir evidencia no confirma el pago. | Solo `APPROVED` crea/confirma pago y asignación. |
-| PAY-006 | Revisión registra aprobador, fecha, resultado y motivo. | Auditoría completa. |
-| PAY-007 | Referencia duplicada se bloquea o marca para revisión. | `PAYMENT_DUPLICATE`. |
-| PAY-008 | Un pago puede asignarse parcial o totalmente a cargos. | Saldo calculado, nunca editado manualmente. |
-| PAY-009 | Cada pago aprobado genera un Comprobante de pago. | Un pago parcial produce su propio comprobante. |
-| PAY-010 | Secuencia: `REC-{{EVENT_CODE}}-{{NNNNNN}}` única por gestión. | Concurrencia no duplica. |
-| PAY-011 | Pie del documento: “Documento de control interno”. | Validación visual/PDF. |
-| PAY-012 | Datos del peregrino: nombre, código de inscripción y paquete. | No incluye documento ni país. |
-| PAY-013 | QR público verifica validez, número, evento, fecha, monto, moneda y estado sin PII. | Cualquier cámara abre la URL. |
-| PAY-014 | Detalle completo requiere autenticación y `receipt.read_sensitive`. | Acceso anónimo no expone PII. |
-| PAY-015 | El comprobante emitido es inmutable; corrección por anulación y nueva emisión. | Original permanece `VOID`. |
-| CASH-001 | Todo cobro presencial ocurre en una sesión de caja abierta. | Sin sesión falla. |
-| CASH-002 | Cierre compara esperado y contado por moneda/canal. | Diferencia exige motivo. |
+| PAY-022 | v1 procesa pagos manuales, no checkout automático. | No existen webhooks productivos ni SDK obligatorio de pasarela. |
+| PAY-023 | Canales anticipados: `BOLIVIA_QR_MANUAL`, `US_ACCOUNT_MANUAL`, `US_PAYMENT_LINK_MANUAL`. | Configurables y auditados. |
+| PAY-024 | Canales al llegar: efectivo y QR, habilitables por gestión/caja. | Cajero solo usa canales activos. |
+| PAY-018 | Evidencia registra monto, moneda, fecha, banco/plataforma, referencia, pagador y archivo privado. | Archivo no público; checksum. |
+| PAY-025 | Subir evidencia no confirma el pago. | Solo `APPROVED` crea/confirma pago y asignación. |
+| PAY-026 | Revisión registra aprobador, fecha, resultado y motivo. | Auditoría completa. |
+| PAY-027 | Referencia duplicada se bloquea o marca para revisión. | `PAYMENT_DUPLICATE`. |
+| PAY-002 | Un pago puede asignarse parcial o totalmente a cargos. | Saldo calculado, nunca editado manualmente. |
+| PAY-028 | Cada pago aprobado genera un Comprobante de pago. | Un pago parcial produce su propio comprobante. |
+| PAY-014 | Secuencia: `REC-{{EVENT_CODE}}-{{NNNNNN}}` única por gestión. | Concurrencia no duplica. |
+| PAY-029 | Pie del documento: “Documento de control interno”. | Validación visual/PDF. |
+| PAY-030 | Datos del peregrino: nombre, código de inscripción y paquete. | No incluye documento ni país. |
+| PAY-031 | QR público verifica validez, número, evento, fecha, monto, moneda y estado sin PII. | Cualquier cámara abre la URL. |
+| PAY-032 | Detalle completo requiere autenticación y `receipt.read_sensitive`. | Acceso anónimo no expone PII. |
+| PAY-033 | El comprobante emitido es inmutable; corrección por anulación y nueva emisión. | Original permanece `VOID`. |
+| PAY-011 | Todo cobro presencial ocurre en una sesión de caja abierta. | Sin sesión falla. |
+| PAY-012 | Cierre compara esperado y contado por moneda/canal. | Diferencia exige motivo. |
 
 ## 8. Hospedaje
 
 | ID | Requisito | Criterio |
 |---|---|---|
-| HOS-001 | La gestión configura cantidad fija de noches y fechas de hospedaje. | Referencia actual 7 noches, modificable. |
-| HOS-002 | La llegada tardía no reduce automáticamente el rango ni el precio. | `actual_arrival_at` no reescribe reserva. |
-| HOS-003 | Una reserva `CONFIRMED` no se libera por ausencia al inicio. | Worker no la expira por no-show. |
-| HOS-004 | `HELD` puede expirar únicamente según DEC-005. | Sin DEC-005 no se fija duración productiva. |
-| HOS-005 | El anticipado aprobado habilita elegir hotel según disponibilidad. | Selección transaccional. |
-| HOS-006 | Pago al llegar no reserva hotel anticipadamente. | Hotel se elige entre disponibilidad restante. |
-| HOS-007 | La habitación la asigna Hospedaje. | Permiso y auditoría. |
-| HOS-008 | Capacidad se controla por inventario/rango, no por contador desincronizable. | Prueba de último cupo concurrente. |
+| HOS-011 | La gestión configura cantidad fija de noches y fechas de hospedaje. | Referencia actual 7 noches, modificable. |
+| HOS-013 | La llegada tardía no reduce automáticamente el rango ni el precio. | `actual_arrival_at` no reescribe reserva. |
+| HOS-012 | Una reserva `CONFIRMED` no se libera por ausencia al inicio. | Worker no la expira por no-show. |
+| HOS-003 | `HELD` puede expirar únicamente según DEC-005. | Sin DEC-005 no se fija duración productiva. |
+| HOS-016 | El anticipado aprobado habilita elegir hotel según disponibilidad. | Selección transaccional. |
+| HOS-017 | Pago al llegar no reserva hotel anticipadamente. | Hotel se elige entre disponibilidad restante. |
+| HOS-001 | La habitación la asigna Hospedaje. | Permiso y auditoría. |
+| HOS-002 | Capacidad se controla por inventario/rango, no por contador desincronizable. | Prueba de último cupo concurrente. |
 
 ## 9. Alimentos y materiales
 
 | ID | Requisito | Criterio |
 |---|---|---|
-| FOOD-001 | Alimentos configura servicios por fecha, tipo, hora inicial/final y cantidad disponible. | `ends_at > starts_at`. |
-| FOOD-002 | QR valida gestión, beneficio, fecha, horario, disponibilidad y duplicidad. | Fuera de ventana se rechaza. |
-| FOOD-003 | Pedido, recepción, desperdicio y entrega son movimientos separados. | Reporte reconciliable. |
-| FOOD-004 | Una persona recibe una vez cada servicio salvo override autorizado. | Constraint/idempotencia. |
-| MAT-001 | Elegibilidad de materiales depende de paquete, inventario e historial. | No depende de actividad pasada. |
-| MAT-002 | La llegada tardía no elimina automáticamente el material incluido. | Prueba día final. |
+| FOD-001 | Alimentos configura servicios por fecha, tipo, hora inicial/final y cantidad disponible. | `ends_at > starts_at`. |
+| FOD-006 | QR valida gestión, beneficio, fecha, horario, disponibilidad y duplicidad. | Fuera de ventana se rechaza. |
+| FOD-002 | Pedido, recepción, desperdicio y entrega son movimientos separados. | Reporte reconciliable. |
+| FOD-003 | Una persona recibe una vez cada servicio salvo override autorizado. | Constraint/idempotencia. |
+| MAT-005 | Elegibilidad de materiales depende de paquete, inventario e historial. | No depende de actividad pasada. |
+| MAT-004 | La llegada tardía no elimina automáticamente el material incluido. | Prueba día final. |
 | MAT-003 | Entradas, salidas, ajustes, pérdidas y entregas son reconstruibles. | Stock deriva de movimientos. |
 
 ## 10. Seguridad, archivos, auditoría y no funcionales
@@ -820,14 +820,14 @@ traceability_md = '''
 
 | Regla | Requisitos | Arquitectura/contrato | UI | Prueba |
 |---|---|---|---|---|
-| Dos modalidades | REG-001..005, PAY-001..003 | price_versions, payment_channels | PaymentModeCards | E2E anticipado/al llegar |
-| 50% habilita hotel | REG-003, HOS-005 | allocations + entitlement | BalanceSummary/HotelPicker | pago parcial aprobado |
-| Comprobante por pago | PAY-009..015 | receipts + verify endpoint | ReceiptView | secuencia/anulación/PII |
-| Sin prorrateo | REG-006/007 | cargo snapshot | resumen de inscripción | días 1/3/final |
-| Duración/noches configurables | EVT-007/008, HOS-001 | events + lodging_policy | Event/Lodging forms | valores alternativos |
-| Reserva confirmada no se libera | HOS-003 | reservation policy | estado de reserva | worker no expira |
-| Alimentos por horario | FOOD-001..004 | meal_services | MealServiceEditor | fuera de ventana |
-| Paquete privado | PKG-002/003 | visibility + permission | badge privado | IDOR/RBAC |
+| Dos modalidades | REG-019..005, PAY-022..003 | price_versions, payment_channels | PaymentModeCards | E2E anticipado/al llegar |
+| 50% habilita hotel | REG-020, HOS-016 | allocations + entitlement | BalanceSummary/HotelPicker | pago parcial aprobado |
+| Comprobante por pago | PAY-028..015 | receipts + verify endpoint | ReceiptView | secuencia/anulación/PII |
+| Sin prorrateo | REG-023/007 | cargo snapshot | resumen de inscripción | días 1/3/final |
+| Duración/noches configurables | EVT-016/008, HOS-011 | events + lodging_policy | Event/Lodging forms | valores alternativos |
+| Reserva confirmada no se libera | HOS-012 | reservation policy | estado de reserva | worker no expira |
+| Alimentos por horario | FOD-001..004 | meal_services | MealServiceEditor | fuera de ventana |
+| Paquete privado | PKG-009/003 | visibility + permission | badge privado | IDOR/RBAC |
 '''
 write('docs/04-delivery/traceability.md', traceability_md)
 write('docs/04-delivery/change-log-v2.7.md', '''
@@ -1107,11 +1107,11 @@ write('contracts/states.json', json.dumps({
 }, ensure_ascii=False, indent=2))
 
 phase_map = {
-'0':['GOV-010'], '3':['EVT-001','EVT-002','EVT-003','EVT-004','EVT-005','EVT-006','EVT-007','EVT-008','EVT-009','EVT-010'],
-'4':['PKG-001','PKG-002','PKG-003','PKG-004','PKG-005','REG-001','REG-002','REG-003','REG-004','REG-005','REG-006','REG-007','REG-008'],
-'5':['HOS-001','HOS-002','HOS-003','HOS-004','HOS-005','HOS-006','HOS-007','HOS-008'],
-'6':['PAY-001','PAY-002','PAY-003','PAY-004','PAY-005','PAY-006','PAY-007','PAY-008','PAY-009','PAY-010','PAY-011','PAY-012','PAY-013','PAY-014','PAY-015','CASH-001','CASH-002'],
-'10':['FOOD-001','FOOD-002','FOOD-003','FOOD-004','MAT-001','MAT-002','MAT-003']
+'0':['GOV-010'], '3':['EVT-001','EVT-002','EVT-003','EVT-004','EVT-005','EVT-006','EVT-016','EVT-016','EVT-009','EVT-010'],
+'4':['PKG-001','PKG-009','PKG-010','PKG-012','PKG-013','REG-019','PAY-001','REG-020','REG-021','REG-022','REG-023','PKG-011','HOS-015'],
+'5':['HOS-011','HOS-013','HOS-012','HOS-003','HOS-016','HOS-017','HOS-001','HOS-002'],
+'6':['PAY-022','PAY-023','PAY-024','PAY-018','PAY-025','PAY-026','PAY-027','PAY-002','PAY-028','PAY-014','PAY-029','PAY-030','PAY-031','PAY-032','PAY-033','PAY-011','PAY-012'],
+'10':['FOD-001','FOD-006','FOD-002','FOD-003','MAT-005','MAT-004','MAT-003']
 }
 write('contracts/phase-requirement-map.json', json.dumps({'version':VERSION,'phases':phase_map}, ensure_ascii=False, indent=2))
 write('contracts/prompt-requirement-map.json', json.dumps({'version':VERSION,'prompts':{'P03':phase_map['3'],'P05':phase_map['4'],'P06':phase_map['5'],'P07':phase_map['6'],'P11':phase_map['10']}}, ensure_ascii=False, indent=2))

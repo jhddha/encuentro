@@ -15,7 +15,7 @@ import { meetsMinimumPercent, type Money } from './money.js';
  * habilitado. Este módulo trata solo la modalidad; el canal vive en Billing.
  */
 
-/** REG-001: el peregrino selecciona exactamente una. */
+/** REG-019: el peregrino selecciona exactamente una. */
 export type PaymentMode = 'ADVANCE' | 'ARRIVAL';
 
 export type PackageVisibility = 'PUBLIC' | 'PRIVATE';
@@ -23,7 +23,7 @@ export type PackageVisibility = 'PUBLIC' | 'PRIVATE';
 /**
  * Versión de precio.
  *
- * PKG-004: la tarifa anticipada y la normal son **montos explícitos**, no un
+ * PKG-012: la tarifa anticipada y la normal son **montos explícitos**, no un
  * descuento calculado sobre la otra. Por eso aquí no existe ningún campo de
  * porcentaje de descuento: dos versiones independientes, cada una con su
  * importe.
@@ -39,16 +39,16 @@ export interface PriceVersion {
   /** Vigencia de la tarifa. `ARRIVAL` normalmente no la lleva. */
   readonly startsAt?: Date;
   readonly endsAt?: Date;
-  /** PKG-005: mínimo a pagar para desbloquear el beneficio. */
+  /** PKG-013: mínimo a pagar para desbloquear el beneficio. */
   readonly minPaymentPercent?: number;
-  /** PKG-005: vencimiento del saldo restante. */
+  /** PKG-013: vencimiento del saldo restante. */
   readonly balanceDueAt?: Date;
 }
 
 /**
  * ¿Está vigente la tarifa anticipada en este instante?
  *
- * REG-004: lo que cuenta es **cuándo se cargó el comprobante**, no cuándo se
+ * REG-021: lo que cuenta es **cuándo se cargó el comprobante**, no cuándo se
  * revisó. Una evidencia subida el último día del plazo conserva la tarifa
  * aunque Inscripciones la apruebe una semana después. Por eso esta función
  * recibe el momento de la carga y no el de la aprobación.
@@ -65,9 +65,9 @@ export function isAdvanceRateAvailable(version: PriceVersion, uploadedAt: Date):
 /**
  * ¿Desbloquea el pago aprobado el derecho a escoger hotel?
  *
- * REG-003 y HOS-005: hace falta tener aprobado al menos el mínimo configurado
+ * REG-020 y HOS-016: hace falta tener aprobado al menos el mínimo configurado
  * (referencia actual, 50%). Lo que cuenta es el importe **aprobado**, no el
- * declarado: PAY-005 es explícito en que subir una evidencia no confirma nada.
+ * declarado: PAY-025 es explícito en que subir una evidencia no confirma nada.
  */
 export function unlocksHotelSelection(version: PriceVersion, approvedAmount: Money): boolean {
   if (version.paymentMode !== 'ADVANCE') return false;
@@ -76,7 +76,7 @@ export function unlocksHotelSelection(version: PriceVersion, approvedAmount: Mon
   if (percent === undefined) {
     throw new DomainError(
       'ADVANCE_BENEFIT_NOT_UNLOCKED',
-      'La versión de precio anticipada no define un mínimo de pago (PKG-005).',
+      'La versión de precio anticipada no define un mínimo de pago (PKG-013).',
     );
   }
 
@@ -86,10 +86,10 @@ export function unlocksHotelSelection(version: PriceVersion, approvedAmount: Mon
 /**
  * Importe a cobrar por una inscripción.
  *
- * REG-006 y DEC-004: durante `IN_PROGRESS` **no se prorratea**. Llegar el día 1,
+ * REG-023 y DEC-004: durante `IN_PROGRESS` **no se prorratea**. Llegar el día 1,
  * el día 3 o el último día cuesta lo mismo: el paquete completo.
  *
- * REG-007: tampoco existen tarifas tardías automáticas. Si hace falta cobrar
+ * PKG-011: tampoco existen tarifas tardías automáticas. Si hace falta cobrar
  * distinto a quien llega tarde, se le asigna otro paquete previamente
  * configurado — una decisión humana y auditada, no un cálculo.
  *
@@ -104,7 +104,7 @@ export function chargeAmount(version: PriceVersion): Money {
 /**
  * ¿Puede este actor ver u ofrecer el paquete?
  *
- * PKG-002 y PKG-003: los paquetes `PRIVATE` no aparecen en el portal público y
+ * PKG-009 y PKG-010: los paquetes `PRIVATE` no aparecen en el portal público y
  * solo los asigna quien tenga `catalog.private.assign`.
  */
 export function isPackageOfferable(
@@ -118,7 +118,7 @@ export function isPackageOfferable(
 /**
  * Cargo congelado.
  *
- * REG-002: al inscribirse se congelan paquete, versión de precio, moneda e
+ * PAY-001: al inscribirse se congelan paquete, versión de precio, moneda e
  * importe. El histórico es inmutable, así que un cambio posterior de tarifa no
  * altera lo ya cobrado (PKG-001).
  */

@@ -4,7 +4,7 @@ import { PUBLIC_RECEIPT_FIELDS, toPublicReceiptVerification } from './receipt.js
 
 /**
  * Registro interno con todo lo que `receipts` y su snapshot pueden contener
- * (data-api-rbac.md §2 y PAY-012). Los valores centinela son distinguibles para
+ * (data-api-rbac.md §2 y PAY-030). Los valores centinela son distinguibles para
  * poder afirmar que ninguno sobrevive a la proyección.
  */
 const internalReceipt = {
@@ -26,7 +26,7 @@ const internalReceipt = {
   verificationTokenHash: 'PII-hash-token',
 };
 
-describe('proyección pública de comprobante (PAY-013, data-api-rbac §7)', () => {
+describe('proyección pública de comprobante (PAY-031, data-api-rbac §7)', () => {
   it('expone exactamente los campos autorizados, ni uno más', () => {
     const publicView = toPublicReceiptVerification(internalReceipt);
     expect(Object.keys(publicView).sort()).toEqual([...PUBLIC_RECEIPT_FIELDS].sort());
@@ -56,7 +56,7 @@ describe('proyección pública de comprobante (PAY-013, data-api-rbac §7)', () 
     });
   });
 
-  it('declara VOID cuando el comprobante fue anulado (PAY-015)', () => {
+  it('declara VOID cuando el comprobante fue anulado (PAY-033)', () => {
     const voided = { ...internalReceipt, voidedAt: new Date('2026-11-04T10:00:00.000Z') };
     expect(toPublicReceiptVerification(voided).status).toBe('VOID');
   });

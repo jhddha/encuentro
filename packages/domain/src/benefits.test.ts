@@ -21,7 +21,7 @@ const service: MealService = {
   deliveredCount: 0,
 };
 
-describe('ventana horaria de alimentación (FOOD-001, FOOD-002)', () => {
+describe('ventana horaria de alimentación (FOD-001, FOD-006)', () => {
   it('acepta dentro de la ventana', () => {
     expect(isWithinServiceWindow(service, new Date('2026-11-03T17:00:00Z'))).toBe(true);
   });
@@ -42,7 +42,7 @@ describe('ventana horaria de alimentación (FOOD-001, FOOD-002)', () => {
   });
 });
 
-describe('disponibilidad del servicio (FOOD-001)', () => {
+describe('disponibilidad del servicio (FOD-001)', () => {
   it('hay cupos mientras lo entregado sea menor que lo disponible', () => {
     expect(hasServiceAvailability({ ...service, deliveredCount: 499 })).toBe(true);
     expect(hasServiceAvailability({ ...service, deliveredCount: 500 })).toBe(false);
@@ -55,7 +55,7 @@ describe('disponibilidad del servicio (FOOD-001)', () => {
   });
 });
 
-describe('decisión de entrega de comida (FOOD-002, FOOD-004)', () => {
+describe('decisión de entrega de comida (FOD-006, FOD-003)', () => {
   const base = {
     service,
     moment: new Date('2026-11-03T17:00:00Z'),
@@ -68,7 +68,7 @@ describe('decisión de entrega de comida (FOOD-002, FOOD-004)', () => {
   });
 
   it('rechaza una segunda entrega del mismo servicio', () => {
-    // FOOD-004: una persona recibe una vez cada servicio.
+    // FOD-003: una persona recibe una vez cada servicio.
     expect(decideMealDelivery({ ...base, alreadyDelivered: true })).toEqual({
       allowed: false,
       reason: 'ALREADY_DELIVERED',
@@ -101,7 +101,7 @@ describe('decisión de entrega de comida (FOOD-002, FOOD-004)', () => {
   });
 });
 
-describe('materiales y llegada tardía (MAT-001, MAT-002)', () => {
+describe('materiales y llegada tardía (MAT-005, MAT-004)', () => {
   it('entrega el material incluido en el paquete', () => {
     expect(
       decideMaterialDelivery({
@@ -113,7 +113,7 @@ describe('materiales y llegada tardía (MAT-001, MAT-002)', () => {
   });
 
   it('la función no admite fecha de llegada', () => {
-    // MAT-002: la llegada tardía no elimina el material incluido. Aceptar la
+    // MAT-004: la llegada tardía no elimina el material incluido. Aceptar la
     // fecha invitaría a usarla para excluir a quien llega el último día.
     expect(decideMaterialDelivery).toHaveLength(1);
   });

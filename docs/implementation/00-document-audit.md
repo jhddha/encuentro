@@ -56,7 +56,7 @@ payment: PENDING, SUCCEEDED, CANCELLED, PARTIALLY_REFUNDED, REFUNDED
 
 No confundir con `paymentComputed` (`UNPAID`/`PARTIAL`/`PAID`/`OVERPAID`/`REFUNDED`), que es el estado **derivado** del saldo. La máquina faltante es la del registro `payments.status` descrito en `data-api-rbac.md` §2.
 
-**Impacto:** bloquea P07 (PAY-001..015, CASH-001..002). Sin el contrato, la implementación tendría que inferir los estados del pago, lo que viola la regla `01-no-guessing`.
+**Impacto:** bloquea P07 (PAY-022..015, PAY-011..002). Sin el contrato, la implementación tendría que inferir los estados del pago, lo que viola la regla `01-no-guessing`.
 
 ### H-02 — `phase-requirement-map.json` cubre 6 de 15 fases — ALTA
 
@@ -143,7 +143,7 @@ DEC-005..DEC-017 siguen abiertas. Impacto por fase, según `execution-plan.md`:
 
 | Decisión | Bloquea |
 |---|---|
-| DEC-005 | Expiración de `HELD` (HOS-004) → P06 |
+| DEC-005 | Expiración de `HELD` (HOS-003) → P06 |
 | DEC-006 | Menores y consentimiento → P05 |
 | DEC-007 / DEC-008 | Reembolsos y sobrepagos → P07, P12 |
 | DEC-009 | Tipo de cambio → P07, P12 |

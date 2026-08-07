@@ -9,7 +9,7 @@ export default function Page() {
     <PendingScreen
       title="Comprobantes"
       phase="P07"
-      scope="Emisión, secuencia por gestión y anulación (PAY-009..015)."
+      scope="Emisión, secuencia por gestión y anulación (PAY-028..015)."
     />
   );
 }

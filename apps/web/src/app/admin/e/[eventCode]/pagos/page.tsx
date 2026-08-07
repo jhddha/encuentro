@@ -9,7 +9,7 @@ export default function Page() {
     <PendingScreen
       title="Pagos"
       phase="P07"
-      scope="Bandeja de evidencias y revisión humana (PAY-005, PAY-006)."
+      scope="Bandeja de evidencias y revisión humana (PAY-025, PAY-026)."
     />
   );
 }

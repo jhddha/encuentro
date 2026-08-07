@@ -51,7 +51,7 @@ La primera corrida falló en 50 de 165 pruebas: solo la pantalla de configuraci�
 ### Decisiones de accesibilidad tomadas
 
 - **`StatusBadge` nunca depende solo del color** (`design-system.md` §3): cada tono lleva además un símbolo propio, así que el estado se lee en escala de grises, con daltonismo o con colores forzados por el usuario.
-- **`PaymentModeCards` es un grupo de radio**, no dos botones. REG-001 exige elegir exactamente una modalidad; con `fieldset`, `legend` y `input[type=radio]` esa exclusividad también es real para teclado y lectores de pantalla.
+- **`PaymentModeCards` es un grupo de radio**, no dos botones. REG-019 exige elegir exactamente una modalidad; con `fieldset`, `legend` y `input[type=radio]` esa exclusividad también es real para teclado y lectores de pantalla.
 - **`ScrollableTable` es focalizable**: una región con scroll que no se puede alcanzar por teclado es inaccesible para quien no usa ratón.
 
 ## 4. Verificación pública de comprobante
@@ -70,7 +70,7 @@ El componente `ReceiptVerificationResult` recibe únicamente el tipo `PublicRece
 
 Los cinco textos canónicos de `design-system.md` §8 están en `packages/ui/src/microcopy.ts`, y una prueba comprueba que cada cadena **siga apareciendo literalmente en el documento fuente**. Si alguien reescribe el documento, la prueba falla; si alguien reescribe el código, también.
 
-Hay además una prueba que prohíbe la expresión «pago online» en todo el microcopy. `design-system.md` §6 la veta explícitamente porque sugiere checkout automático, que DEC-002 y PAY-001 excluyen de v1.
+Hay además una prueba que prohíbe la expresión «pago online» en todo el microcopy. `design-system.md` §6 la veta explícitamente porque sugiere checkout automático, que DEC-002 y PAY-022 excluyen de v1.
 
 ## 6. Qué NO se implementó, y por qué
 
@@ -79,7 +79,7 @@ Hay además una prueba que prohíbe la expresión «pago online» en todo el mic
 | Autenticación | DEC-016 sigue BLOCKING. El shell de administración es hoy público; el punto donde exigir sesión y resolver permisos ya está identificado en `apps/web/src/app/admin/layout.tsx`. |
 | Datos reales en cualquier pantalla | No hay base de datos hasta P03. Ninguna pantalla finge contenido. |
 | Componentes ligados a datos | `PriceVersionEditor`, `PaymentProofUploader`, `ProofReviewPanel`, `HotelAvailabilityPicker`, `LodgingPolicyForm`, `MealServiceEditor` y `AuditTrail` (design-system.md §7) se implementan en la fase que los necesita. |
-| Importes en el comparador de modalidad | Salen de `price_versions` (P05). PKG-004 exige montos explícitos, no un descuento calculado, así que no se inventa ninguno. |
+| Importes en el comparador de modalidad | Salen de `price_versions` (P05). PKG-012 exige montos explícitos, no un descuento calculado, así que no se inventa ninguno. |
 
 ## 7. Riesgos y pendientes
 

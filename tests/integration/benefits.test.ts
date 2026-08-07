@@ -74,7 +74,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('entrega única por servicio (FOOD-004)', () => {
+describe('entrega única por servicio (FOD-003)', () => {
   it('la segunda entrega del mismo servicio se rechaza', async () => {
     const ctx = await seedContext();
 
@@ -181,7 +181,7 @@ describe('idempotencia offline (ADR-008)', () => {
   });
 });
 
-describe('override autorizado (FOOD-004)', () => {
+describe('override autorizado (FOD-003)', () => {
   it('exige responsable y motivo', async () => {
     const ctx = await seedContext();
 
@@ -216,7 +216,7 @@ describe('override autorizado (FOOD-004)', () => {
   });
 });
 
-describe('ventana horaria en base (FOOD-001)', () => {
+describe('ventana horaria en base (FOD-001)', () => {
   it('rechaza un servicio que termina antes de empezar', async () => {
     const ctx = await seedContext();
 
@@ -316,7 +316,7 @@ describe('stock reconstruible (MAT-003)', () => {
   });
 });
 
-describe('materiales: una entrega por artículo y persona (MAT-001)', () => {
+describe('materiales: una entrega por artículo y persona (MAT-005)', () => {
   it('rechaza la segunda entrega del mismo artículo', async () => {
     const ctx = await seedContext();
     const item = await prisma.inventoryItem.create({

@@ -1,16 +1,16 @@
 /**
  * Verificación pública de Comprobante de pago.
  *
- * DEC-003 y PAY-013: el QR abre una URL sin autenticación que confirma validez,
+ * DEC-003 y PAY-031: el QR abre una URL sin autenticación que confirma validez,
  * número, evento, fecha, monto, moneda y estado. `data-api-rbac.md` §7 enumera
  * lo que la respuesta pública **no** puede incluir: nombre, código de
  * inscripción, archivo bancario, cuenta receptora, referencia y usuario
  * aprobador.
  *
- * El detalle completo exige sesión y `receipt.read_sensitive` (PAY-014).
+ * El detalle completo exige sesión y `receipt.read_sensitive` (PAY-032).
  */
 
-/** Estado visible públicamente. Un comprobante anulado lo declara (PAY-015). */
+/** Estado visible públicamente. Un comprobante anulado lo declara (PAY-033). */
 export type PublicReceiptStatus = 'VALID' | 'VOID';
 
 /**

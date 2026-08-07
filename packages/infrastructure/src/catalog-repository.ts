@@ -56,7 +56,7 @@ export interface CatalogRepository {
    *
    * `includePrivate` es explícito y por defecto `false`: quien quiera ver los
    * privados tiene que pedirlo, de modo que olvidar el parámetro nunca los
-   * filtre al portal público (PKG-002).
+   * filtre al portal público (PKG-009).
    */
   listPackages(eventId: string, includePrivate?: boolean): Promise<readonly PackageRecord[]>;
   findPriceVersion(id: string): Promise<PriceVersion | null>;

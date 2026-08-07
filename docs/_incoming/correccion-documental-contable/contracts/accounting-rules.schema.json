@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://encuentro.local/contracts/accounting-rules.schema.json",
+  "title": "ENCUENTRO Accounting Rules",
+  "type": "object",
+  "required": [
+    "document_version",
+    "status",
+    "rules"
+  ],
+  "properties": {
+    "document_version": {
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "PROPOSED_NOT_APPROVED",
+        "APPROVED",
+        "RETIRED"
+      ]
+    },
+    "scope": {
+      "type": "string"
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/rule"
+      }
+    }
+  },
+  "$defs": {
+    "rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rule_code",
+        "version",
+        "source_type",
+        "source_status",
+        "entry_kind",
+        "recognition_event",
+        "debit_account_role",
+        "credit_account_role",
+        "amount_source",
+        "currency_policy",
+        "event_scope",
+        "commission_policy",
+        "responsible_policy",
+        "non_cash",
+        "reversal_rule_code",
+        "idempotency_key_expression",
+        "blocking_decisions",
+        "effective_from",
+        "effective_to",
+        "status"
+      ],
+      "properties": {
+        "rule_code": {
+          "type": "string",
+          "pattern": "^[A-Z0-9_]+$"
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_type": {
+          "type": "string"
+        },
+        "source_status": {
+          "type": "string"
+        },
+        "entry_kind": {
+          "type": "string"
+        },
+        "recognition_event": {
+          "type": "string"
+        },
+        "debit_account_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "credit_account_role": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "amount_source": {
+          "type": "string"
+        },
+        "currency_policy": {
+          "type": "string"
+        },
+        "event_scope": {
+          "type": "string"
+        },
+        "commission_policy": {
+          "type": "string"
+        },
+        "responsible_policy": {
+          "type": "string"
+        },
+        "non_cash": {
+          "type": "boolean"
+        },
+        "reversal_rule_code": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "idempotency_key_expression": {
+          "type": "string"
+        },
+        "blocking_decisions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "effective_from": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "effective_to": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        },
+        "status": {
+          "enum": [
+            "PROPOSED_NOT_APPROVED",
+            "APPROVED",
+            "DISABLED"
+          ]
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -76,7 +76,7 @@ afterAll(async () => {
   await prisma.$disconnect();
 });
 
-describe('política de noches configurable (HOS-001)', () => {
+describe('política de noches configurable (HOS-011)', () => {
   it('acepta la referencia de 7 noches', async () => {
     const event = await seedEvent(prisma, { code: 'ENC2026', year: 2026 });
     const policy = await prisma.eventLodgingPolicy.create({
@@ -119,7 +119,7 @@ describe('política de noches configurable (HOS-001)', () => {
   });
 });
 
-describe('último cupo concurrente (HOS-008)', () => {
+describe('último cupo concurrente (HOS-002)', () => {
   it('dos personas no ocupan la misma plaza', async () => {
     const event = await seedEvent(prisma, { code: 'ENC2026', year: 2026 });
     const { hotel, room } = await seedLodging(event.id, 1);
@@ -256,7 +256,7 @@ describe('último cupo concurrente (HOS-008)', () => {
   });
 });
 
-describe('llegada tardía (HOS-002, HOS-003, DEC-004)', () => {
+describe('llegada tardía (HOS-013, HOS-012, DEC-004)', () => {
   it('una reserva CONFIRMED sigue intacta con la persona ausente el primer día', async () => {
     const event = await seedEvent(prisma, { code: 'ENC2026', year: 2026, status: 'IN_PROGRESS' });
     const { hotel, room } = await seedLodging(event.id, 5);
@@ -271,7 +271,7 @@ describe('llegada tardía (HOS-002, HOS-003, DEC-004)', () => {
       },
     });
 
-    // Llega el día 5 de 7. HOS-002: no reescribe la reserva.
+    // Llega el día 5 de 7. HOS-013: no reescribe la reserva.
     await prisma.registration.update({
       where: { id: a.id },
       data: {
@@ -293,7 +293,7 @@ describe('llegada tardía (HOS-002, HOS-003, DEC-004)', () => {
     const a = await seedRegistration(event.id, 'Ana');
 
     // Si una CONFIRMED conservara `held_until`, un worker mal escrito podría
-    // expirarla — justo lo que HOS-003 prohíbe. El CHECK lo impide.
+    // expirarla — justo lo que HOS-012 prohíbe. El CHECK lo impide.
     await expect(
       prisma.reservation.create({
         data: {

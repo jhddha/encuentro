@@ -3,11 +3,43 @@
   "source": "docs/01-product/requirements.md",
   "requirements": [
     {
-      "id": "CASH-001",
+      "id": "ACC-001",
       "status": "CANONICAL"
     },
     {
-      "id": "CASH-002",
+      "id": "ACC-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "ACC-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "ACC-013",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "ACC-015",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "ACC-016",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "AUD-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "AUD-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "AUD-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "AUD-004",
       "status": "CANONICAL"
     },
     {
@@ -35,14 +67,6 @@
       "status": "CANONICAL"
     },
     {
-      "id": "EVT-007",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "EVT-008",
-      "status": "CANONICAL"
-    },
-    {
       "id": "EVT-009",
       "status": "CANONICAL"
     },
@@ -51,19 +75,43 @@
       "status": "CANONICAL"
     },
     {
-      "id": "FOOD-001",
+      "id": "EVT-012",
       "status": "CANONICAL"
     },
     {
-      "id": "FOOD-002",
+      "id": "EVT-014",
       "status": "CANONICAL"
     },
     {
-      "id": "FOOD-003",
+      "id": "EVT-015",
       "status": "CANONICAL"
     },
     {
-      "id": "FOOD-004",
+      "id": "EVT-016",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "EVT-017",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "FOD-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "FOD-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "FOD-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "FOD-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "FOD-006",
       "status": "CANONICAL"
     },
     {
@@ -119,10 +167,6 @@
       "status": "CANONICAL"
     },
     {
-      "id": "HOS-004",
-      "status": "CANONICAL"
-    },
-    {
       "id": "HOS-005",
       "status": "CANONICAL"
     },
@@ -131,15 +175,75 @@
       "status": "CANONICAL"
     },
     {
-      "id": "HOS-007",
+      "id": "HOS-011",
       "status": "CANONICAL"
     },
     {
-      "id": "HOS-008",
+      "id": "HOS-012",
       "status": "CANONICAL"
     },
     {
-      "id": "MAT-001",
+      "id": "HOS-013",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "HOS-014",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "HOS-015",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "HOS-016",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "HOS-017",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-007",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-008",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-009",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-010",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-011",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "IAM-012",
       "status": "CANONICAL"
     },
     {
@@ -151,6 +255,98 @@
       "status": "CANONICAL"
     },
     {
+      "id": "MAT-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "MAT-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-006",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-007",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-011",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-012",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-013",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-014",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NFR-015",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-008",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-009",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "NTF-015",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "OBS-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "OBS-002",
+      "status": "CANONICAL"
+    },
+    {
       "id": "PAY-001",
       "status": "CANONICAL"
     },
@@ -159,35 +355,7 @@
       "status": "CANONICAL"
     },
     {
-      "id": "PAY-003",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-004",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-005",
-      "status": "CANONICAL"
-    },
-    {
       "id": "PAY-006",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-007",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-008",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-009",
-      "status": "CANONICAL"
-    },
-    {
-      "id": "PAY-010",
       "status": "CANONICAL"
     },
     {
@@ -199,15 +367,71 @@
       "status": "CANONICAL"
     },
     {
-      "id": "PAY-013",
-      "status": "CANONICAL"
-    },
-    {
       "id": "PAY-014",
       "status": "CANONICAL"
     },
     {
-      "id": "PAY-015",
+      "id": "PAY-018",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-019",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-020",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-021",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-022",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-023",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-024",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-025",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-026",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-027",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-028",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-029",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-030",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-031",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-032",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "PAY-033",
       "status": "CANONICAL"
     },
     {
@@ -215,51 +439,171 @@
       "status": "CANONICAL"
     },
     {
-      "id": "PKG-002",
-      "status": "CANONICAL"
-    },
-    {
       "id": "PKG-003",
       "status": "CANONICAL"
     },
     {
-      "id": "PKG-004",
+      "id": "PKG-008",
       "status": "CANONICAL"
     },
     {
-      "id": "PKG-005",
+      "id": "PKG-009",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-001",
+      "id": "PKG-010",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-002",
+      "id": "PKG-011",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-003",
+      "id": "PKG-012",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-004",
+      "id": "PKG-013",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-005",
+      "id": "QR-001",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-006",
+      "id": "QR-002",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-007",
+      "id": "QR-003",
       "status": "CANONICAL"
     },
     {
-      "id": "REG-008",
+      "id": "QR-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-006",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-007",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-008",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-009",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-010",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-011",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-012",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "QR-013",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-009",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-010",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-011",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-017",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-018",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-019",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-020",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-021",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-022",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "REG-023",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "SRV-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "SRV-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "SRV-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "SRV-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-001",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-002",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-003",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-004",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-005",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-006",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-007",
+      "status": "CANONICAL"
+    },
+    {
+      "id": "TRN-008",
       "status": "CANONICAL"
     }
   ]

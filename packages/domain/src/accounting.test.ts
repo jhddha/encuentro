@@ -113,7 +113,7 @@ describe('mecánica de saldos por naturaleza de cuenta', () => {
   });
 });
 
-describe('conciliación de caja (CASH-002)', () => {
+describe('conciliación de caja (PAY-012)', () => {
   it('cuadra cuando lo contado iguala lo registrado', () => {
     expect(isReconciled(USD('500.00'), USD('500.00'))).toBe(true);
   });

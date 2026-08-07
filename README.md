@@ -52,4 +52,4 @@ La estructura v2.7 fue consolidada a partir de la documentación canónica v2.6 
 
 ## Control de migración
 
-Consulte `docs/04-delivery/source-migration-matrix.md`. La v2.6 declaraba 185 requisitos; esta reconstrucción contiene 65 requisitos directamente consolidados. Las fuentes v2.6 no deben archivarse hasta completar la comparación requisito por requisito.
+Consulte `docs/04-delivery/requirement-migration-v2.6-to-current.md`. La línea base es de 198 requisitos: 185 de v2.6 más 13 del parche canónico DEC-004. Los 198 están clasificados y el contrato usa ya la numeración canónica de v2.6. Las fuentes v2.6 no deben archivarse.
