@@ -106,8 +106,16 @@ services:
       retries: 5
 
   # Respaldo cifrado — DEC-012. RPO 1 h.
+  #
+  # Es el único servicio además de Caddy con salida a Internet, y la necesita
+  # para cumplir DEC-012: la copia debe salir del VPS. Está en `egress`, no en
+  # `edge`: puede iniciar conexiones hacia fuera, pero no publica ningún puerto
+  # ni es alcanzable desde Internet. La exposición entrante y la salida son
+  # cosas distintas, y `internal: true` bloqueaba ambas.
   backup:
-    image: postgres:17
+    build:
+      context: .
+      dockerfile: Dockerfile.backup
     restart: unless-stopped
     environment:
       PGHOST: postgres
@@ -116,18 +124,33 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?falta POSTGRES_PASSWORD}
       BACKUP_PASSPHRASE: ${BACKUP_PASSPHRASE:?falta BACKUP_PASSPHRASE}
       BACKUP_INTERVAL_SECONDS: '3600'
+
+      # DEC-012. Sin valor por defecto a propósito: hay que decidirlo.
+      BACKUP_REMOTE_ENABLED: ${BACKUP_REMOTE_ENABLED:?falta BACKUP_REMOTE_ENABLED (true|false)}
+
+      # Destino externo S3-compatible. Elegido: Backblaze B2, en un proveedor
+      # distinto al del VPS para que perder la cuenta de OVH no se lleve
+      # también los respaldos.
+      BACKUP_S3_ENDPOINT: ${BACKUP_S3_ENDPOINT:-}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET:-}
+      BACKUP_S3_PREFIX: ${BACKUP_S3_PREFIX:-encuentro}
+      BACKUP_S3_REGION: ${BACKUP_S3_REGION:-us-west-004}
+      AWS_ACCESS_KEY_ID: ${BACKUP_S3_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${BACKUP_S3_APPLICATION_KEY:-}
     volumes:
-      - ./backup.sh:/usr/local/bin/backup.sh:ro
       - backups:/backups
-    networks: [internal]
-    entrypoint: ['/bin/bash', '/usr/local/bin/backup.sh']
+    networks: [internal, egress]
     depends_on:
       postgres:
         condition: service_healthy
 
 networks:
-  # `edge` es la única red con salida a Internet, y solo Caddy está en ella.
+  # `edge` es la única red que **publica puertos**, y solo Caddy está en ella.
   edge:
+  # `egress` da salida a Internet sin publicar nada. La usa solo el respaldo,
+  # que debe alcanzar el almacenamiento externo (DEC-012). Postgres y Redis
+  # siguen fuera de ella.
+  egress:
   internal:
     internal: true
 

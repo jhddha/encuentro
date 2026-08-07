@@ -11,20 +11,95 @@
 #
 # Uso:
 #   ./restore-drill.sh /backups/encuentro-20261103T120000Z.dump.gpg
+#   ./restore-drill.sh --remote                 # el más reciente del destino externo
+#   ./restore-drill.sh --remote <nombre.dump.gpg>
+#
+# **La forma que cuenta para DEC-012 es `--remote`.** Ensayar con la copia que
+# está al lado de la base demuestra que el volcado es legible, no que se pueda
+# recuperar el sistema cuando el VPS ya no exista. Un ensayo local es una
+# comprobación de integridad; solo el remoto es un ensayo de recuperación.
 
 set -euo pipefail
 
-BACKUP_FILE="${1:?uso: restore-drill.sh <fichero.dump.gpg>}"
 : "${BACKUP_PASSPHRASE:?falta BACKUP_PASSPHRASE}"
 : "${PGUSER:?falta PGUSER}"
 
-DRILL_DB="encuentro_drill_$(date -u +%Y%m%d%H%M%S)"
-
 log() { printf '%s [drill] %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
+
+DOWNLOAD_DIR=""
+
+cleanup_download() {
+  [ -n "$DOWNLOAD_DIR" ] && rm -rf "$DOWNLOAD_DIR"
+  return 0
+}
+
+# ---------------------------------------------------------------------------
+# Origen del respaldo
+# ---------------------------------------------------------------------------
+
+s3() { aws --endpoint-url "$BACKUP_S3_ENDPOINT" "$@"; }
+
+fetch_remote() {
+  : "${BACKUP_S3_ENDPOINT:?falta BACKUP_S3_ENDPOINT}"
+  : "${BACKUP_S3_BUCKET:?falta BACKUP_S3_BUCKET}"
+  : "${AWS_ACCESS_KEY_ID:?falta AWS_ACCESS_KEY_ID}"
+  : "${AWS_SECRET_ACCESS_KEY:?falta AWS_SECRET_ACCESS_KEY}"
+  local prefix="${BACKUP_S3_PREFIX:-encuentro}"
+  export AWS_DEFAULT_REGION="${BACKUP_S3_REGION:-us-west-004}"
+
+  local name="${1:-}"
+  if [ -z "$name" ]; then
+    # El más reciente por nombre: la marca de tiempo UTC del fichero ordena
+    # lexicográficamente igual que cronológicamente.
+    name="$(s3 s3api list-objects-v2 \
+      --bucket "$BACKUP_S3_BUCKET" --prefix "$prefix/encuentro-" \
+      --query 'sort_by(Contents,&Key)[-1].Key' --output text 2>/dev/null | xargs -r basename)"
+    [ -n "$name" ] && [ "$name" != "None" ] || {
+      log "ERROR: el destino externo no contiene ningún respaldo"
+      return 1
+    }
+  fi
+
+  DOWNLOAD_DIR="$(mktemp -d)"
+  trap cleanup_download EXIT
+
+  log "descargando $name desde s3://$BACKUP_S3_BUCKET/$prefix"
+  s3 s3 cp "s3://$BACKUP_S3_BUCKET/$prefix/$name" "$DOWNLOAD_DIR/$name" --only-show-errors
+  s3 s3 cp "s3://$BACKUP_S3_BUCKET/$prefix/$name.sha256" "$DOWNLOAD_DIR/$name.sha256" --only-show-errors
+
+  # Comprobación fuerte de integridad: aquí sí se compara el contenido, no el
+  # tamaño. Un respaldo que llegó corrupto es indistinguible de uno bueno hasta
+  # que alguien intenta usarlo, y ese momento no debe ser una emergencia.
+  local esperado obtenido
+  esperado="$(cat "$DOWNLOAD_DIR/$name.sha256")"
+  obtenido="$(sha256sum "$DOWNLOAD_DIR/$name" | awk '{print $1}')"
+
+  if [ "$esperado" != "$obtenido" ]; then
+    log "ERROR: la suma no coincide. El respaldo remoto está corrupto"
+    log "  esperada: $esperado"
+    log "  obtenida: $obtenido"
+    return 1
+  fi
+
+  log "integridad verificada contra la suma publicada junto al respaldo"
+  BACKUP_FILE="$DOWNLOAD_DIR/$name"
+}
+
+if [ "${1:-}" = "--remote" ]; then
+  ORIGEN="destino externo"
+  fetch_remote "${2:-}"
+else
+  ORIGEN="copia local"
+  BACKUP_FILE="${1:?uso: restore-drill.sh <fichero.dump.gpg> | --remote [nombre]}"
+  log "AVISO: ensayo sobre copia local. DEC-012 exige ensayar con --remote"
+fi
+
+DRILL_DB="encuentro_drill_$(date -u +%Y%m%d%H%M%S)"
 
 cleanup() {
   log "eliminando la base de ensayo $DRILL_DB"
   dropdb --if-exists "$DRILL_DB" || true
+  cleanup_download
 }
 trap cleanup EXIT
 
@@ -94,4 +169,4 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
-log "ensayo superado. El respaldo es restaurable y conserva sus garantías."
+log "ensayo superado sobre $ORIGEN. El respaldo es restaurable y conserva sus garantías."

@@ -56,9 +56,19 @@ docker compose -f deploy/docker-compose.prod.yml exec backup /usr/local/bin/back
 Primero, **ensaye sobre una base desechable**, nunca directamente sobre producción:
 
 ```bash
-docker compose -f deploy/docker-compose.prod.yml exec postgres \
-  /usr/local/bin/restore-drill.sh /backups/encuentro-<marca>.dump.gpg
+docker compose -f deploy/docker-compose.prod.yml exec backup /usr/local/bin/restore-drill.sh --remote
 ```
+
+`--remote` descarga el respaldo más reciente del destino externo y **verifica su suma antes de restaurar**. Es la forma que cuenta para DEC-012: ensayar con la copia que está en el mismo VPS demuestra que el volcado es legible, no que se pueda recuperar el sistema cuando el servidor ya no exista.
+
+Para ensayar una copia concreta en vez de la última, añada su nombre:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml exec backup \
+  /usr/local/bin/restore-drill.sh --remote encuentro-<marca>.dump.gpg
+```
+
+El ensayo contra la copia local sigue disponible pasando la ruta del fichero, y avisa de que no satisface DEC-012.
 
 Si el ensayo pasa, restaure de verdad:
 

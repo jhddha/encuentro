@@ -13,6 +13,8 @@ out/
 .env
 .env.*
 !.env.example
+# Plantilla de producción: solo nombres de variable y comentarios, ningún valor.
+!deploy/.env.prod.example
 
 # test artifacts
 coverage/

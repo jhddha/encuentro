@@ -1,0 +1,21 @@
+# Imagen del servicio de respaldo — DEC-012.
+#
+# `postgres:17` trae `pg_dump` y `gpg`, pero no un cliente S3, así que el
+# contenedor no podía cumplir la parte de DEC-012 que exige sacar la copia del
+# VPS. Se parte de la misma versión mayor de Postgres a propósito: un `pg_dump`
+# de una versión distinta a la del servidor produce volcados que la restauración
+# puede rechazar.
+FROM postgres:17
+
+# `awscli` habla con cualquier almacenamiento S3-compatible mediante
+# `--endpoint-url`. Backblaze B2 es el destino elegido, pero cambiar a OVH,
+# Wasabi o MinIO es cambiar una variable de entorno, no esta imagen.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends awscli ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY backup.sh /usr/local/bin/backup.sh
+COPY restore-drill.sh /usr/local/bin/restore-drill.sh
+RUN chmod +x /usr/local/bin/backup.sh /usr/local/bin/restore-drill.sh
+
+ENTRYPOINT ["/bin/bash", "/usr/local/bin/backup.sh"]
