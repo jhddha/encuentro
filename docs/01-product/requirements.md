@@ -77,6 +77,27 @@ Excluye checkout automático, facturación fiscal, presupuestos, centros de cost
 | EVT-014 | `ARCHIVED` es solo lectura. | Toda mutación falla con `EVENT_ARCHIVED`. |
 | EVT-015 | El selector de gestión es obligatorio en los paneles privados. | Cambiar de gestión limpia filtros y caché dependiente. |
 | EVT-017 | Hospedaje y Alimentos derivan las fechas de la gestión pero conservan sus propias configuraciones versionadas de noches y servicios. | Cambiar las fechas de la gestión no reescribe una configuración ya versionada. |
+| EVT-007 | Una gestión futura puede existir en `DRAFT` o `READY` mientras otra está en curso. | No aparece en la landing ni mezcla datos con la gestión activa. |
+| EVT-008 | La clonación de una gestión copia únicamente configuración versionada. | Cero peregrinos, pagos, comprobantes, credenciales, cajas, entregas o asientos heredados; tampoco asignaciones de rol. |
+
+### 5.1 Qué copia la clonación y qué no
+
+La regla de `EVT-008` está enunciada en negativo a propósito. El riesgo de clonar una gestión no es olvidar un hotel —eso se advierte de inmediato— sino arrastrar sin darse cuenta un peregrino, un pago o un asiento del año anterior.
+
+| Se copia: configuración | No se copia: operación |
+|---|---|
+| Paquetes y sus versiones de precio | Inscripciones y reservas |
+| Política de hospedaje | Evidencias, pagos y comprobantes |
+| Hoteles y habitaciones | Sesiones de caja |
+| Canales de pago | Credenciales |
+| Servicios de alimentos | Entregas de alimentos y materiales |
+| Artículos de inventario | Movimientos de inventario |
+| Vehículos y estaciones | Traslados |
+| Plan de cuentas | Asientos, notificaciones y auditoría |
+
+**Las asignaciones de rol no se copian.** Los ámbitos de gestión, comisión y caja llevan `event_id`, así que un permiso concedido para una gestión no otorga nada en la siguiente: el acceso caduca solo al cambiar de edición. Copiarlas lo reactivaría sin que nadie lo revisara, y quien sirvió un año y no vuelve al siguiente conservaría el acceso. Además, `commissionId` y `cashAccountId` son códigos sin tabla propia, de modo que una asignación copiada apuntaría a lo que ese código signifique en la gestión nueva, que puede ser otra caja y otra comisión.
+
+Copiar asignaciones desde la gestión anterior es una acción aparte, explícita y auditada, no un efecto secundario de clonar. Las asignaciones de ámbito global no se ven afectadas, porque no llevan `event_id`.
 
 ## 6. Catálogo, inscripción y precios
 
@@ -254,8 +275,18 @@ El hueco en la numeración es deliberado: el requisito de v2.6 sobre segundo fac
 | ACC-013 | No existen presupuestos ni centros de costo visibles en v1. | Ni la interfaz ni el esquema los exigen. |
 | ACC-015 | El cierre financiero bloquea nuevos asientos ordinarios. | Los ajustes posteriores usan periodo de ajuste. |
 | ACC-016 | El rol auditor tiene lectura sin capacidad de aprobar ni modificar. | Prueba negativa. |
+| ACC-004 | Los ingresos de inscripción nacen de pagos aprobados y de sus asignaciones, conforme a **DEC-018**. | El asiento se deriva del pago; no hay doble digitación. |
+| ACC-005 | Una donación monetaria afecta a la cuenta financiera y genera asiento. | Cuadre contra la cuenta financiera. |
+| ACC-006 | Una donación en especie o de servicio registra valoración y método, sin afectar caja. | Reporte económico separado del monetario. |
+| ACC-007 | Todo egreso exige beneficiario, categoría, comisión, responsable y evidencia cuando aplique. | Campos y permisos validados. |
+| ACC-008 | Un desembolso genera saldo por rendir. | No se marca gasto hasta la aprobación correspondiente. |
+| ACC-009 | La rendición cuadra: desembolso igual a gastos aprobados más devolución más diferencia resuelta. | No se liquida si no cuadra. |
+| ACC-010 | El reembolso de recursos propios exige aprobación y pago posterior. | Gasto y obligación quedan separados. |
+| ACC-011 | Los activos registran origen, costo o valor, custodio, ubicación, estado y movimientos. | Una baja no elimina el historial. |
+| ACC-012 | La conciliación compara la cuenta del sistema con el extracto o el conteo. | Toda diferencia tiene causa y resolución. |
+| ACC-014 | La clasificación usa gestión, comisión, responsable, categoría y cuenta. | Los reportes filtran por esas dimensiones. |
 
-Las reglas de reconocimiento —qué asiento genera cada operación— dependen del plan de cuentas y de una decisión todavía abierta. Hasta que se apruebe, el módulo registra asientos cuadrados pero no contabiliza automáticamente.
+Las reglas de reconocimiento —qué asiento genera cada operación— están fijadas por **DEC-018**: veintiún roles contables, tres resolvedores y una matriz de veintidós reglas. La decisión fija roles, no números de cuenta: la organización asigna a cada rol su cuenta del plan de la gestión, y **sin esa asignación el motor no puede resolver ningún asiento**.
 
 ## 17. No funcionales y observabilidad
 

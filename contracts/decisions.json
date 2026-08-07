@@ -213,6 +213,13 @@
         "Las exportaciones de P13 producen archivos descargables desde el sistema, con su propio control de acceso.",
         "Se evita una segunda fuente de verdad que se desincronizaría del sistema."
       ]
+    },
+    {
+      "id": "DEC-018",
+      "title": "Reconocimiento contable y matriz de asientos",
+      "status": "APPROVED",
+      "date": "2026-08-07",
+      "decision": "Base de efectivo modificada; 21 roles contables y 3 resolvedores; matriz de 22 reglas operacion->asiento; idempotencia por event_id + source_type + source_id + entry_kind, sin la version de la regla."
     }
   ]
 }

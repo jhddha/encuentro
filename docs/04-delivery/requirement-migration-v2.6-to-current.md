@@ -38,11 +38,11 @@ Las **cuatro** eliminaciones son las únicas con evidencia explícita: `PAY-003`
 
 | Decisión | Cantidad |
 |---|---:|
-| Entran en v1 | **82** |
+| Entran en v1 | **84** |
 | Alcance aplazado | 44 |
-| **Sin decisión de alcance todavía** | **2** |
+| **Sin decisión de alcance** | **0** |
 
-Los dos sin decidir son `EVT-007` («una gestión futura puede existir en `DRAFT` o `READY`») y `EVT-008` («la clonación copia únicamente configuración versionada»). Están clasificados, pero no se tomó decisión de alcance sobre ellos. **La clonación de gestiones es una funcionalidad completa que hoy no existe en ninguna parte.**
+`EVT-007` y `EVT-008` quedaron resueltos el 7 de agosto de 2026: ambos entran en v1. **No queda ningún requisito sin decisión de alcance.**
 
 ## Reglas de clasificación
 
@@ -86,8 +86,9 @@ Los dos sin decidir son `EVT-007` («una gestión futura puede existir en `DRAFT
 | EVT-004 | `CONSERVADO` | EVT-004 | Reescritura sin cambio de alcance |
 | EVT-005 | `MODIFICADO` | EVT-005 | v2.7 omitió «credencial». **Decisión: se restaura**, por ser un módulo completo del sistema (familia QR) |
 | EVT-006 | `MODIFICADO` | EVT-006 | v2.7 suprime «por defecto» y la vuelve absoluta. **Decisión: prevalece el texto vigente**, que es lo que el índice único parcial ya impone |
-| EVT-007 | `PENDIENTE_DE_MIGRACION` | — | «Una gestión futura puede existir en `DRAFT` o `READY`». El ID vigente designa otra cosa |
-| EVT-008 | `PENDIENTE_DE_MIGRACION` | — | «La clonación copia únicamente configuración versionada». **Funcionalidad completa ausente** |
+| EVT-007 | `PENDIENTE_DE_MIGRACION` | — | Una gestión futura puede existir en `DRAFT` o `READY`. **Entra en v1.** Ya se cumple por construcción: índice único por año, índice único parcial sobre `publicly_enabled` y `event_id` en los 20 modelos con ámbito de gestión. Falta el requisito y su prueba |
+| EVT-008 | `PENDIENTE_DE_MIGRACION` | — | La clonación copia únicamente configuración versionada. **Entra en v1.** Funcionalidad ausente; la partición configuración/operación queda fijada en `requirements.md` §5.1 |
+
 | EVT-009 | `CONSERVADO` | EVT-009 | Reescritura sin cambio de alcance |
 | EVT-010 | `CONSERVADO` | EVT-010 | v2.7 omite «del checklist»; misma regla |
 | EVT-011 | `PENDIENTE_DE_MIGRACION` | — | Excepción posterior al cierre con alcance, motivo, aprobador y vencimiento. **Aplazado**, por coherencia con `PAY-013` (reapertura de caja) |
@@ -97,6 +98,18 @@ Los dos sin decidir son `EVT-007` («una gestión futura puede existir en `DRAFT
 | EVT-015 | `PENDIENTE_DE_MIGRACION` | — | Selector de gestión obligatorio en paneles privados. **Entra en v1.** A medias: las rutas ya llevan `eventCode`; falta limpiar filtros y caché al cambiar |
 | EVT-016 | `REEMPLAZADO` | EVT-007 + EVT-008 | Los dos IDs vigentes son las dos mitades de este requisito del parche DEC-004; se fusionan aquí |
 | EVT-017 | `PENDIENTE_DE_MIGRACION` | — | Hospedaje y Alimentos derivan las fechas de la gestión conservando configuraciones versionadas propias. **Entra en v1**: es la contrapartida de `HOS-014` |
+
+### Decisión sobre las asignaciones de rol al clonar
+
+**La clonación no copia `RoleAssignment`.** Motivo del responsable del proyecto: los servidores cambian cada año y su permiso no debe sobrevivirles.
+
+Refuerzan la decisión dos hechos verificados en el código:
+
+1. `scopeCovers` exige que el `event_id` del ámbito coincida con el del recurso, así que un permiso de una gestión **ya no otorga nada en la siguiente**. El acceso caduca solo. Copiarlo lo reactivaría sin revisión.
+2. `commissionId` y `cashAccountId` son cadenas libres: **no existen modelos `Commission` ni `CashAccount`**. Una asignación copiada apuntaría a lo que ese código signifique en la gestión nueva, que puede ser otra caja física y otra comisión.
+
+Copiar asignaciones desde la gestión anterior queda como acción aparte, explícita y auditada. Las de ámbito global no se ven afectadas porque no llevan `event_id`.
+
 
 ---
 

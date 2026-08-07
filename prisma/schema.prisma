@@ -1040,9 +1040,13 @@ model Account_ {
   code String
   name String
 
-  /// INFERIDO: los cinco tipos del método contable estándar. El plan de cuentas
-  /// concreto de la organización no está documentado en ninguna fuente.
+  /// Los cinco tipos del método contable estándar.
   kind String
+
+  /// Rol contable de DEC-018. La decisión fija roles; la organización asigna a
+  /// cada rol una cuenta de su plan. Es nulo mientras nadie lo haya asignado, y
+  /// un rol corresponde como mucho a una cuenta por gestión.
+  role String?
 
   currency String  @db.Char(3)
   active   Boolean @default(true)
@@ -1068,6 +1072,15 @@ model JournalEntry {
   /// contabilidad desde los hechos de negocio (GOV-005).
   sourceEntity String? @map("source_entity")
   sourceId     String? @map("source_id")
+
+  /// Tipo de asiento. Junto a la gestión y al origen forma la llave de
+  /// idempotencia de ACC-002, impuesta por un índice único parcial.
+  entryKind String? @map("entry_kind")
+
+  /// Versión de la regla aplicada. Se guarda para trazabilidad y **no forma
+  /// parte de la llave de idempotencia**: incluirla permitiría contabilizar
+  /// dos veces la misma fuente al cambiar de versión de reglas.
+  ruleVersion Int? @map("rule_version")
 
   currency String @db.Char(3)
 

@@ -1,6 +1,6 @@
 # Registro de decisiones — Sistema web ENCUENTRO v2.7
 
-**No quedan decisiones `BLOCKING`.** Las diecisiete están `APPROVED`.
+**No quedan decisiones `BLOCKING`.** Las dieciocho están `APPROVED`.
 
 ## Aprobadas
 
@@ -23,6 +23,7 @@
 | [DEC-015](decisions/DEC-015.md) | Cierre del alcance QR bancario Bolivia | 2026-08-05 | P07 |
 | [DEC-016](decisions/DEC-016.md) | Mecanismo de autenticación: Better Auth | 2026-08-05 | P04 |
 | [DEC-017](decisions/DEC-017.md) | Google Sheets fuera de alcance en v1 | 2026-08-05 | P13 |
+| [DEC-018](decisions/DEC-018.md) | Reconocimiento contable y matriz de asientos | 2026-08-07 | P12 |
 
 ## Riesgos registrados junto a una decisión aprobada
 
@@ -36,6 +37,7 @@ Aprobar una decisión no elimina su riesgo. Estos quedan abiertos y deben revisa
 | DEC-011 | La PII crece sin límite. Anonimizar retroactivamente será mucho más costoso que haberlo diseñado desde el inicio. Revisar antes de una segunda gestión productiva. |
 | DEC-012 | Perder una hora durante el evento puede significar un bloque de cobros en caja; debe poder reconstruirse desde los comprobantes emitidos. |
 | DEC-014 | Personal en campo puede perder su dispositivo. El restablecimiento presencial y auditado debe estar en el runbook de P15. |
+| DEC-018 | Fija roles contables, no cuentas. Si la organización no asigna una cuenta a cada rol antes de contabilizar, el motor no puede resolver ningún asiento. |
 
 ## Nota sobre DEC-016
 
