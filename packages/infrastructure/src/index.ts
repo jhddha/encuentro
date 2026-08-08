@@ -31,3 +31,10 @@ export {
   type ProofInboxRow,
   type ReceiptSecret,
 } from './payment-proof-repository.js';
+export {
+  createObjectStorage,
+  ObjectStorageError,
+  type ObjectStorage,
+  type ObjectStorageConfig,
+  type StoredEvidence,
+} from './object-storage.js';
