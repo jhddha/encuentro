@@ -128,6 +128,10 @@
 | `RECEIPT_VOID` | 200 | Verificación pública informa anulado. |
 | `MEAL_SERVICE_OUTSIDE_WINDOW` | 422 | Fecha/hora fuera de ventana. |
 | `MEAL_SERVICE_CAPACITY_EXHAUSTED` | 409 | Sin disponibilidad. |
+| `REGISTRATION_TRANSITION_INVALID` | 422 | Transición no permitida por la máquina de estados de inscripción. |
+| `REGISTRATION_NOT_CONFIRMABLE` | 422 | `REG-017`: queda saldo pendiente y no hay exención total aprobada. |
+
+Los dos últimos se añadieron el 7 de agosto de 2026 al implementar `REG-017`. La máquina de estados de inscripción está declarada en `requirements.md` §4.2 desde el origen, pero no tenía error asociado: sin `REGISTRATION_NOT_CONFIRMABLE`, la regla que decide si alguien está inscrito no podía expresar su rechazo, y cada llamador habría inventado el suyo — que es justo lo que el criterio de `REG-017` prohíbe al pedir «política única de dominio, sin confirmación manual dispersa».
 
 ## 6. RBAC
 

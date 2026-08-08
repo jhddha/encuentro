@@ -1,4 +1,11 @@
 export {
+  assertConfirmable,
+  decideConfirmation,
+  type ConfirmationDecision,
+  type ConfirmationInput,
+} from './registration.js';
+
+export {
   EVENT_STATES,
   REGISTRATION_STATES,
   PAYMENT_COMPUTED_STATES,
@@ -7,7 +14,9 @@ export {
   PAYMENT_PROOF_STATES,
   LODGING_STATES,
   EVENT_TRANSITIONS,
+  REGISTRATION_TRANSITIONS,
   canTransition,
+  canTransitionRegistration,
   requiresReason,
   acceptsRegistrationsAndPayments,
   blocksOrdinaryOperations,

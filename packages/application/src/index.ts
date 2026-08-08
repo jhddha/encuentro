@@ -41,3 +41,13 @@ export {
   type RegistrationContext,
   type RegistrationDraft,
 } from './create-registration.js';
+
+export {
+  confirmRegistration,
+  inspectConfirmation,
+  type ConfirmRegistrationCommand,
+  type ConfirmRegistrationDeps,
+  type ConfirmRegistrationInput,
+  type RegistrationConfirmationRepository,
+  type RegistrationForConfirmation,
+} from './confirm-registration.js';

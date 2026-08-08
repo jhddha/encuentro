@@ -83,6 +83,29 @@ export const EVENT_TRANSITIONS: Readonly<Record<EventState, readonly EventState[
   ARCHIVED: [],
 };
 
+/**
+ * Máquina de estados de la inscripción — `requirements.md` §4.2.
+ *
+ * Estaba declarada como lista de estados desde el origen, pero sin transiciones:
+ * cualquier cambio era posible porque nada decía lo contrario.
+ *
+ * `CANCELLED` es terminal. GOV-005 exige que el histórico no se reescriba, así
+ * que una inscripción cancelada no vuelve: si la persona se reincorpora, se
+ * inscribe de nuevo y su cancelación anterior sigue siendo cierta.
+ */
+export const REGISTRATION_TRANSITIONS: Readonly<
+  Record<RegistrationState, readonly RegistrationState[]>
+> = {
+  DRAFT: ['SUBMITTED', 'CANCELLED'],
+  SUBMITTED: ['CONFIRMED', 'CANCELLED'],
+  CONFIRMED: ['CANCELLED'],
+  CANCELLED: [],
+};
+
+export function canTransitionRegistration(from: RegistrationState, to: RegistrationState): boolean {
+  return REGISTRATION_TRANSITIONS[from].includes(to);
+}
+
 /** Transiciones que no pueden ejecutarse sin un motivo registrado (EVT-003). */
 const TRANSITIONS_REQUIRING_REASON: ReadonlySet<string> = new Set(['ACTIVE->OPERATIONALLY_CLOSED']);
 
