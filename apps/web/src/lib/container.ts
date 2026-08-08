@@ -7,6 +7,7 @@ import {
   createPaymentProofRepository,
   createPrismaClient,
   createRegistrationRepository,
+  findProofDetail,
   listProofsPendingReview,
 } from '@encuentro/infrastructure';
 
@@ -65,6 +66,10 @@ export function prisma() {
  */
 export function proofsPendingReview(eventId: string) {
   return listProofsPendingReview(prismaClient(), eventId);
+}
+
+export function proofDetail(proofId: string) {
+  return findProofDetail(prismaClient(), proofId);
 }
 
 /**

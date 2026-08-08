@@ -96,6 +96,107 @@ export async function listProofsPendingReview(
   }));
 }
 
+/** Detalle de una evidencia para la pantalla de revisión. */
+export interface ProofDetail {
+  readonly id: string;
+  readonly eventId: string;
+  readonly status: PaymentProofState;
+  readonly version: number;
+  readonly declaredAmount: string;
+  readonly currency: string;
+  readonly reference: string;
+  readonly paidAt: Date;
+  readonly payerName: string | null;
+  readonly channelCode: string;
+  readonly registrationCode: string;
+  readonly personName: string;
+  readonly charges: readonly {
+    readonly id: string;
+    readonly concept: string;
+    readonly outstanding: string;
+  }[];
+}
+
+/**
+ * Detalle para revisar.
+ *
+ * Devuelve el **saldo pendiente** de cada cargo, no su importe original: quien
+ * reparte el pago necesita saber cuánto falta, no cuánto costó. Mostrar el
+ * importe original llevaría a asignar de más contra un cargo ya pagado a medias,
+ * que es justo lo que `PAY-020` rechaza.
+ */
+export async function findProofDetail(
+  prisma: PrismaClient,
+  proofId: string,
+): Promise<ProofDetail | null> {
+  const proof = await prisma.paymentProof.findUnique({
+    where: { id: proofId },
+    select: {
+      id: true,
+      eventId: true,
+      status: true,
+      version: true,
+      declaredAmount: true,
+      currency: true,
+      reference: true,
+      paidAt: true,
+      payerName: true,
+      channel: { select: { code: true } },
+      registration: {
+        select: { id: true, code: true, person: { select: { fullName: true } } },
+      },
+    },
+  });
+
+  if (proof === null) return null;
+
+  const charges = await prisma.charge.findMany({
+    where: { registrationId: proof.registration.id },
+    select: { id: true, concept: true, amount: true, currency: true },
+    orderBy: { createdAt: 'asc' },
+  });
+
+  const allocated = await prisma.paymentAllocation.groupBy({
+    by: ['chargeId'],
+    where: { chargeId: { in: charges.map((charge) => charge.id) } },
+    _sum: { amount: true },
+  });
+
+  const paidByCharge = new Map(
+    allocated.map((row) => [row.chargeId, row._sum.amount?.toString() ?? '0.00']),
+  );
+
+  return {
+    id: proof.id,
+    eventId: proof.eventId,
+    status: proof.status as PaymentProofState,
+    version: proof.version,
+    declaredAmount: proof.declaredAmount.toString(),
+    currency: proof.currency,
+    reference: proof.reference,
+    paidAt: proof.paidAt,
+    payerName: proof.payerName,
+    channelCode: proof.channel.code,
+    registrationCode: proof.registration.code,
+    personName: proof.registration.person.fullName,
+    charges: charges
+      .map((charge) => ({
+        id: charge.id,
+        concept: charge.concept,
+        outstanding: toDecimalString(
+          subtractDecimals(
+            charge.amount.toString(),
+            paidByCharge.get(charge.id) ?? '0.00',
+            charge.currency,
+          ),
+        ),
+      }))
+      // Un cargo ya saldado no admite más asignación (PAY-020); ofrecerlo solo
+      // invita a un rechazo que el revisor no entendería.
+      .filter((charge) => charge.outstanding !== '0.00'),
+  };
+}
+
 export function createPaymentProofRepository(
   prisma: PrismaClient,
   secret: ReceiptSecret,
