@@ -5,10 +5,13 @@ import type {
   RecordReviewInput,
 } from '@encuentro/application';
 import {
+  computeBalance,
   formatReceiptNumber,
   money,
+  shouldConfirm,
   toDecimalString,
   type PaymentProofState,
+  type RegistrationState,
 } from '@encuentro/domain';
 
 import { decimalText } from './decimal.js';
@@ -31,6 +34,9 @@ export interface ReceiptSecret {
   /** `RECEIPT_VERIFICATION_SECRET`. No se persiste. */
   readonly verificationSecret: string;
 }
+
+/** Cliente dentro de una transacción interactiva de Prisma. */
+type TransactionClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 interface ProofRow {
   id: string;
@@ -433,10 +439,116 @@ export function createPaymentProofRepository(
           },
         });
 
+        // REG-017, camino derivado. Ver `confirmIfSettled`.
+        await confirmIfSettled(tx, {
+          registrationId: input.registrationId,
+          eventId: proof.eventId,
+          actorId: input.actorId,
+          paymentId: payment.id,
+        });
+
         return true;
       });
     },
   };
+}
+
+/**
+ * Confirma la inscripción si este pago dejó el saldo en cero — REG-017.
+ *
+ * Ocurre **dentro de la transacción que aprueba**, y no después, porque las dos
+ * cosas son el mismo hecho: si el dinero entró y ya no se debe nada, la persona
+ * está inscrita. Separarlas dejaría una ventana en la que el peregrino ve su
+ * saldo a cero y su inscripción sin confirmar, y esa ventana duraría para
+ * siempre si el proceso muriera en medio.
+ *
+ * El saldo se **relee de la base**, con las asignaciones recién escritas ya
+ * dentro. Calcularlo a partir de lo que el caso de uso vio antes de escribir
+ * daría un número de hace unos milisegundos, y esto decide si alguien está
+ * inscrito.
+ *
+ * No lanza nunca. Una inscripción cancelada o ya confirmada por el camino
+ * manual no es un error del que la aprobación deba enterarse: `shouldConfirm`
+ * devuelve `false` y el pago sigue su curso. Reventar aquí sería perder un cobro
+ * por una carrera que el sistema ya sabe resolver.
+ */
+async function confirmIfSettled(
+  tx: TransactionClient,
+  input: {
+    registrationId: string;
+    eventId: string;
+    actorId: string;
+    paymentId: string;
+  },
+): Promise<void> {
+  const registration = await tx.registration.findUnique({
+    where: { id: input.registrationId },
+    select: { status: true, version: true, event: { select: { currency: true } } },
+  });
+
+  if (registration === null) return;
+
+  const currency = registration.event.currency;
+
+  const charges = await tx.charge.findMany({
+    where: { registrationId: input.registrationId },
+    select: { id: true, amount: true, currency: true },
+  });
+
+  const allocated = await tx.paymentAllocation.groupBy({
+    by: ['chargeId'],
+    where: { chargeId: { in: charges.map((charge) => charge.id) } },
+    _sum: { amount: true },
+  });
+
+  const balance = computeBalance({
+    charges: charges.map((charge) => money(charge.amount.toString(), charge.currency)),
+    allocations: allocated.map((row) => money(row._sum.amount?.toString() ?? '0.00', currency)),
+    currency,
+  });
+
+  const confirmable = shouldConfirm({
+    state: registration.status as RegistrationState,
+    outstanding: balance.outstanding,
+    // El mecanismo de exención total es alcance aplazado; ver
+    // `packages/domain/src/registration.ts`.
+    fullExemptionApproved: false,
+  });
+
+  if (!confirmable) return;
+
+  /*
+   * Compare-and-swap sobre versión **y** estado. El camino manual de
+   * `/admin/e/…/inscripciones` puede haber confirmado esta misma inscripción
+   * mientras se revisaba el comprobante; quedar segundo aquí es correcto y
+   * silencioso.
+   */
+  const updated = await tx.registration.updateMany({
+    where: { id: input.registrationId, version: registration.version, status: 'SUBMITTED' },
+    data: { status: 'CONFIRMED', version: { increment: 1 } },
+  });
+
+  if (updated.count === 0) return;
+
+  await tx.auditLog.create({
+    data: {
+      eventId: input.eventId,
+      actorId: input.actorId,
+      action: 'registration.confirm',
+      entity: 'registration',
+      entityId: input.registrationId,
+      /*
+       * `derivedFrom` distingue esta confirmación de la que alguien pulsa en
+       * Inscripciones. Ambas usan la misma acción para que un reporte las cuente
+       * juntas, y el payload dice cuál fue cuál.
+       */
+      afterRedacted: {
+        status: 'CONFIRMED',
+        derivedFrom: 'payment.proof.approve',
+        paymentId: input.paymentId,
+      },
+    },
+  });
 }
 
 /**
@@ -453,7 +565,7 @@ function subtractDecimals(chargeAmount: string, paidAmount: string, currency: st
 }
 
 async function writeAudit(
-  tx: Parameters<Parameters<PrismaClient['$transaction']>[0]>[0],
+  tx: TransactionClient,
   entry: {
     proofId: string;
     actorId: string;

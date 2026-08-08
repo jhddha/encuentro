@@ -193,19 +193,19 @@ export default async function MyAccountPage({
             </p>
           )}
 
-          {statement.confirmation?.outcome === 'CONFIRM' &&
-            statement.registrationStatus !== 'CONFIRMED' && (
-              /*
-                Se dice en voz alta porque hoy es cierto: `confirmRegistration`
-                existe y **no lo invoca nadie**. Mientras no haya quien lo
-                ejecute, mostrar «Confirmada» aquí sería afirmar algo que la
-                base no dice.
-              */
-              <p className="mt-4 text-sm">
-                Su saldo está cubierto. La confirmación de la plaza la registra la organización; si
-                tarda, consúltelo con ellos.
-              </p>
-            )}
+          {/*
+            Camino poco frecuente, y por eso conviene nombrarlo: la aprobación de
+            un pago confirma en su misma transacción, así que un saldo cubierto
+            suele llegar aquí ya como «Confirmada». Quedarse en «Enviada» con
+            saldo cero significa que llegó a cero por otra vía, y entonces sí
+            falta que alguien lo registre desde Inscripciones.
+          */}
+          {statement.confirmation?.outcome === 'CONFIRM' && (
+            <p className="mt-4 text-sm">
+              Su saldo está cubierto y la plaza se confirmará en cuanto la organización lo registre.
+              Si tarda, consúltelo con ellos.
+            </p>
+          )}
         </Card>
       </section>
 

@@ -182,14 +182,17 @@ export async function findAccountStatement(
    * que confirma. Duplicar el criterio aquí es exactamente lo que el requisito
    * prohíbe al pedir «política única de dominio».
    *
-   * Solo se pregunta desde `SUBMITTED`: la función lanza si la transición a
-   * `CONFIRMED` no existe, y en `CONFIRMED` o `CANCELLED` la pregunta no tiene
-   * sentido.
+   * **Solo desde `SUBMITTED`**, que es el único estado desde el que
+   * `CONFIRMED` es alcanzable. `decideConfirmation` lanza en los demás, y eso
+   * incluye `DRAFT`: la columna `registrations.status` tiene `DRAFT` por
+   * defecto en el esquema, así que cualquier fila creada sin estado explícito
+   * —un fixture, el alta presencial de IAM-012 cuando exista— haría reventar
+   * esta pantalla. Preguntar por `DRAFT` era un error, no una precaución.
    */
   const estado = registration.status as RegistrationState;
 
   const confirmation =
-    estado === 'DRAFT' || estado === 'SUBMITTED'
+    estado === 'SUBMITTED'
       ? decideConfirmation({
           state: estado,
           outstanding: balance.outstanding,

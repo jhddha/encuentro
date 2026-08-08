@@ -10,11 +10,13 @@ import {
   createPaymentProofRepository,
   createPrismaClient,
   createProofSubmissionRepository,
+  createRegistrationConfirmationRepository,
   createRegistrationRepository,
   findAccountStatement,
   findProofDetail,
   listAdvanceChannels,
   listProofsPendingReview,
+  listRegistrationsWithBalance,
   systemClock,
 } from '@encuentro/infrastructure';
 
@@ -58,6 +60,19 @@ export function catalogRepository() {
 
 export function registrationRepository() {
   return createRegistrationRepository(prismaClient());
+}
+
+export function registrationConfirmationRepository() {
+  return createRegistrationConfirmationRepository(prismaClient());
+}
+
+/**
+ * Bandeja de inscripciones con saldo y veredicto de REG-017 — solo lectura.
+ *
+ * En una pasada, no una consulta por fila: ver `listRegistrationsWithBalance`.
+ */
+export function registrationsWithBalance(eventId: string) {
+  return listRegistrationsWithBalance(prismaClient(), eventId);
 }
 
 export function prisma() {

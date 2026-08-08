@@ -14,6 +14,11 @@ export {
   type RegistrationRecord,
   type RegistrationRepository,
 } from './registration-repository.js';
+export {
+  createRegistrationConfirmationRepository,
+  listRegistrationsWithBalance,
+  type RegistrationRow,
+} from './registration-confirmation-repository.js';
 export { createReservationRepository } from './reservation-repository.js';
 export { createNotificationRepository } from './notification-repository.js';
 export { createEmailSender, findSmtpSettings, type SmtpCredentials } from './email-sender.js';

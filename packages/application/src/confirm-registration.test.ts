@@ -189,6 +189,36 @@ describe('confirmRegistration', () => {
       }),
     ).rejects.toThrow(/cambió mientras preparaba/);
   });
+
+  /*
+   * Con dos caminos hacia `CONFIRMED`, encontrar la inscripción ya confirmada
+   * es una carrera, no un error de programación. Sin traducir, quien pulsó el
+   * botón leería «no existe transición de CONFIRMED a CONFIRMED».
+   *
+   * Cancelada recibe la misma respuesta y por la misma razón: lo que la persona
+   * necesita saber es que la pantalla está vieja.
+   */
+  it.each(['CONFIRMED', 'CANCELLED'] as const)(
+    'una inscripción en %s se traduce a conflicto de versión, no a transición inválida',
+    async (estado) => {
+      const repo = repositorio(inscripcion({ status: estado }));
+
+      let thrown: unknown;
+      try {
+        await confirmRegistration({ registrations: repo }, actor(), {
+          eventId: EVENTO,
+          registrationId: INSCRIPCION,
+          expectedVersion: 3,
+        });
+      } catch (error) {
+        thrown = error;
+      }
+
+      expect((thrown as DomainError).code).toBe('EVENT_VERSION_CONFLICT');
+      expect((thrown as DomainError).message).toMatch(/cambió mientras preparaba/);
+      expect(repo.llamadas).toHaveLength(0);
+    },
+  );
 });
 
 describe('inspectConfirmation', () => {

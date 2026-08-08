@@ -478,7 +478,13 @@ describe('estado de cuenta — PAY-002, REG-017, DEC-008', () => {
     expect(cuenta?.proofs[0]?.declaredAmount).toBe('210.00');
   });
 
-  it('pagado en total deja saldo cero y la regla dice CONFIRM', async () => {
+  /*
+   * REG-017 de punta a punta. Desde que la aprobación confirma en su misma
+   * transacción, pagar del todo no deja la inscripción «lista para confirmar»:
+   * la deja confirmada. El veredicto pasa a ser nulo porque la pregunta ya no
+   * tiene sentido.
+   */
+  it('pagado en total, la inscripción queda confirmada', async () => {
     const e = await sembrar();
     const proofId = await submitPaymentProof(deps, e.peregrino, declaracion(e));
     await aprobar(e, proofId, '420.00');
@@ -487,7 +493,8 @@ describe('estado de cuenta — PAY-002, REG-017, DEC-008', () => {
 
     expect(cuenta?.outstanding).toBe('0.00');
     expect(cuenta?.balanceState).toBe('PAID');
-    expect(cuenta?.confirmation?.outcome).toBe('CONFIRM');
+    expect(cuenta?.registrationStatus).toBe('CONFIRMED');
+    expect(cuenta?.confirmation).toBeNull();
   });
 
   /*

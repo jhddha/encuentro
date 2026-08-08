@@ -3,6 +3,7 @@ import {
   acceptsRegistrationsAndPayments,
   assertConfirmable,
   authorize,
+  canTransitionRegistration,
   computeBalance,
   decideConfirmation,
   type Actor,
@@ -97,6 +98,27 @@ export async function confirmRegistration(
   command: ConfirmRegistrationCommand,
 ): Promise<void> {
   const registration = await load(deps, actor, command, 'registration.update');
+
+  /*
+   * Otro camino llegó primero.
+   *
+   * `CONFIRMED` solo se alcanza desde `SUBMITTED`. Si la inscripción ya está
+   * confirmada —porque la aprobación de un pago la confirmó mientras esta
+   * pantalla estaba abierta— o si se canceló entretanto, `assertConfirmable`
+   * lanzaría `REGISTRATION_TRANSITION_INVALID`, que describe un error de
+   * programación y le diría a quien pulsó el botón «no existe transición de
+   * CONFIRMED a CONFIRMED».
+   *
+   * No es un error de programación: es una carrera, y la respuesta útil es la
+   * misma que da el compare-and-swap cuando pierde. Con dos caminos hacia el
+   * mismo estado, perder es un resultado previsto.
+   */
+  if (!canTransitionRegistration(registration.status, 'CONFIRMED')) {
+    throw new DomainError(
+      'EVENT_VERSION_CONFLICT',
+      'La inscripción cambió mientras preparaba esta operación. Vuelva a cargarla e inténtelo de nuevo.',
+    );
+  }
 
   const balance = computeBalance({
     charges: registration.charges,

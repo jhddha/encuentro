@@ -2,9 +2,9 @@
 
 **Rama:** `migracion-linea-base-v2.6`, trece commits por delante de `main` (`626ad05`), subida a GitHub.
 **Gate al cerrar la sesión del 7:** validador, prettier, ESLint, `tsc --build`, **345 unitarias**, **129 de integración**, `pnpm build`. Todo en verde.
-**Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **411 unitarias**, **147 de integración**, `pnpm build`. Todo en verde.
+**Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **418 unitarias**, **162 de integración**, `pnpm build`. Todo en verde.
 
-> Las secciones 1 a 6 son la sesión del 7 de agosto y se conservan como se escribieron. La §7 es la del 8.
+> Las secciones 1 a 6 son la sesión del 7 de agosto y se conservan como se escribieron. Las §7 y §8 son la del 8.
 
 ---
 
@@ -271,7 +271,7 @@ De los veintitrés descartados, varios describían el código correctamente y au
 
 ### Para cerrar el bloque 1 del todo
 
-1. **Registrar la confirmación.** `confirmRegistration` existe y nadie lo llama. Es el siguiente eslabón: decidir quién lo ejecuta —¿el propio flujo de aprobación, con qué actor?— y auditarlo.
+1. ~~**Registrar la confirmación.**~~ Hecho el mismo día; ver §8.
 2. **`/admin/e/…/pagos`** sigue siendo marcador. La bandeja de comprobantes cubre la revisión; falta la vista de pagos y asignaciones.
 
 ### El resto, sin cambios respecto a §5
@@ -299,3 +299,50 @@ Los diez pasos que imprime recorren el circuito completo por primera vez: declar
 Lo que sí se verificó: **147 pruebas de integración contra Postgres, Redis y MinIO reales** (129 previas más 18 nuevas), y que las dos rutas nuevas se sirven sin error y redirigen a `/ingresar` sin sesión. Más allá de eso no pude llegar: entrar exige crear una cuenta y escribir una contraseña, y eso no lo hago en su nombre.
 
 **La accesibilidad de estas dos pantallas no está comprobada automáticamente.** `tests/e2e/routes.ts` recorre `/e/ENC2026/mi-cuenta/pagos`, pero sin sesión: comprueba la redirección a `/ingresar`, no el formulario. Es el mismo hueco que ya tenían las rutas de administración, y ahora cuesta más dejarlo así, porque estas dos pantallas sí tienen contenido que auditar.
+
+---
+
+# 8. La confirmación de la inscripción
+
+Cierra el pendiente 1 de §7.5, el mismo día. Detalle completo en [`docs/implementation/18-confirmacion-inscripcion.md`](docs/implementation/18-confirmacion-inscripcion.md).
+
+## 8.1 El hueco era mayor de lo que decía §7.3
+
+No era que faltara el llamador. **El puerto `RegistrationConfirmationRepository` no tenía adaptador**: nada debajo. Y **TESORERIA no lleva `registration.update`**, que es el permiso que `confirmRegistration` exige — solo INSCRIPCIONES. Pero en v1 el saldo solo llega a cero al aprobar una evidencia, y eso lo hace tesorería.
+
+Así que no era llamar a una función: era decidir **quién dispara**. REG-017 fija el criterio y no dice quién lo ejecuta. Se consultó al responsable, que eligió **los dos caminos**.
+
+| | Derivado | Manual |
+|---|---|---|
+| Dónde | dentro de la transacción de `approve()` | `/admin/e/…/inscripciones` |
+| Permiso | `payment.proof.review`, el ya validado | `registration.update` |
+| Actor | el revisor | quien pulsa |
+| Rastro | `registration.confirm` con `derivedFrom` | `registration.confirm` sin él |
+
+Ni permisos nuevos ni migraciones. El derivado no necesita `registration.update` porque no edita la inscripción: aplica una consecuencia que el dominio deriva del dinero. Darle ese permiso a tesorería le habría dado también editar inscripciones en general.
+
+## 8.2 Me equivoqué al describir la carrera, y lo demostró la prueba
+
+Anuncié que el compare-and-swap resolvería el choque entre los dos caminos y que el manual recibiría «la inscripción cambió, recárguela».
+
+**No es así.** El compare-and-swap nunca llega a ejecutarse: el dominio se adelanta, porque `CONFIRMED → CONFIRMED` no es transición legal. Quien pulsara el botón después de que el pago confirmara habría leído *«No existe transición de CONFIRMED a CONFIRMED»*, que describe un error de programación y no lo que pasó.
+
+Corregido: con dos caminos hacia el mismo estado, perder la carrera es un resultado previsto, así que se traduce a conflicto de versión con el mensaje de recarga.
+
+Y en la otra dirección hizo falta `shouldConfirm`, que no lanza nunca: si `decideConfirmation` lanzara dentro de la transacción de aprobación, una inscripción ya confirmada o cancelada **revertiría el cobro entero**. Dos pruebas de integración lo fijan.
+
+## 8.3 Otro defecto de la sesión de esta mañana
+
+`decideConfirmation` también lanza para `DRAFT`: `CONFIRMED` solo se alcanza desde `SUBMITTED`. `findAccountStatement`, commiteado hace unas horas, preguntaba por `DRAFT` y `SUBMITTED` — una inscripción en ese estado habría reventado el estado de cuenta del peregrino.
+
+La revisión adversarial lo había señalado y su verificador lo refutó por inalcanzable. La refutación acertaba sobre la alcanzabilidad de hoy y erraba sobre el código: **`DRAFT` es el valor por defecto de la columna en el esquema**, así que cualquier fila creada sin estado explícito cae ahí. Corregido en los dos sitios.
+
+Vale la pena anotar el patrón: un verificador que pregunta «¿puede darse este escenario hoy?» descarta hallazgos que siguen siendo defectos. La pregunta útil era «¿es correcto este código?».
+
+## 8.4 Qué falta ahora
+
+1. **`/admin/e/…/pagos`** sigue siendo marcador. Es lo último del bloque 1.
+2. **Nadie cancela inscripciones.** `CONFIRMED → CANCELLED` es legal y REG-009 dice que cancelar conserva pagos y trazabilidad, pero no hay caso de uso ni pantalla. Cuando lo haya, habrá que decidir qué pasa con el saldo a favor de DEC-007.
+3. **El camino manual apenas tiene casos hoy.** Su razón real es la exención total de REG-017, que es alcance aplazado. Conviene revisarlo cuando llegue la caja, que será el segundo disparador del derivado.
+
+Gate: validador, prettier, ESLint, `tsc`, **418 unitarias**, **162 de integración**, `pnpm build`. Sigue sin recorrerse ninguna pantalla a mano.

@@ -80,6 +80,29 @@ export function decideConfirmation(input: ConfirmationInput): ConfirmationDecisi
 }
 
 /**
+ * ¿Debe esta inscripción pasar a `CONFIRMED`? Sí o no, sin lanzar nunca.
+ *
+ * Para el camino **derivado**: la aprobación de un pago confirma la inscripción
+ * si el saldo queda en cero, dentro de la misma transacción. Ahí una inscripción
+ * cancelada o ya confirmada no es un error del que haya que enterarse — es
+ * simplemente una inscripción que no se confirma —, y `decideConfirmation`
+ * lanzaría `REGISTRATION_TRANSITION_INVALID` **abortando el cobro**.
+ *
+ * Que una aprobación de pago reviente porque otra persona confirmó la
+ * inscripción un segundo antes sería perder dinero por una carrera que el
+ * sistema ya sabe resolver.
+ *
+ * Es la misma regla que `decideConfirmation`, no una segunda: REG-017 exige
+ * «política única de dominio», así que esto delega en ella y solo cambia la
+ * forma de contestar.
+ */
+export function shouldConfirm(input: ConfirmationInput): boolean {
+  if (!canTransitionRegistration(input.state, 'CONFIRMED')) return false;
+
+  return decideConfirmation(input).outcome === 'CONFIRM';
+}
+
+/**
  * Igual que `decideConfirmation`, pero exige que se pueda confirmar.
  *
  * Para el caso de uso que ejecuta la confirmación: allí quedarse en

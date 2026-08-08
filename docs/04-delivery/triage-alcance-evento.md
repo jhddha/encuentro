@@ -50,7 +50,7 @@ Más los dos procesos de fondo de P16: expiración de `HELD` y envío de correo.
 | ~~Panel del peregrino~~ | `/e/…/mi-cuenta` | **Hecho** el 8 de agosto de 2026: estado de cuenta con cargos, pagos, saldo y saldo a favor |
 | ~~Subir evidencia de pago~~ | `/e/…/mi-cuenta/pagos` | **Hecho** el 8 de agosto de 2026, incluido el reenvío tras corrección |
 | ~~Revisar evidencias~~ | `/admin/e/…/comprobantes` | **Hecho** el 7 de agosto de 2026. `/admin/e/…/pagos` sigue siendo marcador |
-| Registrar la confirmación | — | `REG-017` **está implementado y nadie lo invoca**: el sistema sabe decidir si alguien está inscrito y no lo escribe en ninguna parte |
+| ~~Registrar la confirmación~~ | `/admin/e/…/inscripciones` | **Hecho** el 8 de agosto de 2026, por dos caminos: derivado de la aprobación del pago y manual desde la bandeja |
 | Elegir y asignar hotel | `/e/…/mi-cuenta/hospedaje`, `/admin/e/…/hospedaje` | El hospedaje se gestiona fuera del sistema |
 
 ### En la llegada

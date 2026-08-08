@@ -1,6 +1,7 @@
 export {
   assertConfirmable,
   decideConfirmation,
+  shouldConfirm,
   type ConfirmationDecision,
   type ConfirmationInput,
 } from './registration.js';

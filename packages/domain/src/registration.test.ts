@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { DomainError } from './errors.js';
 import { money } from './money.js';
-import { assertConfirmable, decideConfirmation, type ConfirmationInput } from './registration.js';
+import {
+  assertConfirmable,
+  decideConfirmation,
+  shouldConfirm,
+  type ConfirmationInput,
+} from './registration.js';
 import { canTransitionRegistration } from './states.js';
 
 const USD = 'USD';
@@ -99,6 +104,44 @@ describe('REG-017 — confirmación de inscripción', () => {
       } catch (error) {
         expect(error).toBeInstanceOf(DomainError);
         expect((error as DomainError).code).toBe('REGISTRATION_NOT_CONFIRMABLE');
+      }
+    });
+  });
+
+  /**
+   * `shouldConfirm` es la entrada del camino derivado: la aprobación de un pago
+   * confirma en su misma transacción. Su propiedad esencial es que **no lanza
+   * nunca**, porque lanzar ahí abortaría el cobro.
+   */
+  describe('shouldConfirm', () => {
+    it('coincide con decideConfirmation cuando la transición es legal', () => {
+      expect(shouldConfirm(entrada())).toBe(true);
+      expect(shouldConfirm(entrada({ outstanding: money('10.00', USD) }))).toBe(false);
+    });
+
+    it('el sobrepago confirma igual que el pago exacto (DEC-008)', () => {
+      expect(shouldConfirm(entrada({ outstanding: money('-50.00', USD) }))).toBe(true);
+    });
+
+    /*
+     * Los dos casos que motivan que exista. Si `shouldConfirm` lanzara aquí, un
+     * pago legítimo se perdería porque el camino manual se adelantó, o porque la
+     * inscripción se canceló mientras el comprobante estaba en revisión.
+     */
+    it('no lanza ante una inscripción ya confirmada: devuelve false', () => {
+      expect(() => shouldConfirm(entrada({ state: 'CONFIRMED' }))).not.toThrow();
+      expect(shouldConfirm(entrada({ state: 'CONFIRMED' }))).toBe(false);
+    });
+
+    it('no lanza ante una inscripción cancelada: devuelve false', () => {
+      expect(() => shouldConfirm(entrada({ state: 'CANCELLED' }))).not.toThrow();
+      expect(shouldConfirm(entrada({ state: 'CANCELLED' }))).toBe(false);
+    });
+
+    it('donde decideConfirmation lanza, shouldConfirm contesta', () => {
+      for (const state of ['CONFIRMED', 'CANCELLED'] as const) {
+        expect(() => decideConfirmation(entrada({ state }))).toThrow(DomainError);
+        expect(shouldConfirm(entrada({ state }))).toBe(false);
       }
     });
   });
