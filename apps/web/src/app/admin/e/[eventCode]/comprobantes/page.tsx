@@ -1,7 +1,7 @@
 import { EmptyState, PageHeader, ScrollableTable, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { eventRepository, proofDetail, proofsPendingReview } from '@/lib/container';
+import { eventRepository, objectStorage, proofDetail, proofsPendingReview } from '@/lib/container';
 import { requirePermission } from '@/lib/session';
 
 import { ReviewPanel } from './ReviewPanel';
@@ -79,6 +79,19 @@ export default async function ReceiptsPage({
       ? null
       : ((d) => (d?.eventId === event.id ? d : null))(await proofDetail(evidencia));
 
+  /*
+   * URL firmada del archivo adjunto — PRV-003.
+   *
+   * Se genera al renderizar y caduca en cinco minutos. Si el revisor tarda más,
+   * recargar la pantalla la renueva. La alternativa —generarla al pulsar— evita
+   * que la URL viaje en el HTML, pero perdería la activación del usuario tras el
+   * `await` y los bloqueadores de ventanas la cortarían.
+   */
+  const evidenciaUrl =
+    detalle?.fileId === undefined || detalle.fileId === null
+      ? null
+      : await objectStorage().signedEvidenceUrl(detalle.fileId);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -98,6 +111,10 @@ export default async function ReceiptsPage({
           declaredAmount={detalle.declaredAmount}
           currency={detalle.currency}
           charges={detalle.charges}
+          reference={detalle.reference}
+          payerName={detalle.payerName}
+          evidenceUrl={evidenciaUrl}
+          checksum={detalle.fileChecksum}
         />
       )}
 

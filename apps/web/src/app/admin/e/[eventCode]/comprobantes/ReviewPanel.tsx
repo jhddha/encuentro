@@ -37,6 +37,10 @@ export function ReviewPanel({
   declaredAmount,
   currency,
   charges,
+  reference,
+  payerName,
+  evidenceUrl,
+  checksum,
 }: {
   readonly eventCode: string;
   readonly proofId: string;
@@ -44,6 +48,11 @@ export function ReviewPanel({
   readonly declaredAmount: string;
   readonly currency: string;
   readonly charges: readonly Charge[];
+  readonly reference: string;
+  readonly payerName: string | null;
+  /** URL firmada y caduca. Nula si el peregrino no adjuntó archivo. */
+  readonly evidenceUrl: string | null;
+  readonly checksum: string | null;
 }) {
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [reason, setReason] = useState('');
@@ -71,9 +80,43 @@ export function ReviewPanel({
         Revisar evidencia
       </h2>
 
-      <p className="text-sm">
-        Importe declarado: <strong className="tabular-nums">{declaredAmount}</strong> {currency}
-      </p>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+        <dt className="font-semibold">Importe declarado</dt>
+        <dd className="tabular-nums">
+          {declaredAmount} {currency}
+        </dd>
+        <dt className="font-semibold">Referencia</dt>
+        <dd className="font-mono">{reference}</dd>
+        <dt className="font-semibold">Pagador</dt>
+        <dd>{payerName ?? 'No declarado'}</dd>
+      </dl>
+
+      {/*
+        Sin el archivo delante, aprobar es firmar a ciegas. Cuando falta, se dice
+        en vez de dejar el hueco: el revisor debe saber que está decidiendo sin
+        evidencia y poder pedir corrección.
+      */}
+      {evidenceUrl === null ? (
+        <p className="text-sm text-[var(--color-warning-ink,var(--color-ink))]">
+          <strong>Sin archivo adjunto.</strong> No hay comprobante que revisar; pida corrección en
+          lugar de aprobar.
+        </p>
+      ) : (
+        <p className="text-sm">
+          <a href={evidenceUrl} target="_blank" rel="noopener noreferrer" className="underline">
+            Abrir el comprobante adjunto
+          </a>{' '}
+          <span className="opacity-70">
+            — el enlace caduca en cinco minutos; recargue para renovarlo.
+          </span>
+          {checksum !== null && (
+            <>
+              <br />
+              <span className="font-mono text-xs opacity-60">SHA-256 {checksum.slice(0, 16)}…</span>
+            </>
+          )}
+        </p>
+      )}
 
       {charges.length === 0 ? (
         <p className="text-sm">

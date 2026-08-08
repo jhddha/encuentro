@@ -4,6 +4,7 @@ import {
   createActorResolver,
   createCatalogRepository,
   createEventRepository,
+  createObjectStorage,
   createPaymentProofRepository,
   createPrismaClient,
   createRegistrationRepository,
@@ -79,6 +80,30 @@ export function proofDetail(proofId: string) {
  * hace que un volcado de `receipts` no permita reconstruir los tokens de los QR
  * ya impresos.
  */
+/**
+ * Almacén de evidencias.
+ *
+ * Los cuatro valores son obligatorios: sin ellos no hay dónde guardar un
+ * comprobante, y fallar al arrancar es mejor que aceptar una subida que se
+ * pierde.
+ */
+export function objectStorage() {
+  return createObjectStorage({
+    endpoint: requireEnv('OBJECT_STORAGE_ENDPOINT'),
+    bucket: requireEnv('OBJECT_STORAGE_BUCKET'),
+    accessKey: requireEnv('OBJECT_STORAGE_ACCESS_KEY'),
+    secretKey: requireEnv('OBJECT_STORAGE_SECRET_KEY'),
+  });
+}
+
+function requireEnv(name: string): string {
+  const value = process.env[name];
+  if (value === undefined || value === '') {
+    throw new Error(`Falta la variable de entorno ${name}.`);
+  }
+  return value;
+}
+
 export function paymentProofRepository() {
   const secret = process.env.RECEIPT_VERIFICATION_SECRET;
 

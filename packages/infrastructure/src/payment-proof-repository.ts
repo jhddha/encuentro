@@ -107,6 +107,9 @@ export interface ProofDetail {
   readonly reference: string;
   readonly paidAt: Date;
   readonly payerName: string | null;
+  /** Clave del objeto. Nula mientras el peregrino no haya adjuntado nada. */
+  readonly fileId: string | null;
+  readonly fileChecksum: string | null;
   readonly channelCode: string;
   readonly registrationCode: string;
   readonly personName: string;
@@ -141,6 +144,8 @@ export async function findProofDetail(
       reference: true,
       paidAt: true,
       payerName: true,
+      fileId: true,
+      fileChecksum: true,
       channel: { select: { code: true } },
       registration: {
         select: { id: true, code: true, person: { select: { fullName: true } } },
@@ -176,6 +181,8 @@ export async function findProofDetail(
     reference: proof.reference,
     paidAt: proof.paidAt,
     payerName: proof.payerName,
+    fileId: proof.fileId,
+    fileChecksum: proof.fileChecksum,
     channelCode: proof.channel.code,
     registrationCode: proof.registration.code,
     personName: proof.registration.person.fullName,
