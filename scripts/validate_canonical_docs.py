@@ -55,6 +55,9 @@ EXENTOS={
  'docs/04-delivery/READINESS_REPORT-correccion-contable.md',
  'docs/01-product/requirements-candidates-v26.md',
  'docs/04-delivery/source-migration-matrix.md',
+ # Retrospectiva de la sesion: explica la colision de identificadores y por
+ # tanto necesita nombrar los retirados. Misma razon que los anteriores.
+ 'handoff.md',
 }
 EXENTOS_PREFIJO=('archive/','prototypes/','generated-docx/','node_modules/','dist/','.git/')
 
