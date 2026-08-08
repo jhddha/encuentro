@@ -4,8 +4,10 @@ import {
   createActorResolver,
   createCatalogRepository,
   createEventRepository,
+  createPaymentProofRepository,
   createPrismaClient,
   createRegistrationRepository,
+  listProofsPendingReview,
 } from '@encuentro/infrastructure';
 
 /**
@@ -52,4 +54,32 @@ export function registrationRepository() {
 
 export function prisma() {
   return prismaClient();
+}
+
+/**
+ * Bandeja de evidencias — solo lectura.
+ *
+ * No pasa por el puerto de la capa de aplicación a propósito: ese puerto existe
+ * para el caso de uso que revisa, y esto es una consulta de pantalla. Es el
+ * mismo trato que reciben `registrationRepository` y `catalogRepository`.
+ */
+export function proofsPendingReview(eventId: string) {
+  return listProofsPendingReview(prismaClient(), eventId);
+}
+
+/**
+ * Repositorio de revisión de evidencias.
+ *
+ * El secreto de verificación llega por entorno y **no se persiste**: es lo que
+ * hace que un volcado de `receipts` no permita reconstruir los tokens de los QR
+ * ya impresos.
+ */
+export function paymentProofRepository() {
+  const secret = process.env.RECEIPT_VERIFICATION_SECRET;
+
+  if (secret === undefined || secret === '') {
+    throw new Error('Falta la variable de entorno RECEIPT_VERIFICATION_SECRET.');
+  }
+
+  return createPaymentProofRepository(prismaClient(), { verificationSecret: secret });
 }

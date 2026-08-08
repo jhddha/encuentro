@@ -23,4 +23,9 @@ export {
   receiptTokenMatches,
   type ReceiptToken,
 } from './receipt-token.js';
-export { createPaymentProofRepository, type ReceiptSecret } from './payment-proof-repository.js';
+export {
+  createPaymentProofRepository,
+  listProofsPendingReview,
+  type ProofInboxRow,
+  type ReceiptSecret,
+} from './payment-proof-repository.js';

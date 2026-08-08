@@ -42,6 +42,60 @@ interface ProofRow {
   event: { status: string; code: string };
 }
 
+/** Fila de la bandeja de revisión. Solo lectura, para la pantalla. */
+export interface ProofInboxRow {
+  readonly id: string;
+  readonly status: PaymentProofState;
+  /** Necesaria para el compare-and-swap de la acción. */
+  readonly version: number;
+  readonly declaredAmount: string;
+  readonly currency: string;
+  readonly reference: string;
+  readonly paidAt: Date;
+  readonly registrationCode: string;
+  readonly channelCode: string;
+}
+
+/**
+ * Bandeja de evidencias pendientes de revisión.
+ *
+ * Solo los estados revisables (`isReviewable`): lo aprobado y lo rechazado ya no
+ * requieren acción y llenarían la bandeja de ruido. Las más antiguas primero,
+ * porque quien subió su comprobante hace tres días lleva tres días esperando.
+ */
+export async function listProofsPendingReview(
+  prisma: PrismaClient,
+  eventId: string,
+): Promise<readonly ProofInboxRow[]> {
+  const rows = await prisma.paymentProof.findMany({
+    where: { eventId, status: { in: ['SUBMITTED', 'UNDER_REVIEW'] } },
+    orderBy: { submittedAt: 'asc' },
+    select: {
+      id: true,
+      status: true,
+      version: true,
+      declaredAmount: true,
+      currency: true,
+      reference: true,
+      paidAt: true,
+      registration: { select: { code: true } },
+      channel: { select: { code: true } },
+    },
+  });
+
+  return rows.map((row) => ({
+    id: row.id,
+    status: row.status as PaymentProofState,
+    version: row.version,
+    declaredAmount: row.declaredAmount.toString(),
+    currency: row.currency,
+    reference: row.reference,
+    paidAt: row.paidAt,
+    registrationCode: row.registration.code,
+    channelCode: row.channel.code,
+  }));
+}
+
 export function createPaymentProofRepository(
   prisma: PrismaClient,
   secret: ReceiptSecret,
