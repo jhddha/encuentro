@@ -8,9 +8,10 @@ import {
   type S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { EVIDENCE_CONTENT_TYPES, EVIDENCE_MAX_BYTES } from '@encuentro/domain';
 
 /**
- * Almacenamiento de evidencias de pago — PAY-018, PRV-003.
+ * Almacenamiento de evidencias de pago — PAY-018, PAY-032.
  *
  * El archivo de una evidencia es un comprobante bancario: lleva nombre, cuenta y
  * a veces saldo de una persona real. Por eso **nunca es público** y solo se
@@ -38,17 +39,17 @@ export interface StoredEvidence {
 }
 
 /**
- * Tipos admitidos.
+ * Última barrera, no la primera.
  *
- * Una lista blanca, no negra. Servir un `text/html` desde una URL firmada del
- * mismo origen sería ejecutar HTML de un desconocido con la sesión del revisor
- * delante: exactamente un XSS almacenado. Un comprobante bancario es una imagen
- * o un PDF y nada más.
+ * La lista blanca y el límite de tamaño los define el dominio
+ * (`EVIDENCE_CONTENT_TYPES`, `EVIDENCE_MAX_BYTES`), porque el mensaje de rechazo
+ * es para el peregrino y `ObjectStorageError` no llega hasta él. Aquí se
+ * repiten a propósito: si algún día un llamador escribe en el bucket sin pasar
+ * por el caso de uso, esto sigue impidiendo que entre un `text/html`.
  */
-const ALLOWED_CONTENT_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
+const ALLOWED_CONTENT_TYPES = new Set(EVIDENCE_CONTENT_TYPES);
 
-/** 10 MB. Una foto de comprobante no pesa más, y el límite acota el abuso. */
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = EVIDENCE_MAX_BYTES;
 
 /** Cinco minutos: lo que tarda un revisor en abrirlo, no en compartirlo. */
 const DEFAULT_TTL_SECONDS = 300;
@@ -113,7 +114,8 @@ export function createObjectStorage(config: ObjectStorageConfig): ObjectStorage 
       }
 
       /*
-       * La clave no contiene PII — PRV-004: nada de nombres, documentos ni
+       * La clave no contiene PII (regla 03-security-rbac, y PAY-032 para el
+       * mismo criterio del lado del comprobante): nada de nombres, documentos ni
        * códigos de inscripción en rutas ni URL. Solo la gestión, para poder
        * borrar por gestión, y un identificador aleatorio.
        */

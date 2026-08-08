@@ -1,7 +1,10 @@
-# Handoff — sesión del 7–8 de agosto de 2026
+# Handoff — sesiones del 7 y del 8 de agosto de 2026
 
-**Rama:** `migracion-linea-base-v2.6`, doce commits por delante de `main` (`626ad05`), subida a GitHub, árbol limpio.
-**Gate al cerrar:** validador, prettier, ESLint, `tsc --build`, **345 unitarias**, **129 de integración**, `pnpm build`. Todo en verde.
+**Rama:** `migracion-linea-base-v2.6`, trece commits por delante de `main` (`626ad05`), subida a GitHub.
+**Gate al cerrar la sesión del 7:** validador, prettier, ESLint, `tsc --build`, **345 unitarias**, **129 de integración**, `pnpm build`. Todo en verde.
+**Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **411 unitarias**, **147 de integración**, `pnpm build`. Todo en verde.
+
+> Las secciones 1 a 6 son la sesión del 7 de agosto y se conservan como se escribieron. La §7 es la del 8.
 
 ---
 
@@ -201,3 +204,98 @@ El fixture imprime los pasos exactos. El correo debe estar **ya registrado**: ni
 | `docs/04-delivery/triage-alcance-evento.md` | Qué está construido de verdad y qué no |
 | `docs/04-delivery/decisions/DEC-018.md` | Roles contables y matriz operación→asiento |
 | `docs/implementation/14-hardening-release.md` | Estado del go/no-go, actualizado |
+
+---
+
+# 7. Sesión del 8 de agosto de 2026
+
+## 7.1 Qué se cerró
+
+El «Inmediato» de §5, entero.
+
+| | |
+|---|---|
+| **Caso de uso de carga de evidencia** | `packages/application/src/submit-payment-proof.ts` — PAY-018 con sus siete datos, PAY-025, PAY-027, PAY-021 |
+| **Reenvío tras corrección** | El circuito estaba **cortado**: el revisor podía pedir una corrección que nadie podía hacer |
+| **`/e/…/mi-cuenta/pagos`** | El peregrino declara su pago. Sin esto no podía pagar la mitad de los 600 |
+| **`/e/…/mi-cuenta`** | Estado de cuenta: cargos, pagos, saldo, saldo a favor y por qué no está confirmado |
+
+Con eso la capa de aplicación pasa de 6 a **7 casos de uso** y los marcadores de pantalla de 18 a **16 de 31**.
+
+## 7.2 Las tres decisiones de diseño que importan
+
+**La autorización del peregrino no es un permiso, es la titularidad.** El peregrino no tiene ninguna asignación de rol —DEC-014 se apoya en eso para eximirlo del segundo factor—, así que `can()` le devuelve `false` para todo. Darle un rol para que pague lo suyo le daría alcance sobre lo ajeno. El dominio gana `owns` y `authorizeOwnership` junto a `authorize`. Un `ownerUserId` nulo nunca autoriza: IAM-012 admite inscripciones presenciales sin cuenta, y tratar el nulo como coincidencia las dejaría abiertas a cualquiera.
+
+**El archivo se guarda al final.** Subirlo antes de validar deja un objeto huérfano en el bucket por cada intento rechazado. El caso de uso valida todo y después invoca el puerto `EvidenceStore`; tres pruebas lo fijan. El efecto secundario es que la lista blanca de tipos y el límite de 10 MB bajaron al dominio: el almacén los sigue comprobando como última barrera, pero ya no es quien produce el mensaje, porque `ObjectStorageError` no es un `DomainError` y llegaría al peregrino como pantalla de error.
+
+**La corrección es la misma fila, no una evidencia nueva.** La referencia bancaria es única por gestión, así que duplicarla chocaría contra el índice; y una evidencia es una transferencia, no un intento. El motivo del rechazo se limpia de la fila —dejarlo haría que el revisor leyera como pendiente algo ya atendido— pero sobrevive en `audit_logs`, con una prueba que lo comprueba.
+
+## 7.3 Lo que apareció al mirar
+
+**Tres citas a requisitos que no existen.** `PRV-003` y `PRV-004` en tres archivos, `RBAC-001` en un cuarto. Ninguna de las dos familias está en el contrato.
+
+Lo incómodo no es la cita: es que la comprobación 3 del validador —la que §3 de este documento presenta como «ninguna cita del repositorio apunta a un requisito inexistente»— **no podía detectarlas**. Su expresión regular enumeraba las familias una a una, y `PRV` y `RBAC` no estaban en la lista. Buscaba citas inventadas y solo encontraba las de las familias que ya conocía. Justo el fallo que el validador se escribió para impedir, en el propio validador.
+
+Ahora acepta cualquier prefijo de dos a cuatro mayúsculas y excluye por lista lo que no es un requisito. Al activarla salieron exactamente esas cuatro citas y ninguna más.
+
+**El saldo a favor no estaba donde parecía.** `computeBalance` compara cargos contra asignaciones, y PAY-020 impide asignar a un cargo más de lo que debe: ese saldo no puede salir negativo, así que el sobrepago no aparecía. Vive en la parte del pago que no se repartió, que hasta ahora solo constaba en el snapshot del comprobante. De ahí `creditBalance`.
+
+**Nadie confirma inscripciones.** `confirmRegistration` se escribió el 7 de agosto y **no tiene ningún llamador**. El sistema sabe decidir si alguien está inscrito y no lo registra en ninguna parte. El estado de cuenta lo dice en voz alta en vez de mostrar «Confirmada»: afirmarlo sería decir algo que la base no dice.
+
+**DEC-009 no tiene de dónde congelar la tasa.** No hay tasa de cambio configurada en el esquema ni en la interfaz; solo la columna donde guardarla. Congelar significaría inventar un número que acabaría impreso en un comprobante. Registrado como **TBD-001** en el registro de decisiones: la rama multimoneda se detiene en `assertDeclarableEvidence` con un mensaje que lo explica, en vez de atravesar el sistema y morir al repartir contra los cargos.
+
+## 7.4 Errores propios de esta sesión
+
+Los dos primeros los encontraron las pruebas de integración **la primera vez que se ejecutaron**, y ninguno de los dos lo habría detectado ningún otro gate.
+
+- **La detección del duplicado no funcionaba.** Escribí que Prisma reporta las columnas en conflicto en `meta.target`. **No es cierto con Prisma 7 y el driver adapter de Postgres**: ahí `meta.target` viene sin definir y las columnas están en `meta.driverAdapterError.cause.constraint.fields`. El resultado era que PAY-027 nunca se traducía: el `P2002` escapaba tal cual y el peregrino habría visto una pantalla de error genérica en lugar de «esa referencia ya existe». Compilaba, pasaba ESLint y pasaba las unitarias, porque el doble de prueba devolvía el resultado que yo esperaba. Lo verifiqué contra el error real con una sonda antes de arreglarlo, y ahora se leen las dos formas.
+- **`Decimal.toString()` quita los ceros finales.** Una columna `Decimal(12,2)` que guarda `420.00` devuelve `"420"`. Da igual para operar, no para mostrar. Y **es un fallo que ya existía**: la bandeja del revisor viene enseñando «420 USD» desde que se escribió. Ahora todo importe que sale a pantalla pasa por `decimalText`, que convierte a través del dominio y no con `toFixed`, porque `toFixed` trabaja en coma flotante y eso es justo lo que NFR-014 prohíbe.
+- Mi propia prueba de integración creaba una versión de precio `ADVANCE` sin vigencia ni mínimo de pago, contra el constraint `price_versions_advance_is_complete`. Diecisiete pruebas rojas por no haber leído la migración de P05.
+- Dejé `eventId: input.proofId === '' ? undefined : undefined` en el repositorio de reenvío —un marcador de posición que escribí y no volví a mirar—. Habría escrito el `audit_log` sin gestión, y `tsc` no protesta porque el tipo admite `undefined`. Lo encontré releyendo, no compilando.
+- Un comentario JSX dentro de `{done && ( … )}` sin fragmento que lo envolviera: siete errores de sintaxis de un solo comentario mal colocado.
+- Convertí campos de `FormData` con `String()`. Un `FormData` puede traer un `File` en cualquier campo, y eso da «[object File]» como importe. Lo atrapó ESLint, no yo.
+
+También corregí una afirmación mía en voz alta durante la sesión: dije que el motor Linux de Docker no arrancaba. Arrancaba, solo tardó unos treinta minutos. Con eso pudieron correr las de integración, que es lo que encontró los dos primeros fallos de esta lista.
+
+### Y tres más, que encontró una revisión adversarial con el gate ya en verde
+
+Cinco revisores independientes sobre el cambio —seguridad, dinero, concurrencia, viabilidad de las pruebas, fidelidad a los requisitos— y un verificador por hallazgo encargado de refutarlo. Veintiséis hallazgos, tres supervivientes, los tres reales.
+
+- **El límite de cuerpo de una acción de servidor son 1 MB por defecto en Next.** Toda la evidencia viaja como `FormData`, así que el máximo de 10 MB que la pantalla promete y el dominio impone era **inalcanzable**: una foto de móvil normal (2–5 MB) recibía un 413 antes de que se ejecutara nada, y sin `try/catch` la promesa rechazada subía al *error boundary* en vez de a un mensaje. La carga habría fallado para la mayoría de los peregrinos, en silencio y con la pantalla diciendo «hasta 10 MB» al lado.
+- **El autoservicio aceptaba canales de caja.** PAY-024 los reserva para caja y PAY-011 exige sesión de caja abierta; el código lo decía en tres comentarios y lo aplicaba **solo en la consulta que llena el desplegable**. El identificador del canal viaja en el formulario y la acción de servidor es invocable directamente: presentar el de un canal `CASH` producía una evidencia aprobable cuyo pago nunca aparecería en ningún arqueo y aun así bajaría el saldo. Es exactamente el error que mis propios comentarios dicen evitar — la interfaz filtra, el servidor no.
+- **La fecha de hoy se rechazaba por futura a primera hora.** El tope del campo se calculaba en la zona de la gestión y la validación comparaba contra el instante UTC. En La Paz, entre medianoche y las ocho de la mañana, el formulario ofrecía «hoy» y la regla lo rechazaba. La causa no era el anclaje sino tener **dos respuestas a «¿qué día es hoy?»**; ahora hay una sola, en `packages/domain/src/civil-date.ts`, y la comparación es por día civil y no por instante.
+
+De los veintitrés descartados, varios describían el código correctamente y aun así no eran defectos: escenarios inalcanzables, invariantes que el sistema no tiene por diseño, o cuestiones ajenas al cambio. Uno señaló algo cierto que queda anotado sin resolver: la referencia bancaria distingue mayúsculas, así que `TRF-88213` y `trf-88213` conviven y PAY-027 no las ve como duplicadas.
+
+## 7.5 Qué falta ahora
+
+### Para cerrar el bloque 1 del todo
+
+1. **Registrar la confirmación.** `confirmRegistration` existe y nadie lo llama. Es el siguiente eslabón: decidir quién lo ejecuta —¿el propio flujo de aprobación, con qué actor?— y auditarlo.
+2. **`/admin/e/…/pagos`** sigue siendo marcador. La bandeja de comprobantes cubre la revisión; falta la vista de pagos y asignaciones.
+
+### El resto, sin cambios respecto a §5
+
+Bloques 2 a 5 tal como estaban. El orden sigue siendo el acordado.
+
+## 7.6 Cómo retomar
+
+```bash
+pnpm db:up
+pnpm exec prisma migrate deploy
+pnpm exec prisma db seed
+pnpm db:fixture revisor@ejemplo.org peregrino@ejemplo.org
+pnpm --filter @encuentro/web dev
+```
+
+El fixture ahora acepta **dos correos**: el segundo vincula la inscripción a esa cuenta, y su titular puede recorrer `/e/ENC2026/mi-cuenta` con sesión. Deben ser cuentas distintas —quien revisa su propio comprobante se aprueba a sí mismo el dinero— y ambas ya registradas: el script sigue sin crear credenciales.
+
+Los diez pasos que imprime recorren el circuito completo por primera vez: declarar, revisar, pedir corrección, corregir y aprobar.
+
+## 7.7 Lo que no pude verificar
+
+**Ninguna pantalla se recorrió a mano.** El riesgo que §5 dejaba abierto sigue abierto, y ahora abarca dos pantallas más. Con el fixture de dos correos el escenario ya está montado y los diez pasos impresos dicen exactamente qué pulsar; falta hacerlo.
+
+Lo que sí se verificó: **147 pruebas de integración contra Postgres, Redis y MinIO reales** (129 previas más 18 nuevas), y que las dos rutas nuevas se sirven sin error y redirigen a `/ingresar` sin sesión. Más allá de eso no pude llegar: entrar exige crear una cuenta y escribir una contraseña, y eso no lo hago en su nombre.
+
+**La accesibilidad de estas dos pantallas no está comprobada automáticamente.** `tests/e2e/routes.ts` recorre `/e/ENC2026/mi-cuenta/pagos`, pero sin sesión: comprueba la redirección a `/ingresar`, no el formulario. Es el mismo hueco que ya tenían las rutas de administración, y ahora cuesta más dejarlo así, porque estas dos pantallas sí tienen contenido que auditar.

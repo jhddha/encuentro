@@ -31,6 +31,8 @@ export {
 
 export { DomainError, type DomainErrorCode } from './errors.js';
 
+export { civilDayAnchor, civilDayIn, todayAnchorIn } from './civil-date.js';
+
 export { dayNumber, totalDays } from './event-duration.js';
 
 export { MINIMUM_AGE, ageAt, assertEligibleByAge, isEligibleByAge } from './eligibility.js';
@@ -75,14 +77,18 @@ export {
 export {
   ADVANCE_CHANNELS,
   ARRIVAL_CHANNELS,
+  EVIDENCE_CONTENT_TYPES,
+  EVIDENCE_MAX_BYTES,
   RATE_SCALE,
   assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
+  assertDeclarableEvidence,
   assertPayableAmount,
   canTransitionProof,
   cashDifference,
   computeBalance,
   convert,
+  creditBalance,
   creditFromOverpayment,
   formatReceiptNumber,
   isReviewable,
@@ -93,6 +99,7 @@ export {
   type Balance,
   type BalanceInput,
   type ChargeAllocationInput,
+  type DeclaredEvidence,
   type PaymentChannel,
 } from './billing.js';
 
@@ -134,7 +141,9 @@ export {
 
 export {
   authorize,
+  authorizeOwnership,
   can,
+  owns,
   scopeCovers,
   type Actor,
   type ResourceContext,

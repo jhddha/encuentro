@@ -10,7 +10,7 @@ import { DomainError } from '@encuentro/domain';
  * acción:
  *
  *  1. **La autorización no vive aquí.** La hace el caso de uso, contra el
- *     dominio (GOV-006, RBAC-001). Que una acción de servidor solo se invoque
+ *     dominio (GOV-006, IAM-010). Que una acción de servidor solo se invoque
  *     desde un botón que el usuario ve no es una garantía: el endpoint que Next
  *     genera es accesible directamente.
  *  2. **Un `DomainError` no es un fallo del sistema.** «Le falta saldo» o «otro

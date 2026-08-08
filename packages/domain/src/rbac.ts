@@ -96,3 +96,33 @@ export function authorize(actor: Actor, permission: string, resource: ResourceCo
     throw new DomainError('FORBIDDEN', `Falta el permiso ${permission} en el ámbito solicitado.`);
   }
 }
+
+/**
+ * Titularidad — PAY-021.
+ *
+ * El autoservicio no se resuelve con permisos. **El peregrino no tiene ninguna
+ * asignación de rol**: DEC-014 se apoya precisamente en eso para eximirlo del
+ * segundo factor. Así que `can()` devolvería `false` para cualquier permiso que
+ * se le pidiera, y darle un rol para que pueda pagar lo suyo le daría también
+ * alcance sobre lo ajeno.
+ *
+ * Lo que le autoriza es ser el titular. PAY-021 lo dice de forma literal: «el
+ * autoservicio solo paga cargos propios», y separa ese caso del de caja y
+ * tesorería, que sí operan por permiso y con pagador explícito.
+ *
+ * `ownerUserId` es nulo cuando la persona no tiene cuenta —IAM-012 admite
+ * inscribir presencialmente sin correo—. Un titular sin cuenta no es titular de
+ * nadie: nulo nunca autoriza.
+ */
+export function owns(actor: Actor, ownerUserId: string | null): boolean {
+  return ownerUserId !== null && ownerUserId === actor.userId;
+}
+
+/** Igual que `owns`, pero falla con un error de dominio en lugar de devolver `false`. */
+export function authorizeOwnership(actor: Actor, ownerUserId: string | null): void {
+  if (!owns(actor, ownerUserId)) {
+    // Mismo mensaje neutro que `authorize`, y por la misma razón: distinguir
+    // «no es tuya» de «no existe» permitiría enumerar inscripciones ajenas.
+    throw new DomainError('FORBIDDEN', 'La inscripción solicitada no está disponible.');
+  }
+}

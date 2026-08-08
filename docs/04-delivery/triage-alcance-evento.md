@@ -20,6 +20,8 @@ No es «faltan cincuenta requisitos». Es más concreto y más desigual que eso.
 | **Capa de aplicación** | **4 casos de uso** — crear inscripción, transicionar gestión, expirar `HELD`, enviar notificaciones |
 | **Pantallas** | 31 rutas: **12 con contenido real, 19 marcadores** |
 
+> **Actualización del 8 de agosto de 2026.** La tabla anterior es el inventario del 7 de agosto y se conserva como estaba: es la foto que justificó las preguntas de más abajo. A día de hoy la capa de aplicación tiene **7 casos de uso** —se sumaron confirmar inscripción, revisar evidencia y cargar evidencia— y quedan **16 marcadores de 31**. Lo que no cambió es el diagnóstico: el hueco sigue siendo la superficie operable entera.
+
 Los informes de implementación fueron honestos sobre esto. El de P07 dice literalmente, en su apartado «Qué NO se implementó»: *«Pantallas de pagos, comprobantes y caja — las rutas existen desde P02»*. Las fases entregaron esquema, invariantes y reglas de dominio, y aplazaron deliberadamente la superficie operable.
 
 **La consecuencia práctica:** hay cimientos sólidos y casi nada con lo que operar. Cobrar, revisar una evidencia, asignar una habitación, escanear una credencial o entregar una comida no tienen hoy ni pantalla ni caso de uso.
@@ -45,11 +47,11 @@ Más los dos procesos de fondo de P16: expiración de `HELD` y envío de correo.
 
 | Falta | Ruta | Sin esto… |
 |---|---|---|
-| Panel del peregrino | `/e/…/mi-cuenta` | No puede consultar su estado de cuenta |
-| Subir evidencia de pago | `/e/…/mi-cuenta/pagos` | **Nadie puede pagar por anticipado** |
-| Revisar evidencias | `/admin/e/…/comprobantes`, `/pagos` | **Nadie puede aprobar un pago** |
+| ~~Panel del peregrino~~ | `/e/…/mi-cuenta` | **Hecho** el 8 de agosto de 2026: estado de cuenta con cargos, pagos, saldo y saldo a favor |
+| ~~Subir evidencia de pago~~ | `/e/…/mi-cuenta/pagos` | **Hecho** el 8 de agosto de 2026, incluido el reenvío tras corrección |
+| ~~Revisar evidencias~~ | `/admin/e/…/comprobantes` | **Hecho** el 7 de agosto de 2026. `/admin/e/…/pagos` sigue siendo marcador |
+| Registrar la confirmación | — | `REG-017` **está implementado y nadie lo invoca**: el sistema sabe decidir si alguien está inscrito y no lo escribe en ninguna parte |
 | Elegir y asignar hotel | `/e/…/mi-cuenta/hospedaje`, `/admin/e/…/hospedaje` | El hospedaje se gestiona fuera del sistema |
-| Confirmar inscripción | — | `REG-017` no está implementado: **el sistema no sabe decidir si alguien está inscrito** |
 
 ### En la llegada
 

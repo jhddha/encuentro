@@ -16,13 +16,37 @@ import process from 'node:process';
  * verificación de correo (DEC-013) y segundo factor (DEC-014).
  *
  * Uso:
- *   pnpm exec tsx prisma/dev-fixture.ts tu-correo@ejemplo.org
+ *   pnpm exec tsx prisma/dev-fixture.ts revisor@ejemplo.org [peregrino@ejemplo.org]
+ *
+ * El segundo correo es opcional y **debe ser una cuenta distinta**. Si se da, la
+ * inscripción de prueba queda vinculada a esa cuenta y su titular puede recorrer
+ * `/e/ENC2026/mi-cuenta` y declarar un pago. Sin él, la inscripción no tiene
+ * cuenta —como una inscripción presencial de IAM-012— y solo se puede recorrer
+ * el lado del revisor.
+ *
+ * Que sean cuentas distintas no es capricho del script: quien revisa su propio
+ * comprobante se aprueba a sí mismo el dinero, y probarlo así ocultaría
+ * exactamente el control que PAY-025 introduce.
  */
 
 const argumento = process.argv[2];
+const argumentoPeregrino = process.argv[3];
 
 if (argumento?.includes('@') !== true) {
-  console.error('Uso: pnpm exec tsx prisma/dev-fixture.ts <correo-ya-registrado>');
+  console.error(
+    'Uso: pnpm exec tsx prisma/dev-fixture.ts <correo-revisor> [correo-peregrino]\n' +
+      'Ambos deben estar ya registrados; el script no crea credenciales.',
+  );
+  process.exit(1);
+}
+
+if (argumentoPeregrino !== undefined && !argumentoPeregrino.includes('@')) {
+  console.error(`«${argumentoPeregrino}» no parece un correo.`);
+  process.exit(1);
+}
+
+if (argumentoPeregrino === argumento) {
+  console.error('El revisor y el peregrino deben ser cuentas distintas.');
   process.exit(1);
 }
 
@@ -31,6 +55,7 @@ if (argumento?.includes('@') !== true) {
  * Sin esto el correo sería `string | undefined` en cada interpolación.
  */
 const email: string = argumento;
+const emailPeregrino: string | undefined = argumentoPeregrino;
 
 const prisma = createPrismaClient(process.env.DATABASE_URL ?? '');
 
@@ -102,8 +127,53 @@ async function main(): Promise<void> {
 
   const marca = Date.now().toString(36);
 
+  /*
+   * Cuenta del peregrino, si se pidió.
+   *
+   * Se exige que exista, igual que la del revisor: el alta pasa por el registro
+   * real, con verificación de correo (DEC-013). Una cuenta creada aquí sería una
+   * cuenta sin contraseña conocida o con una por defecto, y ninguna de las dos
+   * cosas debe existir en ningún entorno.
+   */
+  let usuarioPeregrino: { id: string } | null = null;
+
+  if (emailPeregrino !== undefined) {
+    usuarioPeregrino = await prisma.user.findFirst({
+      where: { email: emailPeregrino },
+      select: { id: true },
+    });
+
+    if (usuarioPeregrino === null) {
+      console.error(`No existe ningún usuario con el correo ${emailPeregrino}.`);
+      console.error('Regístrelo en http://localhost:3000/ingresar y vuelva a ejecutar esto.');
+      process.exit(1);
+    }
+
+    /*
+     * `persons.user_id` es único: una cuenta no puede ser dos personas. Si esa
+     * cuenta ya quedó vinculada por una ejecución anterior, se reutiliza en vez
+     * de crear una persona nueva que reventaría contra el índice.
+     */
+    const yaVinculada = await prisma.person.findUnique({
+      where: { userId: usuarioPeregrino.id },
+      select: { id: true },
+    });
+
+    if (yaVinculada !== null) {
+      await prisma.person.update({
+        where: { id: yaVinculada.id },
+        data: { userId: null },
+      });
+      console.log('La cuenta del peregrino ya estaba vinculada a otra persona; se desvinculó.');
+    }
+  }
+
   const person = await prisma.person.create({
-    data: { fullName: `Peregrino de prueba ${marca}`, birthDate: new Date('1990-05-14') },
+    data: {
+      fullName: `Peregrino de prueba ${marca}`,
+      birthDate: new Date('1990-05-14'),
+      ...(usuarioPeregrino === null ? {} : { userId: usuarioPeregrino.id }),
+    },
   });
 
   const pkg = await prisma.package.upsert({
@@ -149,9 +219,21 @@ async function main(): Promise<void> {
     contentType: 'image/png',
   });
 
-  let channel = await prisma.paymentChannel.findFirst({ where: { eventId: event.id } });
-  channel ??= await prisma.paymentChannel.create({
-    data: { eventId: event.id, code: 'US_ACCOUNT_MANUAL', currency: 'USD' },
+  /*
+   * Canal anticipado con instrucciones. La moneda coincide con la de la gestión
+   * a propósito: mientras TBD-001 siga abierto no hay tasa configurada, y un
+   * canal en otra moneda haría que la pantalla del peregrino rechazara toda
+   * declaración con un mensaje que parecería un fallo del código.
+   */
+  const channel = await prisma.paymentChannel.upsert({
+    where: { eventId_code: { eventId: event.id, code: 'US_ACCOUNT_MANUAL' } },
+    update: { active: true },
+    create: {
+      eventId: event.id,
+      code: 'US_ACCOUNT_MANUAL',
+      currency: 'USD',
+      instructions: 'Cuenta de desarrollo 0000-0000. Datos ficticios, no transfiera nada.',
+    },
   });
 
   const proof = await prisma.paymentProof.create({
@@ -172,13 +254,35 @@ async function main(): Promise<void> {
 
   await prisma.$disconnect();
 
+  const ladoPeregrino =
+    emailPeregrino === undefined
+      ? `  Peregrino      sin cuenta vinculada — pase un segundo correo para poder
+                 recorrer /e/${event.code}/mi-cuenta con sesión`
+      : `  Peregrino      ${emailPeregrino}, titular de ${registration.code}`;
+
+  const pasosPeregrino =
+    emailPeregrino === undefined
+      ? ''
+      : `
+Y el circuito completo, que es lo que no se había recorrido nunca:
+
+  6. En otro navegador o ventana privada, entre con ${emailPeregrino}
+  7. Abra http://localhost:3000/e/${event.code}/mi-cuenta — debe ver el cargo
+     de 420.00 y el saldo pendiente
+  8. En /mi-cuenta/pagos declare un pago nuevo con otra referencia
+  9. Como revisor, pida corrección de esa evidencia
+ 10. Como peregrino, corríjala: la fila vuelve a «Enviado» sin duplicarse
+`;
+
   console.log(`
 Escenario listo.
 
   Gestión        ${event.code}
   Inscripción    ${registration.code} — saldo pendiente 420.00 USD
   Evidencia      ${proof.reference} — 420.00 USD, con archivo adjunto
+  Canal          ${channel.code} (USD), activo y con instrucciones
   Permiso        TESORERIA sobre ${event.code}, concedido a ${email}
+${ladoPeregrino}
 
 Para usarlo:
 
@@ -191,7 +295,7 @@ Para usarlo:
      reparta los 420.00 contra el cargo.
 
 Al aprobar debería aparecer un comprobante numerado REC-${event.code}-000001.
-`);
+${pasosPeregrino}`);
 }
 
 main()

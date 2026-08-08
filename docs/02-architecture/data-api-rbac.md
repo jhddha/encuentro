@@ -130,8 +130,11 @@
 | `MEAL_SERVICE_CAPACITY_EXHAUSTED` | 409 | Sin disponibilidad. |
 | `REGISTRATION_TRANSITION_INVALID` | 422 | Transición no permitida por la máquina de estados de inscripción. |
 | `REGISTRATION_NOT_CONFIRMABLE` | 422 | `REG-017`: queda saldo pendiente y no hay exención total aprobada. |
+| `PAYMENT_PROOF_NOT_SUBMITTABLE` | 422 | `PAY-018`: la evidencia declarada no puede aceptarse — falta referencia, fecha futura, archivo inadmisible, canal deshabilitado o inscripción cancelada. |
 
-Los dos últimos se añadieron el 7 de agosto de 2026 al implementar `REG-017`. La máquina de estados de inscripción está declarada en `requirements.md` §4.2 desde el origen, pero no tenía error asociado: sin `REGISTRATION_NOT_CONFIRMABLE`, la regla que decide si alguien está inscrito no podía expresar su rechazo, y cada llamador habría inventado el suyo — que es justo lo que el criterio de `REG-017` prohíbe al pedir «política única de dominio, sin confirmación manual dispersa».
+`PAYMENT_PROOF_NOT_SUBMITTABLE` se añadió el 8 de agosto de 2026 al implementar la carga de evidencias por el peregrino. Es el simétrico de `PAYMENT_PROOF_NOT_REVIEWABLE`: aquel rechaza revisar lo que no admite revisión, este rechaza aceptar lo que no admite aceptarse. Sin él, la mitad de esos rechazos habría acabado bajo `MONEY_INVALID`, que solo describe el importe, y la otra mitad bajo un código inventado por cada llamador.
+
+Los dos anteriores se añadieron el 7 de agosto de 2026 al implementar `REG-017`. La máquina de estados de inscripción está declarada en `requirements.md` §4.2 desde el origen, pero no tenía error asociado: sin `REGISTRATION_NOT_CONFIRMABLE`, la regla que decide si alguien está inscrito no podía expresar su rechazo, y cada llamador habría inventado el suyo — que es justo lo que el criterio de `REG-017` prohíbe al pedir «política única de dominio, sin confirmación manual dispersa».
 
 ## 6. RBAC
 

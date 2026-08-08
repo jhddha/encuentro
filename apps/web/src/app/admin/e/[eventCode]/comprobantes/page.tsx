@@ -80,7 +80,7 @@ export default async function ReceiptsPage({
       : ((d) => (d?.eventId === event.id ? d : null))(await proofDetail(evidencia));
 
   /*
-   * URL firmada del archivo adjunto — PRV-003.
+   * URL firmada del archivo adjunto — PAY-018 («archivo no público»).
    *
    * Se genera al renderizar y caduca en cinco minutos. Si el revisor tarda más,
    * recargar la pantalla la renueva. La alternativa —generarla al pulsar— evita

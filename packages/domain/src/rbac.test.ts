@@ -3,7 +3,15 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
 import { DomainError } from './errors.js';
-import { authorize, can, scopeCovers, type Actor, type Scope } from './rbac.js';
+import {
+  authorize,
+  authorizeOwnership,
+  can,
+  owns,
+  scopeCovers,
+  type Actor,
+  type Scope,
+} from './rbac.js';
 
 const contractPermissions = (
   JSON.parse(
@@ -145,6 +153,49 @@ describe('autorización por permiso y scope', () => {
     expect((thrown as DomainError).code).toBe('FORBIDDEN');
     // El mensaje no debe distinguir «no existe» de «no autorizado».
     expect((thrown as DomainError).message).not.toContain(EVENT_B);
+  });
+});
+
+describe('titularidad — PAY-021', () => {
+  const peregrino: Actor = { userId: 'u-1', assignments: [] };
+
+  it('el titular alcanza lo suyo aunque no tenga ninguna asignación', () => {
+    expect(owns(peregrino, 'u-1')).toBe(true);
+    expect(() => {
+      authorizeOwnership(peregrino, 'u-1');
+    }).not.toThrow();
+  });
+
+  it('no alcanza lo de otra persona', () => {
+    expect(owns(peregrino, 'u-2')).toBe(false);
+  });
+
+  /*
+   * IAM-012 admite inscribir presencialmente sin cuenta. Esa inscripción no
+   * tiene titular con sesión, y tratar el nulo como coincidencia la dejaría
+   * accesible a cualquiera cuyo `userId` fuera también nulo.
+   */
+  it('una inscripción sin cuenta no tiene titular', () => {
+    expect(owns(peregrino, null)).toBe(false);
+    expect(owns({ userId: '', assignments: [] }, null)).toBe(false);
+  });
+
+  it('tener permisos no sustituye a la titularidad', () => {
+    const tesoreria = actorWith(['payment.proof.review'], { type: 'EVENT', eventId: EVENT_A });
+    expect(owns(tesoreria, 'u-2')).toBe(false);
+  });
+
+  it('el rechazo no revela si la inscripción existe', () => {
+    let thrown: unknown;
+    try {
+      authorizeOwnership(peregrino, 'u-2');
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(DomainError);
+    expect((thrown as DomainError).code).toBe('FORBIDDEN');
+    expect((thrown as DomainError).message).not.toContain('u-2');
   });
 });
 

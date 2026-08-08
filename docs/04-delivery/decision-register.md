@@ -25,6 +25,14 @@
 | [DEC-017](decisions/DEC-017.md) | Google Sheets fuera de alcance en v1 | 2026-08-05 | P13 |
 | [DEC-018](decisions/DEC-018.md) | Reconocimiento contable y matriz de asientos | 2026-08-07 | P12 |
 
+## Pendientes de definición
+
+Una decisión aprobada puede seguir sin poder aplicarse si le falta un dato. Estos no son decisiones abiertas —nadie tiene que elegir entre alternativas— sino datos que la organización todavía no ha dado. Se registran aquí y **detienen solo el alcance que dependen de ellos** (regla 01-no-guessing).
+
+| ID | Depende de | Qué falta | Alcance detenido |
+|---|---|---|---|
+| TBD-001 | DEC-009 | **La tasa de cambio no tiene fuente.** La decisión dice congelarla al cargar la evidencia, y `payment_proofs.exchange_rate_micros` existe para guardarla, pero no hay ninguna tasa configurada por gestión en el esquema ni en la interfaz. Sin fuente, congelar significaría inventar un número que acabaría impreso en un comprobante. | Cobrar en una moneda distinta a la de la gestión. `assertDeclarableEvidence` rechaza esa combinación con `MONEY_CURRENCY_MISMATCH` y un mensaje que lo explica. Mientras siga abierto, **el canal `BOLIVIA_QR_MANUAL` solo sirve si cobra en la moneda de la gestión**. Detectado el 8 de agosto de 2026 al implementar la carga de evidencias. |
+
 ## Riesgos registrados junto a una decisión aprobada
 
 Aprobar una decisión no elimina su riesgo. Estos quedan abiertos y deben revisarse:

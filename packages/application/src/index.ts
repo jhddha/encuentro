@@ -53,6 +53,24 @@ export {
 } from './confirm-registration.js';
 
 export {
+  resubmitPaymentProof,
+  submitPaymentProof,
+  type EvidenceFile,
+  type EvidenceStore,
+  type EvidenceUpload,
+  type PaymentChannelRecord,
+  type ProofForResubmission,
+  type ProofSubmissionRepository,
+  type ProofWriteResult,
+  type RegistrationForPayment,
+  type ResubmitPaymentProofCommand,
+  type ResubmitProofInput,
+  type SubmitPaymentProofCommand,
+  type SubmitPaymentProofDeps,
+  type SubmitProofInput,
+} from './submit-payment-proof.js';
+
+export {
   reviewPaymentProof,
   takeProofForReview,
   type AllocationRequest,

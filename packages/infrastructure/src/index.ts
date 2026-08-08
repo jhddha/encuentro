@@ -31,6 +31,17 @@ export {
   type ProofInboxRow,
   type ReceiptSecret,
 } from './payment-proof-repository.js';
+export { decimalText } from './decimal.js';
+export { createProofSubmissionRepository } from './proof-submission-repository.js';
+export {
+  findAccountStatement,
+  listAdvanceChannels,
+  type AccountStatement,
+  type AdvanceChannelOption,
+  type StatementCharge,
+  type StatementPayment,
+  type StatementProof,
+} from './account-statement.js';
 export {
   createObjectStorage,
   ObjectStorageError,

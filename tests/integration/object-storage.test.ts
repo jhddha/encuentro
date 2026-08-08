@@ -4,7 +4,7 @@ import { createObjectStorage, ObjectStorageError } from '@encuentro/infrastructu
 import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
- * Gate del almacenamiento de evidencias — PAY-018, PRV-003, PRV-004.
+ * Gate del almacenamiento de evidencias — PAY-018, PAY-032.
  *
  * Corre contra el MinIO de `docker-compose.yml`. Lo que se comprueba aquí no se
  * puede comprobar con dobles: que el objeto **no sea alcanzable sin firma**.
@@ -42,8 +42,9 @@ describe('almacenamiento de evidencias', () => {
   });
 
   /*
-   * PRV-004: ni nombres, ni documentos, ni códigos de inscripción en la ruta.
-   * Una clave con PII se filtra en registros de acceso, cabeceras y capturas.
+   * Regla 03-security-rbac: ni nombres, ni documentos, ni códigos de
+   * inscripción en la ruta. Una clave con PII se filtra en registros de acceso,
+   * cabeceras y capturas.
    */
   it('la clave no contiene PII', async () => {
     const stored = await storage.putEvidence({

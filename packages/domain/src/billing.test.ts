@@ -3,18 +3,24 @@ import { describe, expect, it } from 'vitest';
 import {
   ADVANCE_CHANNELS,
   ARRIVAL_CHANNELS,
+  EVIDENCE_CONTENT_TYPES,
+  EVIDENCE_MAX_BYTES,
   assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
+  assertDeclarableEvidence,
   assertPayableAmount,
   canTransitionProof,
   cashDifference,
   computeBalance,
   convert,
+  creditBalance,
   creditFromOverpayment,
   formatReceiptNumber,
   isReviewable,
   unallocatedAmount,
+  type DeclaredEvidence,
 } from './billing.js';
+import { civilDayAnchor } from './civil-date.js';
 import { DomainError } from './errors.js';
 import { money, toDecimalString } from './money.js';
 
@@ -298,5 +304,211 @@ describe('PAY-020 — la asignación no supera el saldo del cargo', () => {
         },
       ]);
     }).toThrow(/importe positivo/);
+  });
+});
+
+describe('evidencia declarada — PAY-018', () => {
+  const AHORA = new Date('2026-08-08T12:00:00.000Z');
+
+  /** Igual que hace la pantalla: un día civil, no un instante. */
+  function anclar(dia: string): Date {
+    const fecha = civilDayAnchor(dia);
+    if (fecha === null) throw new Error(`día no válido en la prueba: ${dia}`);
+    return fecha;
+  }
+
+  function evidencia(overrides: Partial<DeclaredEvidence> = {}): DeclaredEvidence {
+    return {
+      amount: USD('420.00'),
+      paidAt: new Date('2026-08-07T15:00:00.000Z'),
+      reference: 'TRF-88213',
+      contentType: 'image/png',
+      sizeBytes: 24_000,
+      channelCurrency: 'USD',
+      eventCurrency: 'USD',
+      timezone: 'America/La_Paz',
+      now: AHORA,
+      ...overrides,
+    };
+  }
+
+  it('acepta una declaración completa', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia());
+    }).not.toThrow();
+  });
+
+  it('acepta un pago declarado hoy mismo', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ paidAt: AHORA }));
+    }).not.toThrow();
+  });
+
+  it('rechaza un importe de cero o negativo (PAY-019)', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ amount: USD('0.00') }));
+    }).toThrow(/importe positivo/);
+
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ amount: USD('-10.00') }));
+    }).toThrow(/importe positivo/);
+  });
+
+  it('exige referencia', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ reference: '   ' }));
+    }).toThrow(/referencia bancaria es obligatoria/i);
+  });
+
+  it('rechaza una referencia desmesurada', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ reference: 'X'.repeat(65) }));
+    }).toThrow(/64 caracteres/);
+  });
+
+  /*
+   * Una transferencia con fecha futura no ha ocurrido. Aceptarla permitiría
+   * ocupar plaza contra dinero que quizá nunca salga.
+   */
+  it('rechaza una fecha futura', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ paidAt: anclar('2026-08-09') }));
+    }).toThrow(/no puede ser futura/);
+  });
+
+  /*
+   * La regresión que motivó comparar días civiles y no instantes.
+   *
+   * A las 06:30 de La Paz ya es día 8 allí, pero solo las 10:30 UTC. Comparando
+   * contra el reloj, el ancla del día 8 (mediodía UTC) queda «en el futuro» y el
+   * peregrino no podía declarar el pago que acababa de hacer. El formulario, que
+   * calcula su tope en la zona de la gestión, sí le ofrecía esa fecha.
+   */
+  it('acepta el pago de hoy a primera hora en la zona de la gestión', () => {
+    const madrugadaEnLaPaz = new Date('2026-08-08T10:30:00.000Z');
+
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ paidAt: anclar('2026-08-08'), now: madrugadaEnLaPaz }));
+    }).not.toThrow();
+  });
+
+  it('sigue rechazando el día siguiente a esa misma hora', () => {
+    expect(() => {
+      assertDeclarableEvidence(
+        evidencia({ paidAt: anclar('2026-08-09'), now: new Date('2026-08-08T10:30:00.000Z') }),
+      );
+    }).toThrow(/no puede ser futura/);
+  });
+
+  /*
+   * Y el simétrico, hacia el este: en Yakarta (UTC+7) las 23:00 del día 8 son
+   * las 16:00 UTC del mismo día, así que el ancla ya quedó atrás. Comparar por
+   * día lo resuelve en ambas direcciones.
+   */
+  it('acepta el pago de hoy de madrugada en una zona al este', () => {
+    expect(() => {
+      assertDeclarableEvidence(
+        evidencia({
+          paidAt: anclar('2026-08-09'),
+          timezone: 'Asia/Jakarta',
+          now: new Date('2026-08-08T17:30:00.000Z'),
+        }),
+      );
+    }).not.toThrow();
+  });
+
+  it('rechaza un tipo fuera de la lista blanca', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ contentType: 'text/html' }));
+    }).toThrow(/imagen .* o un PDF/);
+  });
+
+  it('admite los cuatro tipos declarados', () => {
+    for (const contentType of EVIDENCE_CONTENT_TYPES) {
+      expect(() => {
+        assertDeclarableEvidence(evidencia({ contentType }));
+      }).not.toThrow();
+    }
+  });
+
+  it('rechaza un archivo vacío y uno de más de 10 MB', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ sizeBytes: 0 }));
+    }).toThrow(/vacío/);
+
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ sizeBytes: EVIDENCE_MAX_BYTES + 1 }));
+    }).toThrow(/10 MB/);
+
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ sizeBytes: EVIDENCE_MAX_BYTES }));
+    }).not.toThrow();
+  });
+
+  it('rechaza declarar en una moneda distinta a la del canal', () => {
+    expect(() => {
+      assertDeclarableEvidence(evidencia({ amount: money('420.00', 'BOB') }));
+    }).toThrow(DomainError);
+  });
+
+  /*
+   * DEC-009 dice congelar la tasa al cargar la evidencia, pero no existe tasa
+   * configurada en ninguna parte del esquema. Sin fuente, convertir sería
+   * inventar un número que acabaría en un comprobante emitido. La rama se
+   * detiene aquí, no más adelante. Ver TBD-001.
+   */
+  it('detiene la rama multimoneda mientras no haya tasa configurada (DEC-009)', () => {
+    let thrown: unknown;
+    try {
+      assertDeclarableEvidence(
+        evidencia({ amount: money('2900.00', 'BOB'), channelCurrency: 'BOB' }),
+      );
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).toBeInstanceOf(DomainError);
+    expect((thrown as DomainError).code).toBe('MONEY_CURRENCY_MISMATCH');
+    expect((thrown as DomainError).message).toMatch(/tasa de cambio/i);
+  });
+});
+
+describe('saldo a favor acumulado — DEC-008', () => {
+  it('es la parte cobrada que no se repartió', () => {
+    const credito = creditBalance([USD('500.00')], [USD('420.00')], 'USD');
+    expect(toDecimalString(credito)).toBe('80.00');
+  });
+
+  it('es cero cuando todo lo cobrado se repartió', () => {
+    expect(toDecimalString(creditBalance([USD('420.00')], [USD('420.00')], 'USD'))).toBe('0.00');
+  });
+
+  it('es cero sin pagos', () => {
+    expect(toDecimalString(creditBalance([], [], 'USD'))).toBe('0.00');
+  });
+
+  /*
+   * Repartir más de lo cobrado ya lo impide `assertAllocationsWithinPayment`.
+   * Si ocurriera pese a todo, mostrar el negativo como deuda del peregrino
+   * sería peor que cortarlo: el descuadre debe verse en el arqueo.
+   */
+  it('nunca es negativo', () => {
+    expect(toDecimalString(creditBalance([USD('100.00')], [USD('420.00')], 'USD'))).toBe('0.00');
+  });
+
+  /*
+   * La otra mitad del mismo concepto: `computeBalance` compara cargos contra
+   * asignaciones, y por PAY-020 ese saldo no puede salir negativo. Por eso el
+   * sobrepago no aparece ahí y hace falta `creditBalance`.
+   */
+  it('el sobrepago no se ve en el saldo pendiente', () => {
+    const balance = computeBalance({
+      charges: [USD('420.00')],
+      allocations: [USD('420.00')],
+      currency: 'USD',
+    });
+
+    expect(toDecimalString(balance.outstanding)).toBe('0.00');
+    expect(toDecimalString(creditBalance([USD('500.00')], [USD('420.00')], 'USD'))).toBe('80.00');
   });
 });

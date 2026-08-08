@@ -1,3 +1,4 @@
+import { todayAnchorIn } from './civil-date.js';
 import { DomainError } from './errors.js';
 import {
   add,
@@ -67,6 +68,163 @@ export function isReviewable(state: PaymentProofState): boolean {
 }
 
 /**
+ * Tipos de archivo admitidos como evidencia — PAY-018.
+ *
+ * Una lista blanca, no negra. Servir un `text/html` desde una URL firmada del
+ * mismo origen sería ejecutar HTML de un desconocido con la sesión del revisor
+ * delante: exactamente un XSS almacenado. Un comprobante bancario es una imagen
+ * o un PDF y nada más.
+ *
+ * Vive en el dominio y no en el almacén porque el mensaje de rechazo es para el
+ * peregrino, y `ObjectStorageError` no llega hasta él: el traductor de acciones
+ * solo convierte `DomainError`. La infraestructura vuelve a comprobarlo como
+ * última barrera, para que un futuro llamador que se salte el caso de uso no
+ * consiga escribir en el bucket lo que aquí se rechaza.
+ */
+export const EVIDENCE_CONTENT_TYPES: readonly string[] = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'application/pdf',
+];
+
+/** 10 MB. Una foto de comprobante no pesa más, y el límite acota el abuso. */
+export const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Longitud máxima de la referencia bancaria. Ninguna entidad emite más. */
+const REFERENCE_MAX_LENGTH = 64;
+
+/**
+ * Datos que el peregrino declara al cargar una evidencia — PAY-018.
+ *
+ * «Evidencia registra monto, moneda, fecha, banco/plataforma, referencia,
+ * pagador y archivo privado». El banco o plataforma no es un campo libre: es el
+ * canal (`PAY-023`, `PAY-024`), y de él sale la moneda en que se cobra.
+ */
+export interface DeclaredEvidence {
+  readonly amount: Money;
+
+  /**
+   * Día civil en que se hizo la transferencia, no un instante.
+   *
+   * El banco dice «8 de agosto», no «8 de agosto a las 14:37:22Z». Quien llama
+   * ancla el día a una hora fija para poder representarlo como `Date`.
+   */
+  readonly paidAt: Date;
+
+  readonly reference: string;
+  readonly contentType: string;
+  readonly sizeBytes: number;
+  /** Moneda del canal por el que se transfirió. */
+  readonly channelCurrency: string;
+  /** Moneda base de la gestión, que es en la que están los cargos. */
+  readonly eventCurrency: string;
+
+  /** Zona horaria de la gestión, para resolver qué día es «hoy» (NFR-013). */
+  readonly timezone: string;
+
+  /** Instante actual. El día civil que le corresponde sale de `timezone`. */
+  readonly now: Date;
+}
+
+/**
+ * Comprueba que una evidencia declarada pueda aceptarse.
+ *
+ * Se ejecuta **antes** de guardar el archivo. Al revés, un rechazo dejaría un
+ * objeto huérfano en el bucket por cada intento fallido, y nadie lo recogería.
+ *
+ * No decide nada sobre el dinero: aceptar la evidencia no confirma el pago
+ * (PAY-025). Solo comprueba que lo declarado pueda ser cierto.
+ */
+export function assertDeclarableEvidence(evidence: DeclaredEvidence): void {
+  // PAY-019. Cero tampoco: declarar que se pagó nada no es declarar un pago.
+  assertPayableAmount(evidence.amount, 'El importe declarado');
+
+  if (evidence.reference.trim().length === 0) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      'La referencia bancaria es obligatoria (PAY-018).',
+    );
+  }
+
+  if (evidence.reference.trim().length > REFERENCE_MAX_LENGTH) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      `La referencia bancaria no puede superar ${String(REFERENCE_MAX_LENGTH)} caracteres.`,
+    );
+  }
+
+  /*
+   * Una transferencia con fecha futura no ha ocurrido. No es una regla de
+   * negocio añadida sino la lectura literal de PAY-018: el campo es la fecha
+   * **del pago**, y aceptar mañana permitiría reservar hoy contra dinero que
+   * quizá nunca salga.
+   *
+   * Se comparan **días civiles de la gestión**, no instantes. Comparar contra
+   * el reloj rechazaba como futuro el pago que un peregrino de La Paz declaraba
+   * antes de las ocho de la mañana: su «hoy» empieza cuatro horas después que
+   * el UTC, y el ancla del día caía por delante del instante actual.
+   */
+  if (evidence.paidAt.getTime() > todayAnchorIn(evidence.timezone, evidence.now).getTime()) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      'La fecha del pago no puede ser futura.',
+    );
+  }
+
+  if (!EVIDENCE_CONTENT_TYPES.includes(evidence.contentType)) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      'El comprobante debe ser una imagen (JPEG, PNG o WebP) o un PDF.',
+    );
+  }
+
+  if (evidence.sizeBytes <= 0) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      'El archivo del comprobante está vacío.',
+    );
+  }
+
+  if (evidence.sizeBytes > EVIDENCE_MAX_BYTES) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_SUBMITTABLE',
+      'El archivo del comprobante supera los 10 MB.',
+    );
+  }
+
+  if (evidence.amount.currency !== evidence.channelCurrency) {
+    throw new DomainError(
+      'MONEY_CURRENCY_MISMATCH',
+      `El canal cobra en ${evidence.channelCurrency} y el importe se declaró en ${evidence.amount.currency}.`,
+    );
+  }
+
+  /*
+   * Aquí es donde DEC-009 se queda sin suelo.
+   *
+   * La decisión dice que la tasa se congela al cargar la evidencia, y
+   * `payment_proofs.exchange_rate_micros` existe para guardarla. Lo que **no**
+   * existe es de dónde sacarla: no hay tasa configurada por gestión en ningún
+   * sitio del esquema. Sin fuente, congelar significaría inventar un número, y
+   * ese número acabaría en un comprobante emitido.
+   *
+   * Así que la rama multimoneda se detiene aquí, en voz alta, en vez de
+   * atravesar el sistema y morir más tarde: el circuito de aprobación ya
+   * lanzaría `MONEY_CURRENCY_MISMATCH` al repartir contra cargos en otra
+   * moneda, pero lo haría después de que el peregrino creyera haber pagado.
+   *
+   * Registrado como TBD-001 en `docs/04-delivery/decision-register.md`.
+   */
+  if (evidence.channelCurrency !== evidence.eventCurrency) {
+    throw new DomainError(
+      'MONEY_CURRENCY_MISMATCH',
+      `Este canal cobra en ${evidence.channelCurrency} y la gestión factura en ${evidence.eventCurrency}. No hay tasa de cambio configurada para convertir (DEC-009), así que el pago debe hacerse por un canal en ${evidence.eventCurrency}.`,
+    );
+  }
+}
+
+/**
  * Número de Comprobante de pago — PAY-014, DEC-003.
  *
  * `REC-{EVENT_CODE}-{NNNNNN}`, único **por gestión**. La secuencia la asigna la
@@ -131,6 +289,37 @@ export function creditFromOverpayment(outstanding: Money): Money {
   }
 
   return { amount: -outstanding.amount, currency: outstanding.currency };
+}
+
+/**
+ * Saldo a favor acumulado de una inscripción — DEC-008.
+ *
+ * No se deduce de `computeBalance`, y conviene entender por qué. El saldo
+ * pendiente compara **cargos contra asignaciones**, y una asignación nunca
+ * puede superar el saldo del cargo al que se aplica (`PAY-020`). Por tanto ese
+ * saldo no puede salir negativo, y el sobrepago no aparecería por ningún lado
+ * si solo se mirase esa resta.
+ *
+ * El sobrepago vive en otro sitio: en la parte del **pago** que no se repartió.
+ * Al aprobar una evidencia por más de lo que se debe, el excedente queda sin
+ * asignar a propósito, en vez de forzarse contra un cargo que no lo debe. Esta
+ * función lo recupera comparando lo cobrado con lo repartido.
+ *
+ * `creditFromOverpayment` cubre la otra forma del mismo concepto —un saldo ya
+ * calculado que salió negativo— y ambas devuelven siempre cero o positivo.
+ */
+export function creditBalance(
+  payments: readonly Money[],
+  allocations: readonly Money[],
+  currency: string,
+): Money {
+  const credit = subtract(sum(payments, currency), sum(allocations, currency));
+
+  // Un crédito negativo significaría que se repartió más dinero del que entró,
+  // y eso ya lo impide `assertAllocationsWithinPayment`. Si ocurriera, mostrar
+  // el negativo mentiría menos que exhibirlo como deuda: se corta en cero y el
+  // descuadre se ve en el arqueo, no en la pantalla del peregrino.
+  return isNegative(credit) ? { amount: 0, currency } : credit;
 }
 
 /**

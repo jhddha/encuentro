@@ -1,5 +1,7 @@
 import 'server-only';
 
+import type { EvidenceStore } from '@encuentro/application';
+import { ADVANCE_CHANNELS } from '@encuentro/domain';
 import {
   createActorResolver,
   createCatalogRepository,
@@ -7,9 +9,13 @@ import {
   createObjectStorage,
   createPaymentProofRepository,
   createPrismaClient,
+  createProofSubmissionRepository,
   createRegistrationRepository,
+  findAccountStatement,
   findProofDetail,
+  listAdvanceChannels,
   listProofsPendingReview,
+  systemClock,
 } from '@encuentro/infrastructure';
 
 /**
@@ -112,4 +118,34 @@ export function paymentProofRepository() {
   }
 
   return createPaymentProofRepository(prismaClient(), { verificationSecret: secret });
+}
+
+export function proofSubmissionRepository() {
+  return createProofSubmissionRepository(prismaClient());
+}
+
+/**
+ * Adaptador del almacén al puerto de la capa de aplicación.
+ *
+ * El caso de uso solo conoce `EvidenceStore`: guardar algo y recibir clave y
+ * suma. Que detrás haya S3 —o MinIO en local— no le incumbe, y esta función es
+ * el único punto donde ambas formas se tocan.
+ */
+export function evidenceStore(): EvidenceStore {
+  const storage = objectStorage();
+  return { store: (input) => storage.putEvidence(input) };
+}
+
+export function clock() {
+  return systemClock;
+}
+
+/** Estado de cuenta del peregrino — solo lectura, como el resto de consultas de pantalla. */
+export function accountStatement(eventId: string, userId: string) {
+  return findAccountStatement(prismaClient(), eventId, userId);
+}
+
+/** PAY-023: los tres canales anticipados. Los de llegada son de caja (PAY-024). */
+export function advanceChannels(eventId: string) {
+  return listAdvanceChannels(prismaClient(), eventId, ADVANCE_CHANNELS);
 }

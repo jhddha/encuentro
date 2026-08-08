@@ -11,6 +11,7 @@ import {
   type PaymentProofState,
 } from '@encuentro/domain';
 
+import { decimalText } from './decimal.js';
 import { createReceiptToken } from './receipt-token.js';
 import type { PrismaClient } from './prisma.js';
 
@@ -87,7 +88,8 @@ export async function listProofsPendingReview(
     id: row.id,
     status: row.status as PaymentProofState,
     version: row.version,
-    declaredAmount: row.declaredAmount.toString(),
+    // `Decimal.toString()` quita los ceros finales; ver `decimalText`.
+    declaredAmount: decimalText(row.declaredAmount, row.currency),
     currency: row.currency,
     reference: row.reference,
     paidAt: row.paidAt,
@@ -176,7 +178,7 @@ export async function findProofDetail(
     eventId: proof.eventId,
     status: proof.status as PaymentProofState,
     version: proof.version,
-    declaredAmount: proof.declaredAmount.toString(),
+    declaredAmount: decimalText(proof.declaredAmount, proof.currency),
     currency: proof.currency,
     reference: proof.reference,
     paidAt: proof.paidAt,

@@ -46,7 +46,21 @@ for phrase in ['no se prorratea','50%','Documento de control interno','7 noches'
 # ninguna prueba. La trazabilidad simplemente empieza a mentir en silencio,
 # que es exactamente lo que ocurrio entre v2.6 y v2.7.
 CANON=set(ids)
-ID_RE=re.compile(r'\b(GOV|EVT|PKG|REG|PAY|CASH|HOS|FOD|FOOD|MAT|ACC|AUD|IAM|NFR|NTF|OBS|QR|RPT|SRV|TRN)-\d{3}\b')
+
+# La lista de familias se enumera a mano, y esa fue la grieta: `PRV-003` y
+# `PRV-004` se citaron en tres archivos durante meses sin que nada protestara,
+# porque `PRV` no estaba aqui. La comprobacion decia buscar citas inexistentes y
+# solo buscaba las de las familias que ya conocia.
+#
+# Ahora la expresion acepta cualquier prefijo de tres o cuatro mayusculas. Las
+# canonicas salen del propio contrato; las demas se enumeran como retiradas o
+# inventadas para que citarlas falle en vez de pasar en silencio. `DEC` y `ADR`
+# quedan fuera a proposito: no son requisitos y tienen su propio registro.
+NO_REQUISITO={'DEC','ADR','TBD','RFC','ISO','UTC','SHA','API','SQL','MFA','SMTP','WCAG','OWASP','ASVS','REF'}
+ID_RE=re.compile(r'\b([A-Z]{2,4})-\d{3}\b')
+
+def es_cita_de_requisito(m):
+    return m.group(1) not in NO_REQUISITO
 
 # Documentos de migracion: citan a proposito las dos numeraciones.
 EXENTOS={
@@ -62,7 +76,7 @@ EXENTOS={
 EXENTOS_PREFIJO=('archive/','prototypes/','generated-docx/','node_modules/','dist/','.git/')
 
 # 1. requirements.md y requirements.json declaran el mismo conjunto.
-en_md={m.group(0) for m in ID_RE.finditer(text)}
+en_md={m.group(0) for m in ID_RE.finditer(text) if es_cita_de_requisito(m)}
 for i in sorted(en_md-CANON): errors.append(f'REQUIREMENT_IN_MD_NOT_IN_CONTRACT {i}')
 for i in sorted(CANON-en_md): errors.append(f'REQUIREMENT_IN_CONTRACT_NOT_IN_MD {i}')
 
@@ -86,7 +100,8 @@ for p in root.rglob('*'):
     if rel in EXENTOS or any(rel.startswith(x) or f'/{x}' in f'/{rel}' for x in EXENTOS_PREFIJO): continue
     try: t=p.read_text(encoding='utf-8')
     except (UnicodeDecodeError, OSError): continue
-    for i in sorted({m.group(0) for m in ID_RE.finditer(t)}-CANON):
+    citados={m.group(0) for m in ID_RE.finditer(t) if es_cita_de_requisito(m)}
+    for i in sorted(citados-CANON):
         errors.append(f'UNKNOWN_REQUIREMENT_ID {i} en {rel}')
 if errors:
     print('\n'.join(errors))
