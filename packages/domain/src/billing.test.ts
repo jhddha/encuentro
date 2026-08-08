@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import {
   ADVANCE_CHANNELS,
   ARRIVAL_CHANNELS,
+  assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
+  assertPayableAmount,
   canTransitionProof,
   cashDifference,
   computeBalance,
@@ -201,5 +203,100 @@ describe('arqueo de caja (PAY-012)', () => {
     expect(toDecimalString(cashDifference(USD('500.00'), USD('495.00')))).toBe('-5.00');
     expect(toDecimalString(cashDifference(USD('500.00'), USD('505.00')))).toBe('5.00');
     expect(toDecimalString(cashDifference(USD('500.00'), USD('500.00')))).toBe('0.00');
+  });
+});
+
+describe('PAY-019 — importes positivos', () => {
+  it('acepta un importe positivo', () => {
+    expect(() => {
+      assertPayableAmount(money('0.01', 'USD'), 'El pago');
+    }).not.toThrow();
+  });
+
+  /*
+   * Un pago negativo invertiría el sentido del cobro y descuadraría la caja sin
+   * dejar rastro de una devolución, que además DEC-007 no admite en v1.
+   */
+  it('rechaza un importe negativo', () => {
+    expect(() => {
+      assertPayableAmount(money('-10.00', 'USD'), 'El pago');
+    }).toThrow(/importe positivo/);
+  });
+
+  it('rechaza cero: un pago de cero no es un pago', () => {
+    expect(() => {
+      assertPayableAmount(money('0.00', 'USD'), 'El pago');
+    }).toThrow(DomainError);
+  });
+});
+
+describe('PAY-020 — la asignación no supera el saldo del cargo', () => {
+  it('acepta asignar exactamente el saldo pendiente', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('420.00', 'USD'),
+          amount: money('420.00', 'USD'),
+        },
+      ]);
+    }).not.toThrow();
+  });
+
+  it('acepta una asignación parcial', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('420.00', 'USD'),
+          amount: money('210.00', 'USD'),
+        },
+      ]);
+    }).not.toThrow();
+  });
+
+  /*
+   * Sin esta guarda, asignar 500 a un cargo de 300 dejaría el saldo de la
+   * inscripción en negativo y la haría parecer un sobrepago que nadie hizo.
+   */
+  it('rechaza asignar más de lo que el cargo debe', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('300.00', 'USD'),
+          amount: money('500.00', 'USD'),
+        },
+      ]);
+    }).toThrow(/supera su saldo pendiente/);
+  });
+
+  it('rechaza el conjunto si una sola asignación se pasa', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('100.00', 'USD'),
+          amount: money('100.00', 'USD'),
+        },
+        {
+          chargeId: 'c-2',
+          chargeOutstanding: money('50.00', 'USD'),
+          amount: money('80.00', 'USD'),
+        },
+      ]);
+    }).toThrow(/c-2/);
+  });
+
+  it('rechaza una asignación negativa', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('100.00', 'USD'),
+          amount: money('-10.00', 'USD'),
+        },
+      ]);
+    }).toThrow(/importe positivo/);
   });
 });

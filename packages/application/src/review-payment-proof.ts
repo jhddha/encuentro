@@ -1,0 +1,299 @@
+import {
+  DomainError,
+  acceptsRegistrationsAndPayments,
+  assertAllocationsWithinCharges,
+  assertAllocationsWithinPayment,
+  assertPayableAmount,
+  authorize,
+  canTransitionProof,
+  unallocatedAmount,
+  type Actor,
+  type EventState,
+  type Money,
+  type PaymentProofState,
+} from '@encuentro/domain';
+
+/**
+ * Revisión de una evidencia de pago — PAY-025, PAY-026, PAY-027.
+ *
+ * Es la operación que **mueve dinero** en v1. DEC-002 y DEC-015 dejaron el
+ * sistema sin checkout automático a propósito: nadie confirma un pago salvo una
+ * persona autorizada mirando un comprobante bancario. Por eso todo lo que ocurre
+ * aquí es irreversible por diseño —un pago aprobado no se edita (GOV-009), se
+ * anula (PAY-033)— y por eso el orden de las comprobaciones importa.
+ *
+ * La revisión son **dos operaciones, no una**. `SUBMITTED` no puede ir directo a
+ * `APPROVED`: la máquina de estados exige pasar por `UNDER_REVIEW`. No es
+ * burocracia, es lo que impide que dos revisores trabajen la misma evidencia y
+ * aprueben dos veces el mismo comprobante.
+ */
+
+export type ReviewOutcome = 'APPROVED' | 'REJECTED' | 'CORRECTION_REQUESTED';
+
+/** Saldo pendiente de un cargo de la inscripción. */
+export interface ChargeBalance {
+  readonly chargeId: string;
+  readonly outstanding: Money;
+}
+
+export interface ProofForReview {
+  readonly id: string;
+  readonly eventId: string;
+  readonly eventStatus: EventState;
+  readonly registrationId: string;
+  readonly status: PaymentProofState;
+
+  /**
+   * Importe ya convertido con la tasa congelada al cargar la evidencia
+   * (DEC-009). No se recalcula al aprobar: la organización absorbe el
+   * movimiento cambiario entre la carga y la revisión.
+   */
+  readonly amount: Money;
+
+  readonly charges: readonly ChargeBalance[];
+
+  /** PAY-027: la referencia ya existe en otra evidencia de la gestión. */
+  readonly duplicateReference: boolean;
+
+  readonly version: number;
+}
+
+export interface AllocationRequest {
+  readonly chargeId: string;
+  readonly amount: Money;
+}
+
+export interface TakeForReviewCommand {
+  readonly eventId: string;
+  readonly proofId: string;
+  readonly expectedVersion: number;
+}
+
+export interface ReviewPaymentProofCommand {
+  readonly eventId: string;
+  readonly proofId: string;
+  readonly expectedVersion: number;
+  readonly outcome: ReviewOutcome;
+  /** Obligatorio salvo al aprobar (PAY-026). */
+  readonly reason?: string;
+  /** Solo al aprobar: reparto del pago entre cargos. */
+  readonly allocations?: readonly AllocationRequest[];
+}
+
+export interface ApproveProofInput {
+  readonly proofId: string;
+  readonly expectedVersion: number;
+  readonly registrationId: string;
+  readonly amount: Money;
+  readonly allocations: readonly AllocationRequest[];
+  /** Excedente sin asignar; queda como saldo a favor (DEC-008). */
+  readonly credit: Money;
+  readonly actorId: string;
+}
+
+export interface RecordReviewInput {
+  readonly proofId: string;
+  readonly expectedVersion: number;
+  readonly outcome: Exclude<ReviewOutcome, 'APPROVED'>;
+  readonly reason: string;
+  readonly actorId: string;
+}
+
+export interface PaymentProofRepository {
+  findForReview(proofId: string): Promise<ProofForReview | null>;
+
+  /** `SUBMITTED` → `UNDER_REVIEW`, con compare-and-swap. */
+  takeForReview(input: {
+    readonly proofId: string;
+    readonly expectedVersion: number;
+    readonly actorId: string;
+  }): Promise<boolean>;
+
+  /**
+   * Aprueba en una sola transacción: mueve la evidencia a `APPROVED`, crea el
+   * pago, escribe las asignaciones, emite el comprobante numerado y audita.
+   *
+   * Todo junto o nada. Un pago sin comprobante, o un comprobante sin
+   * asignaciones, dejaría la contabilidad y el estado de cuenta mintiendo cada
+   * uno por su lado.
+   */
+  approve(input: ApproveProofInput): Promise<boolean>;
+
+  /** Rechazo o petición de corrección, con motivo y auditoría. */
+  recordReview(input: RecordReviewInput): Promise<boolean>;
+}
+
+export interface ReviewPaymentProofDeps {
+  readonly proofs: PaymentProofRepository;
+}
+
+/**
+ * Toma una evidencia para revisarla.
+ *
+ * Separada de la decisión a propósito: deja constancia de quién la tomó y, con
+ * el compare-and-swap, impide que un segundo revisor la tome a la vez.
+ */
+export async function takeProofForReview(
+  deps: ReviewPaymentProofDeps,
+  actor: Actor,
+  command: TakeForReviewCommand,
+): Promise<void> {
+  const proof = await load(deps, actor, command.eventId, command.proofId);
+
+  if (!canTransitionProof(proof.status, 'UNDER_REVIEW')) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_REVIEWABLE',
+      `Una evidencia en ${proof.status} no puede tomarse para revisión.`,
+    );
+  }
+
+  await assertApplied(
+    deps.proofs.takeForReview({
+      proofId: command.proofId,
+      expectedVersion: command.expectedVersion,
+      actorId: actor.userId,
+    }),
+  );
+}
+
+export async function reviewPaymentProof(
+  deps: ReviewPaymentProofDeps,
+  actor: Actor,
+  command: ReviewPaymentProofCommand,
+): Promise<void> {
+  const proof = await load(deps, actor, command.eventId, command.proofId);
+
+  if (!canTransitionProof(proof.status, command.outcome)) {
+    throw new DomainError(
+      'PAYMENT_PROOF_NOT_REVIEWABLE',
+      `No existe transición de ${proof.status} a ${command.outcome}. Tome la evidencia para revisión primero.`,
+    );
+  }
+
+  if (command.outcome !== 'APPROVED') {
+    // PAY-026: la revisión registra resultado **y motivo**. Un rechazo sin
+    // motivo deja al peregrino sin saber qué corregir.
+    if (!hasText(command.reason)) {
+      throw new DomainError(
+        'PAYMENT_PROOF_NOT_REVIEWABLE',
+        'Rechazar o pedir corrección exige un motivo registrado (PAY-026).',
+      );
+    }
+
+    await assertApplied(
+      deps.proofs.recordReview({
+        proofId: command.proofId,
+        expectedVersion: command.expectedVersion,
+        outcome: command.outcome,
+        reason: command.reason,
+        actorId: actor.userId,
+      }),
+    );
+    return;
+  }
+
+  await approve(deps, actor, command, proof);
+}
+
+async function approve(
+  deps: ReviewPaymentProofDeps,
+  actor: Actor,
+  command: ReviewPaymentProofCommand,
+  proof: ProofForReview,
+): Promise<void> {
+  /*
+   * PAY-027 antes que nada. Aprobar dos veces el mismo comprobante bancario
+   * duplica un ingreso que nunca entró, y eso no se detecta hasta el arqueo.
+   */
+  if (proof.duplicateReference) {
+    throw new DomainError(
+      'PAYMENT_PROOF_DUPLICATE_REFERENCE',
+      'La referencia de esta evidencia ya existe en la gestión (PAY-027).',
+    );
+  }
+
+  assertPayableAmount(proof.amount, 'El importe de la evidencia');
+
+  const allocations = command.allocations ?? [];
+  const amounts = allocations.map((allocation) => allocation.amount);
+
+  // PAY-020, las dos mitades: ni más de lo que entró, ni más de lo que se debe.
+  assertAllocationsWithinPayment(proof.amount, amounts);
+  assertAllocationsWithinCharges(
+    allocations.map((allocation) => ({
+      chargeId: allocation.chargeId,
+      amount: allocation.amount,
+      chargeOutstanding: outstandingOf(proof, allocation.chargeId),
+    })),
+  );
+
+  /*
+   * El excedente no es un error. DEC-008: lo que sobra queda como saldo a favor
+   * de la persona, no se devuelve ni se fuerza contra un cargo que no lo debe.
+   */
+  const credit = unallocatedAmount(proof.amount, amounts);
+
+  await assertApplied(
+    deps.proofs.approve({
+      proofId: command.proofId,
+      expectedVersion: command.expectedVersion,
+      registrationId: proof.registrationId,
+      amount: proof.amount,
+      allocations,
+      credit,
+      actorId: actor.userId,
+    }),
+  );
+}
+
+function outstandingOf(proof: ProofForReview, chargeId: string): Money {
+  const charge = proof.charges.find((candidate) => candidate.chargeId === chargeId);
+
+  if (charge === undefined) {
+    // Un cargo de otra inscripción, o inexistente. PAY-021 prohíbe la asignación
+    // transversal silenciosa, así que esto se rechaza en vez de ignorarse.
+    throw new DomainError(
+      'PAYMENT_OVER_ALLOCATED',
+      `El cargo ${chargeId} no pertenece a la inscripción de esta evidencia (PAY-021).`,
+    );
+  }
+
+  return charge.outstanding;
+}
+
+async function load(
+  deps: ReviewPaymentProofDeps,
+  actor: Actor,
+  eventId: string,
+  proofId: string,
+): Promise<ProofForReview> {
+  authorize(actor, 'payment.proof.review', { type: 'EVENT', eventId });
+
+  const proof = await deps.proofs.findForReview(proofId);
+
+  if (proof?.eventId !== eventId) {
+    throw new DomainError('FORBIDDEN', 'La evidencia solicitada no está disponible.');
+  }
+
+  if (!acceptsRegistrationsAndPayments(proof.eventStatus)) {
+    throw new DomainError(
+      'EVENT_OPERATIONS_BLOCKED',
+      `La gestión está en ${proof.eventStatus} y no admite revisión de pagos.`,
+    );
+  }
+
+  return proof;
+}
+
+async function assertApplied(applied: Promise<boolean>): Promise<void> {
+  if (!(await applied)) {
+    throw new DomainError(
+      'EVENT_VERSION_CONFLICT',
+      'La evidencia cambió mientras preparaba esta operación. Vuelva a cargarla e inténtelo de nuevo.',
+    );
+  }
+}
+
+function hasText(value: string | undefined): value is string {
+  return value !== undefined && value.trim().length > 0;
+}

@@ -51,3 +51,18 @@ export {
   type RegistrationConfirmationRepository,
   type RegistrationForConfirmation,
 } from './confirm-registration.js';
+
+export {
+  reviewPaymentProof,
+  takeProofForReview,
+  type AllocationRequest,
+  type ApproveProofInput,
+  type ChargeBalance,
+  type PaymentProofRepository,
+  type ProofForReview,
+  type RecordReviewInput,
+  type ReviewOutcome,
+  type ReviewPaymentProofCommand,
+  type ReviewPaymentProofDeps,
+  type TakeForReviewCommand,
+} from './review-payment-proof.js';

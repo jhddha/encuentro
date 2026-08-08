@@ -17,3 +17,10 @@ export {
 export { createReservationRepository } from './reservation-repository.js';
 export { createNotificationRepository } from './notification-repository.js';
 export { createEmailSender, findSmtpSettings, type SmtpCredentials } from './email-sender.js';
+export {
+  createReceiptToken,
+  hashReceiptToken,
+  receiptTokenMatches,
+  type ReceiptToken,
+} from './receipt-token.js';
+export { createPaymentProofRepository, type ReceiptSecret } from './payment-proof-repository.js';

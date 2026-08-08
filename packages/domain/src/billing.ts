@@ -1,5 +1,14 @@
 import { DomainError } from './errors.js';
-import { add, compare, isNegative, subtract, sum, type Money } from './money.js';
+import {
+  add,
+  compare,
+  isNegative,
+  isZero,
+  subtract,
+  sum,
+  toDecimalString,
+  type Money,
+} from './money.js';
 import type { PaymentComputedState, PaymentProofState } from './states.js';
 
 /**
@@ -144,6 +153,61 @@ export function assertAllocationsWithinPayment(
 /** Parte del pago que aún no se ha asignado a ningún cargo. */
 export function unallocatedAmount(paymentAmount: Money, allocations: readonly Money[]): Money {
   return subtract(paymentAmount, sum(allocations, paymentAmount.currency));
+}
+
+/**
+ * PAY-019: no se permiten importes negativos en pagos ni en asignaciones.
+ *
+ * `money()` acepta texto decimal negativo a propósito, porque un saldo sí puede
+ * serlo —un sobrepago da saldo negativo— pero un **pago** negativo no significa
+ * nada: invertiría el sentido del cobro y descuadraría la caja sin dejar rastro
+ * de una devolución, que además DEC-007 no admite en v1.
+ *
+ * El cero también se rechaza. Un pago de cero no es un pago, y una asignación de
+ * cero solo añade una fila que no mueve saldo.
+ */
+export function assertPayableAmount(amount: Money, label: string): void {
+  if (isNegative(amount) || isZero(amount)) {
+    throw new DomainError(
+      'MONEY_INVALID',
+      `${label} debe ser un importe positivo (PAY-019); llegó ${toDecimalString(amount)}.`,
+    );
+  }
+}
+
+/** Asignación propuesta de un pago a un cargo concreto. */
+export interface ChargeAllocationInput {
+  readonly chargeId: string;
+  /** Saldo del cargo **antes** de esta asignación. */
+  readonly chargeOutstanding: Money;
+  readonly amount: Money;
+}
+
+/**
+ * PAY-020, lado del cargo.
+ *
+ * `assertAllocationsWithinPayment` ya impide asignar más de lo que entró. Falta
+ * la otra mitad del requisito: tampoco se puede asignar a un cargo más de lo que
+ * ese cargo debe. Sin esta comprobación, asignar 500 a un cargo de 300 dejaría
+ * el saldo de la inscripción en negativo y la haría parecer un sobrepago que
+ * nadie hizo.
+ *
+ * El excedente legítimo de un pago no se fuerza contra un cargo: queda sin
+ * asignar y se convierte en saldo a favor (DEC-008).
+ */
+export function assertAllocationsWithinCharges(
+  allocations: readonly ChargeAllocationInput[],
+): void {
+  for (const allocation of allocations) {
+    assertPayableAmount(allocation.amount, `La asignación al cargo ${allocation.chargeId}`);
+
+    if (compare(allocation.amount, allocation.chargeOutstanding) > 0) {
+      throw new DomainError(
+        'PAYMENT_OVER_ALLOCATED',
+        `La asignación al cargo ${allocation.chargeId} supera su saldo pendiente (PAY-020).`,
+      );
+    }
+  }
 }
 
 /**

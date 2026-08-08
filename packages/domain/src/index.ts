@@ -76,7 +76,9 @@ export {
   ADVANCE_CHANNELS,
   ARRIVAL_CHANNELS,
   RATE_SCALE,
+  assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
+  assertPayableAmount,
   canTransitionProof,
   cashDifference,
   computeBalance,
@@ -90,6 +92,7 @@ export {
   type ArrivalChannel,
   type Balance,
   type BalanceInput,
+  type ChargeAllocationInput,
   type PaymentChannel,
 } from './billing.js';
 
