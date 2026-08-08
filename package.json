@@ -24,7 +24,8 @@
     "db:down": "docker compose down",
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:load": "tsx scripts/load-test.mts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

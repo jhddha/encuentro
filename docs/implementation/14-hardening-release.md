@@ -88,10 +88,21 @@ Tres avisos que conviene destacar:
 ## 7. Riesgos y pendientes antes de un go/no-go
 
 1. ~~**La subida del respaldo fuera del VPS no está implementada.**~~ **Implementada el 7-ago-2026.** Destino elegido: **Backblaze B2**, en un proveedor distinto al del VPS para que perder la cuenta de OVH no se lleve también los respaldos. El código es S3-compatible: cambiar de proveedor son variables de entorno. **Queda pendiente configurar las credenciales y ejecutar el primer ensayo con `restore-drill.sh --remote`**, que es lo que cierra DEC-012 de verdad.
-2. **El rol de la aplicación no debe ser propietario de las tablas.** Es la mitigación pendiente desde P03: `TRUNCATE` esquiva los triggers append-only, y solo el propietario puede ejecutarlo.
+2. ~~**El rol de la aplicación no debe ser propietario de las tablas.**~~ **Cerrado el 7-ago-2026** con [`deploy/db-roles.sql`](../../deploy/db-roles.sql). Verificado en el entorno local: con el rol anterior, `DELETE FROM audit_logs` se rechazaba con GOV-009 pero `TRUNCATE audit_logs` la vaciaba sin oposición. Con `encuentro_app`, los cinco intentos —truncar, borrar, alterar una tabla, eliminar un trigger— fallan, y la escritura legítima sigue funcionando.
 3. ~~**No hay worker de expiración de `HELD`** (P06) ni worker de envío de correo (P13).~~ **Cerrado el 5-ago-2026** en [`16-background-workers.md`](16-background-workers.md): ambas colas existen, con pruebas unitarias, de integración y arranque real verificado.
 4. **La imagen del worker pesa 1.49 GB** porque no se podan las dependencias de desarrollo: `pnpm prune --prod` rompe los enlaces internos del workspace. Se prefirió una imagen grande a un arranque que falle por un módulo ausente.
-5. **No se ha ejecutado prueba de carga.** El prompt P14 la pide y no se hizo.
+5. ~~**No se ha ejecutado prueba de carga.**~~ **Ejecutada el 7-ago-2026** con [`scripts/load-test.mts`](../../scripts/load-test.mts), contra la compilación de producción y los umbrales de `NFR-002`. Las cuatro rutas públicas medidas pasan con holgura:
+
+   | Ruta | p50 | p97.5 | Umbral |
+   |---|---:|---:|---:|
+   | `/api/health` | 43 ms | 80 ms | 500 ms |
+   | `/` | 113 ms | 156 ms | 500 ms |
+   | `/e/ENC2026` | 105 ms | 140 ms | 500 ms |
+   | `/e/ENC2026/inscripcion` | 123 ms | 167 ms | 500 ms |
+
+   Se evalúa el **p97.5**, más estricto que el p95 que pide el requisito: si pasa aquel, este pasa por definición.
+
+   **Dos salvedades.** La medición es sobre una máquina de desarrollo Windows con Postgres en Docker, no sobre el VPS: orienta, no certifica. Y **no cubre las mutaciones de `NFR-002` ni el escáner de `NFR-003`**, que exigen sesión autenticada y estación registrada; el propio script lo declara al terminar en vez de callarlo.
 6. **Falta configurar el firewall del VPS y el acceso SSH restringido.** DEC-001 lo exige; es configuración del servidor, fuera de este repositorio.
 7. ~~**El módulo contable no puede llevar contabilidad real** hasta que se defina el plan de cuentas.~~ **Cerrado el 7-ago-2026 por [DEC-018](../04-delivery/decisions/DEC-018.md)**: veintiún roles contables, tres resolvedores y una matriz de veintidós reglas. La organización debe asignar una cuenta a cada rol antes de contabilizar; sin eso el motor no resuelve ningún asiento.
 

@@ -12,11 +12,15 @@ Procedimientos para operar el sistema durante y alrededor del Encuentro. Están 
 # En el VPS, desde el directorio del repositorio
 git fetch --all && git checkout <commit-o-tag>
 docker compose -f deploy/docker-compose.prod.yml build
-docker compose -f deploy/docker-compose.prod.yml run --rm web pnpm exec prisma migrate deploy
+docker compose -f deploy/docker-compose.prod.yml run --rm -e DATABASE_URL="$DATABASE_MIGRATION_URL" web pnpm exec prisma migrate deploy
 docker compose -f deploy/docker-compose.prod.yml up -d
 ```
 
 Las migraciones van **antes** de levantar los contenedores nuevos, y con `migrate deploy`, no `migrate dev`: `deploy` no genera migraciones ni pregunta nada, que es lo que se quiere en producción.
+
+**Se ejecutan con `DATABASE_MIGRATION_URL`, no con la de la aplicación.** El rol de ejecución no es propietario de las tablas y por tanto no puede alterarlas: es justamente la protección que impide que un fallo de la aplicación pueda truncar la auditoría. Migrar exige el rol propietario, y solo durante este paso.
+
+Tras una migración que cree tablas conviene volver a pasar `deploy/db-roles.sql`; es idempotente y confirma que los privilegios de la aplicación llegaron a lo nuevo.
 
 **Verificación posterior, obligatoria:**
 

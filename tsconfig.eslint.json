@@ -36,7 +36,8 @@
     "*.ts",
     "*.mts",
     "*.mjs",
-    "apps/*/*.mjs"
+    "apps/*/*.mjs",
+    "scripts/**/*.mts"
   ],
   "exclude": ["node_modules", "**/dist/**", "**/.next/**"]
 }
