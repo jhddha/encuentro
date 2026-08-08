@@ -25,7 +25,8 @@
     "db:validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
-    "test:load": "tsx scripts/load-test.mts"
+    "test:load": "tsx scripts/load-test.mts",
+    "db:fixture": "tsx prisma/dev-fixture.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

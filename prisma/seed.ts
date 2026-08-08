@@ -45,6 +45,25 @@ const ROLES = [
       'registration.update',
     ],
   },
+  {
+    code: 'TESORERIA',
+    name: 'Comisión de tesorería',
+    scopeType: 'EVENT' as const,
+    /*
+     * Quien revisa evidencias necesita leer la inscripción para entender el
+     * cargo, y emitir el comprobante que la aprobación produce. No lleva
+     * `payment.adjust` ni `receipt.void`: corregir un pago ya aprobado es otra
+     * operación y debe exigir otra autorización (GOV-005, PAY-033).
+     */
+    permissions: [
+      'event.read',
+      'registration.read',
+      'payment.read',
+      'payment.proof.review',
+      'receipt.issue',
+      'receipt.read',
+    ],
+  },
 ] as const;
 
 async function main(): Promise<void> {
