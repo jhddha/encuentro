@@ -19,7 +19,11 @@ const inputClass =
   'min-h-[var(--size-touch-target)] rounded-md border border-[var(--color-ink)]/30 px-3 ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-ink)]';
 
-export function SignInForm() {
+export function SignInForm({
+  firstFieldRef,
+}: {
+  readonly firstFieldRef?: React.Ref<HTMLInputElement>;
+}) {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,6 +67,7 @@ export function SignInForm() {
           type="email"
           autoComplete="email"
           required
+          ref={firstFieldRef}
           value={email}
           onChange={(event) => {
             setEmail(event.target.value);

@@ -32,6 +32,22 @@ async function signUp(email: string): Promise<void> {
   });
 }
 
+/**
+ * Da de alta contra la API HTTP y devuelve la respuesta completa.
+ *
+ * Por el handler y no por `auth.api`, igual que `signInRaw`: lo que interesa
+ * comprobar es exactamente lo que un atacante ve por la red.
+ */
+async function signUpRaw(email: string): Promise<Response> {
+  return await auth.handler(
+    new Request('http://localhost:3000/api/auth/sign-up/email', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email, password: PASSWORD, name: 'Persona de prueba' }),
+    }),
+  );
+}
+
 /** Inicia sesión contra la API HTTP y devuelve la respuesta completa. */
 async function signInRaw(email: string, password: string): Promise<Response> {
   return await auth.handler(
@@ -101,7 +117,7 @@ describe('enumeración de cuentas', () => {
     expect(bodyA.code).toBe(bodyB.code);
   });
 
-  it('el registro con una dirección ya usada no confirma que exista', async () => {
+  it('el registro con una dirección ya usada no crea una segunda cuenta', async () => {
     await signUp('existe@encuentro.test');
     const before = await prisma.user.count();
 
@@ -109,8 +125,55 @@ describe('enumeración de cuentas', () => {
       .signUpEmail({ body: { email: 'existe@encuentro.test', password: PASSWORD, name: 'Otra' } })
       .catch(() => undefined);
 
-    // No se creó una segunda cuenta con el mismo correo.
     expect(await prisma.user.count()).toBe(before);
+  });
+
+  /*
+   * IAM-001: «Un alta duplicada no revela a un usuario anónimo si la cuenta
+   * existe».
+   *
+   * La prueba anterior comprobaba que no se creara una segunda fila, que es
+   * otra cosa: se tragaba el error con `.catch()` y por tanto nunca miraba lo
+   * único que un atacante ve, que es la respuesta HTTP.
+   *
+   * Importa ahora más que nunca porque el formulario público de alta de
+   * `/ingresar` se apoya en esta propiedad: muestra el mismo mensaje pase lo que
+   * pase, y eso solo basta si la respuesta tampoco distingue. Suprimirlo en el
+   * cliente no serviría de nada — la respuesta viaja igual y se lee en cualquier
+   * inspector.
+   *
+   * Better Auth lo garantiza porque `requireEmailVerification` está activo; esto
+   * lo fija para que una configuración futura no lo desactive en silencio.
+   */
+  it('el alta duplicada es indistinguible de una nueva (IAM-001)', async () => {
+    await signUp('existe@encuentro.test');
+
+    const nueva = await signUpRaw('nadie-todavia@encuentro.test');
+    const duplicada = await signUpRaw('existe@encuentro.test');
+
+    expect(duplicada.status).toBe(nueva.status);
+
+    const cuerpoNuevo = (await nueva.json()) as Record<string, unknown>;
+    const cuerpoDuplicado = (await duplicada.json()) as Record<string, unknown>;
+
+    // Mismas claves y mismo código: cualquier diferencia estructural serviría
+    // de oráculo aunque el estado coincidiera.
+    expect(Object.keys(cuerpoDuplicado).sort()).toEqual(Object.keys(cuerpoNuevo).sort());
+    expect(cuerpoDuplicado.code).toBe(cuerpoNuevo.code);
+
+    /*
+     * Y no debe llegar sesión: si el alta duplicada devolviera cookie de sesión
+     * daría acceso a la cuenta de otra persona, y si la nueva la devolviera
+     * saltaría DEC-013.
+     */
+    expect(nueva.headers.get('set-cookie')).toBeNull();
+    expect(duplicada.headers.get('set-cookie')).toBeNull();
+
+    // Solo la dirección nueva recibe correo. El titular de la existente no debe
+    // recibir un enlace que él no pidió.
+    expect(sentEmails.filter((sent) => sent.email === 'nadie-todavia@encuentro.test')).toHaveLength(
+      1,
+    );
   });
 });
 
