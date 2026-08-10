@@ -379,3 +379,121 @@ describe('cola de envíos (ADR-007, GOV-008)', () => {
     expect(notification.attempts).toBe(0);
   });
 });
+
+/**
+ * Inmutabilidad de las líneas — ACC-003, GOV-005, GOV-009.
+ *
+ * P12 protegió la cabecera y olvidó las líneas: `journal_entries` tenía sus
+ * triggers y `journal_lines` ninguno. Su único guardián era el trigger diferido
+ * de cuadre, que además se rendía al llegar a cero líneas, así que un asiento
+ * contabilizado se podía **vaciar** — la cabecera sobrevivía intacta y el cuadre
+ * se comprobaba sobre nada.
+ */
+describe('las líneas del asiento son inmutables', () => {
+  async function asientoCuadrado() {
+    const ctx = await seedLedger();
+
+    const entry = await prisma.$transaction(async (tx) => {
+      const created = await tx.journalEntry.create({
+        data: {
+          eventId: ctx.event.id,
+          entryDate: new Date('2026-11-03'),
+          memo: 'Cobro de inscripción',
+          currency: 'USD',
+          actorId: ctx.userId,
+        },
+      });
+
+      await tx.journalLine.createMany({
+        data: [
+          {
+            entryId: created.id,
+            accountId: ctx.caja.id,
+            side: 'DEBIT',
+            amount: '350.00',
+            currency: 'USD',
+          },
+          {
+            entryId: created.id,
+            accountId: ctx.ingresos.id,
+            side: 'CREDIT',
+            amount: '350.00',
+            currency: 'USD',
+          },
+        ],
+      });
+
+      return created;
+    });
+
+    return { ctx, entryId: entry.id };
+  }
+
+  it('no se puede vaciar un asiento contabilizado', async () => {
+    const { entryId } = await asientoCuadrado();
+
+    await expect(prisma.journalLine.deleteMany({ where: { entryId } })).rejects.toThrow();
+
+    expect(await prisma.journalLine.count({ where: { entryId } })).toBe(2);
+  });
+
+  it('no se puede borrar una sola línea', async () => {
+    const { entryId } = await asientoCuadrado();
+    const linea = await prisma.journalLine.findFirstOrThrow({ where: { entryId } });
+
+    await expect(prisma.journalLine.delete({ where: { id: linea.id } })).rejects.toThrow();
+
+    expect(await prisma.journalLine.count({ where: { entryId } })).toBe(2);
+  });
+
+  /*
+   * Reescribir el importe de una línea descuadraría el asiento sin dejar rastro.
+   * La corrección de un asiento contabilizado es una reversión enlazada
+   * (ACC-003), no una edición.
+   */
+  it('no se puede reescribir el importe de una línea', async () => {
+    const { entryId } = await asientoCuadrado();
+    const linea = await prisma.journalLine.findFirstOrThrow({ where: { entryId } });
+
+    await expect(
+      prisma.journalLine.update({ where: { id: linea.id }, data: { amount: '1.00' } }),
+    ).rejects.toThrow();
+
+    const despues = await prisma.journalLine.findUniqueOrThrow({ where: { id: linea.id } });
+    expect(despues.amount.toString()).toBe(linea.amount.toString());
+  });
+
+  /*
+   * La salida por vacuidad del trigger de cuadre. Con los triggers de arriba ya
+   * no es alcanzable por borrado, pero un asiento que nace con una sola línea
+   * tampoco debe pasar: antes `line_count = 0` devolvía NULL y `< 2` sí
+   * levantaba, así que el hueco era exactamente el cero.
+   */
+  it('un asiento no puede quedar con menos de dos líneas', async () => {
+    const ctx = await seedLedger();
+
+    await expect(
+      prisma.$transaction(async (tx) => {
+        const created = await tx.journalEntry.create({
+          data: {
+            eventId: ctx.event.id,
+            entryDate: new Date('2026-11-03'),
+            memo: 'Asiento a medias',
+            currency: 'USD',
+            actorId: ctx.userId,
+          },
+        });
+
+        await tx.journalLine.create({
+          data: {
+            entryId: created.id,
+            accountId: ctx.caja.id,
+            side: 'DEBIT',
+            amount: '350.00',
+            currency: 'USD',
+          },
+        });
+      }),
+    ).rejects.toThrow();
+  });
+});

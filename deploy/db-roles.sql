@@ -131,11 +131,20 @@ ALTER DEFAULT PRIVILEGES FOR ROLE encuentro_owner IN SCHEMA public
 -- el privilegio sigue faltando.
 -- ---------------------------------------------------------------------------
 
+-- `journal_lines` faltaba en esta lista y tampoco tenía triggers: era la única
+-- tabla append-only sin ninguna de las dos barreras, así que la contabilidad se
+-- podía vaciar con la conexión de la aplicación. Los triggers llegaron en la
+-- migración 20260808190000; esto es la segunda barrera.
+--
+-- `receipts` no está aquí a propósito: su trigger `receipts_only_void` permite
+-- el UPDATE de anulación que PAY-033 exige, y retirarle el privilegio lo
+-- impediría.
 REVOKE UPDATE, DELETE ON
   audit_logs,
   charges,
   inventory_movements,
   journal_entries,
+  journal_lines,
   material_deliveries,
   meal_deliveries,
   payment_allocations,
