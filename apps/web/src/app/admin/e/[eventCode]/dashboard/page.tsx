@@ -3,11 +3,18 @@ import { Card, EmptyState, PageHeader, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
 import { eventRepository } from '@/lib/container';
+import { requirePermission } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Dashboard' };
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Panel de la gestión.
+ *
+ * Exige `event.read` sobre esta gestión. El layout de `/admin` solo garantiza
+ * que haya sesión: el permiso depende del módulo y lo comprueba cada pantalla.
+ */
 export default async function DashboardPage({
   params,
 }: {
@@ -24,6 +31,8 @@ export default async function DashboardPage({
       </div>
     );
   }
+
+  await requirePermission('event.read', { type: 'EVENT', eventId: event.id });
 
   const days = totalDays(event.startAt, event.endAt);
   const today = dayNumber(event.startAt, event.endAt, new Date());

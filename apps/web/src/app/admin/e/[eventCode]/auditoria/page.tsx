@@ -2,19 +2,32 @@ import { EmptyState, PageHeader, ScrollableTable } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
 import { eventRepository, prisma } from '@/lib/container';
+import { requirePermission } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Auditoría' };
 
 export const dynamic = 'force-dynamic';
 
 /**
- * Registro de auditoría de la gestión.
+ * Registro de auditoría de la gestión — AUD-001, `audit.read`.
  *
  * GOV-005 y GOV-009: append-only, no se reescribe. La garantía la impone un
  * trigger en Postgres, no esta pantalla.
  *
  * Los payloads se muestran tal cual están almacenados: lo que se escribe ya
  * pasó por `redact`, así que aquí no queda PII por ocultar.
+ *
+ * **Esta pantalla no comprobaba ningún permiso.** El layout de `/admin` solo
+ * exige `requireActor()` —sesión, correo verificado y segundo factor si hay
+ * roles—, y su propio comentario advierte de que el permiso «lo exige cada
+ * acción con `requirePermission`, porque el permiso depende del módulo». Aquí
+ * se olvidó, así que bastaba una cuenta con el correo verificado y **sin ningún
+ * rol** —un peregrino, exento de MFA por DEC-014— para leer el rastro completo
+ * de cualquier gestión escribiendo la URL.
+ *
+ * No es una fuga de PII: `redact` ya limpió los payloads. Es una fuga de la
+ * **operación**: quién aprobó qué pago, cuándo, con qué motivo y contra qué
+ * inscripción.
  */
 export default async function AuditPage({ params }: { params: Promise<{ eventCode: string }> }) {
   const { eventCode } = await params;
@@ -28,6 +41,12 @@ export default async function AuditPage({ params }: { params: Promise<{ eventCod
       </div>
     );
   }
+
+  /*
+   * Después de resolver la gestión y antes de leer nada suyo. El orden importa:
+   * el permiso es por gestión, así que no puede comprobarse sin saber cuál es.
+   */
+  await requirePermission('audit.read', { type: 'EVENT', eventId: event.id });
 
   const entries = await prisma().auditLog.findMany({
     where: { eventId: event.id },

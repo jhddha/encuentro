@@ -3,6 +3,7 @@ import { Card, EmptyState, PageHeader, ReadonlyState, StatusBadge } from '@encue
 import type { Metadata } from 'next';
 
 import { eventRepository } from '@/lib/container';
+import { requirePermission } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Configuración de la gestión' };
 
@@ -35,6 +36,13 @@ export default async function EventConfigurationPage({
       </div>
     );
   }
+
+  /*
+   * `event.read` basta porque esta pantalla solo muestra. Cuando gane la edición
+   * de la configuración, esa mutación exigirá `event.update` por su cuenta: leer
+   * y escribir son permisos distintos y no se cubren con el mismo.
+   */
+  await requirePermission('event.read', { type: 'EVENT', eventId: event.id });
 
   const days = totalDays(event.startAt, event.endAt);
 

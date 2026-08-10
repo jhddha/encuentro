@@ -1,9 +1,10 @@
-import { totalDays } from '@encuentro/domain';
+import { can, totalDays } from '@encuentro/domain';
 import { EmptyState, PageHeader, ScrollableTable, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
 import { eventRepository } from '@/lib/container';
+import { requireActor } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Gestiones' };
 
@@ -21,8 +22,32 @@ const STATUS_TONE = {
   ARCHIVED: 'neutral',
 } as const;
 
+/**
+ * Listado de gestiones.
+ *
+ * No exige `event.read` global: **filtra por alcance**, que es lo que pide
+ * IAM-010 —«los permisos se verifican en la aplicación y los repositorios
+ * filtran por scope»— y lo que EVT-015 necesita, porque el selector de gestión
+ * de los paneles privados sale de aquí.
+ *
+ * Negar en bloque a quien tiene `event.read` con alcance de gestión le habría
+ * dejado sin puerta de entrada a la suya; devolver la lista entera le habría
+ * enseñado ediciones que no le corresponden. Filtrar responde a las dos cosas.
+ *
+ * La pantalla no comprobaba nada: bastaba una cuenta con el correo verificado
+ * para ver todas las gestiones y su estado.
+ */
 export default async function EventsPage() {
-  const events = await eventRepository().list();
+  const actor = await requireActor();
+
+  /*
+   * El filtro usa `can`, que es puro: una llamada por gestión y ninguna consulta
+   * extra. Con `scopeCovers`, un alcance GLOBAL las alcanza todas y uno de
+   * gestión solo la suya.
+   */
+  const events = (await eventRepository().list()).filter((event) =>
+    can(actor, 'event.read', { type: 'EVENT', eventId: event.id }),
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -33,8 +58,18 @@ export default async function EventsPage() {
 
       {events.length === 0 ? (
         <EmptyState
-          title="Todavía no hay gestiones"
-          description="La creación desde la interfaz llega junto con la autenticación (P04). Mientras tanto se crean por script o migración."
+          title="No hay ninguna gestión que pueda ver"
+          /*
+            Dos situaciones caben aquí y el texto no debe elegir una: que no
+            exista ninguna gestión, o que existan y ninguna esté en su alcance.
+            Decir «todavía no hay gestiones» a quien sí las hay pero no le tocan
+            sería afirmar algo falso, y además le confirmaría que no existen.
+
+            El texto anterior además prometía la creación desde la interfaz
+            «junto con la autenticación (P04)». P04 se entregó y la creación
+            sigue sin existir.
+          */
+          description="Si esperaba encontrar alguna, puede que su rol no alcance esa gestión. Las gestiones se crean todavía por script o migración."
         />
       ) : (
         <ScrollableTable label="Listado de gestiones">
