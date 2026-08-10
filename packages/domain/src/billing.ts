@@ -383,17 +383,45 @@ export interface ChargeAllocationInput {
  *
  * El excedente legítimo de un pago no se fuerza contra un cargo: queda sin
  * asignar y se convierte en saldo a favor (DEC-008).
+ *
+ * **Se agrupa por cargo antes de comparar**, y esa es la parte que faltaba.
+ * Comprobando línea a línea, dos asignaciones de 210 a un cargo que debe 210
+ * pasaban las dos —cada una cabía por separado— y entre ambas le aplicaban 420.
+ * `assertAllocationsWithinPayment` tampoco lo veía: el total sí cabía en el
+ * pago. El resultado era un cargo sobrepagado, un saldo negativo que la
+ * inscripción presentaba como sobrepago que nadie hizo, y un saldo a favor que
+ * desaparecía.
+ *
+ * La pantalla del revisor genera un campo por cargo y no puede producirlo, pero
+ * la acción de servidor acepta el array que le manden y su endpoint es
+ * invocable directamente.
  */
 export function assertAllocationsWithinCharges(
   allocations: readonly ChargeAllocationInput[],
 ): void {
+  const porCargo = new Map<string, { total: Money; outstanding: Money }>();
+
   for (const allocation of allocations) {
     assertPayableAmount(allocation.amount, `La asignación al cargo ${allocation.chargeId}`);
 
-    if (compare(allocation.amount, allocation.chargeOutstanding) > 0) {
+    const acumulado = porCargo.get(allocation.chargeId);
+
+    porCargo.set(allocation.chargeId, {
+      total: acumulado === undefined ? allocation.amount : add(acumulado.total, allocation.amount),
+      /*
+       * El saldo del cargo lo aporta quien llama y es el mismo para todas las
+       * líneas del mismo cargo. Se conserva el primero: tomar el último daría
+       * igual, y recalcularlo aquí sería inventarse un dato que no tenemos.
+       */
+      outstanding: acumulado?.outstanding ?? allocation.chargeOutstanding,
+    });
+  }
+
+  for (const [chargeId, { total, outstanding }] of porCargo) {
+    if (compare(total, outstanding) > 0) {
       throw new DomainError(
         'PAYMENT_OVER_ALLOCATED',
-        `La asignación al cargo ${allocation.chargeId} supera su saldo pendiente (PAY-020).`,
+        `La asignación al cargo ${chargeId} supera su saldo pendiente (PAY-020).`,
       );
     }
   }

@@ -294,6 +294,79 @@ describe('PAY-020 — la asignación no supera el saldo del cargo', () => {
     }).toThrow(/c-2/);
   });
 
+  /*
+   * El defecto que la revisión de la rama destapó: comprobando línea a línea,
+   * cada mitad cabía por separado y entre las dos sobreasignaban el cargo.
+   * `assertAllocationsWithinPayment` tampoco lo veía porque el total sí cabía
+   * en el pago.
+   */
+  it('dos asignaciones al mismo cargo no lo sobreasignan', () => {
+    const dosMitades = [
+      {
+        chargeId: 'c-1',
+        chargeOutstanding: money('210.00', 'USD'),
+        amount: money('210.00', 'USD'),
+      },
+      {
+        chargeId: 'c-1',
+        chargeOutstanding: money('210.00', 'USD'),
+        amount: money('210.00', 'USD'),
+      },
+    ];
+
+    // El pago de 420 admite el total: quien lo impide es el cargo, no el pago.
+    expect(() => {
+      assertAllocationsWithinPayment(
+        USD('420.00'),
+        dosMitades.map((a) => a.amount),
+      );
+    }).not.toThrow();
+
+    let thrown: unknown;
+    try {
+      assertAllocationsWithinCharges(dosMitades);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect((thrown as DomainError).code).toBe('PAYMENT_OVER_ALLOCATED');
+    expect((thrown as DomainError).message).toContain('c-1');
+  });
+
+  it('varias asignaciones al mismo cargo caben si juntas no lo superan', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('210.00', 'USD'),
+          amount: money('110.00', 'USD'),
+        },
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('210.00', 'USD'),
+          amount: money('100.00', 'USD'),
+        },
+      ]);
+    }).not.toThrow();
+  });
+
+  it('agrupa por cargo sin mezclar cargos distintos', () => {
+    expect(() => {
+      assertAllocationsWithinCharges([
+        {
+          chargeId: 'c-1',
+          chargeOutstanding: money('100.00', 'USD'),
+          amount: money('100.00', 'USD'),
+        },
+        {
+          chargeId: 'c-2',
+          chargeOutstanding: money('50.00', 'USD'),
+          amount: money('50.00', 'USD'),
+        },
+      ]);
+    }).not.toThrow();
+  });
+
   it('rechaza una asignación negativa', () => {
     expect(() => {
       assertAllocationsWithinCharges([
