@@ -1,3 +1,62 @@
+"""
+Generador del paquete documental v2.7 — 22 de julio de 2026. NO EJECUTAR.
+
+Este script construyo el paquete canonico inicial: README, VERSION,
+requirements.md, la arquitectura, el sistema de diseno, los contratos, las
+decisiones, los prompts y el prototipo. Cumplio su funcion una vez y desde
+entonces el repositorio es la fuente de verdad, no este archivo.
+
+POR QUE NO SE PUEDE EJECUTAR
+
+Su contenido quedo congelado en julio y ademas la renumeracion de 61a2551 lo
+recorrio a ciegas, sustituyendo identificadores dentro de las cadenas que
+escribe. Es hoy un hibrido: estructura de v2.7 con numeracion a medio migrar.
+
+Ejecutarlo sobrescribiria, entre otros:
+
+  docs/01-product/requirements.md    163 requisitos -> unos 68
+  contracts/requirements.json        regenerado con el conjunto viejo
+  contracts/*.json, VERSION, README  vueltos al estado de julio
+  scripts/validate_canonical_docs.py el propio validador, sin sus cuatro
+                                     comprobaciones de trazabilidad
+
+Y no toca —por tanto deja incoherentes— la matriz de migracion, la tabla de
+renumeracion, los informes de implementacion y el registro de decisiones, que
+se escribieron despues y a mano.
+
+No hay `main()`: todo ocurre al importar. Bastaba `python
+scripts/rebuild_package_v2_7.py` para perder el trabajo de la migracion de la
+linea base. `scripts/README.md` llegaba a sugerir ejecutarlo «en una copia o
+rama controlada», que es justo la invitacion que lo convertia en trampa.
+
+Se conserva porque documenta como nacio el paquete. La guarda de abajo impide
+que eso cueste un dia de trabajo a quien lo ejecute de buena fe.
+"""
+
+import sys
+
+# La bandera es deliberadamente incomoda de escribir por accidente y describe
+# lo que de verdad hace, no lo que uno cree que hace.
+_PERMISO = '--sobrescribir-la-linea-base'
+
+if _PERMISO not in sys.argv:
+    sys.stderr.write(
+        '\n'
+        'rebuild_package_v2_7.py NO se ejecuta.\n'
+        '\n'
+        'Regenera el paquete documental de julio de 2026 y sobrescribiria\n'
+        'requirements.md, los contratos, VERSION, README y el propio validador,\n'
+        'devolviendo el contrato de 163 requisitos a unos 68.\n'
+        '\n'
+        'El repositorio es la fuente de verdad desde la migracion de la linea\n'
+        'base v2.6; este script solo documenta como nacio el paquete.\n'
+        '\n'
+        f'Si aun asi lo necesita: python scripts/rebuild_package_v2_7.py {_PERMISO}\n'
+        'Hagalo sobre un arbol limpio y revise `git diff` antes de nada.\n'
+        '\n'
+    )
+    raise SystemExit(2)
+
 from pathlib import Path
 from textwrap import dedent
 from datetime import date
