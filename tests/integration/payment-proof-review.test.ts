@@ -460,3 +460,203 @@ describe('verificación pública del comprobante', () => {
     if (resultado.kind === 'found') expect(resultado.receipt.status).toBe('VOID');
   });
 });
+
+/**
+ * Rastro de auditoría de la revisión — GOV-005, AUD-001.
+ *
+ * Las tres escrituras de este módulo dejaban `event_id` sin poner. La columna
+ * admite nulo porque hay acciones globales, así que nada fallaba — pero la
+ * pantalla de auditoría filtra por gestión, y quién autorizó cada cobro **no
+ * aparecía en ninguna parte**.
+ */
+describe('auditoría de la revisión', () => {
+  it('las tres acciones quedan atadas a su gestión', async () => {
+    const e = await sembrar();
+
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion,
+    });
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion + 1,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('420.00', USD) }],
+    });
+
+    const rastro = await prisma.auditLog.findMany({
+      where: { entity: 'payment_proof', entityId: e.proofId },
+      select: { action: true, eventId: true },
+    });
+
+    expect(rastro.map((r) => r.action).sort()).toEqual([
+      'payment.proof.approve',
+      'payment.proof.take_for_review',
+    ]);
+
+    // Lo que fallaba: ninguna con eventId nulo.
+    for (const fila of rastro) expect(fila.eventId).toBe(e.eventId);
+  });
+
+  it('el rechazo también queda atado a su gestión', async () => {
+    const e = await sembrar();
+
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion,
+    });
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion + 1,
+      outcome: 'REJECTED',
+      reason: 'El comprobante corresponde a otra cuenta.',
+    });
+
+    const revision = await prisma.auditLog.findFirstOrThrow({
+      where: { entityId: e.proofId, action: 'payment.proof.review' },
+    });
+
+    expect(revision.eventId).toBe(e.eventId);
+  });
+
+  /*
+   * La propiedad que importa de verdad: que la pantalla lo encuentre. Filtra
+   * `where: { eventId }`, así que un rastro con nulo es un rastro invisible.
+   */
+  it('la consulta de la pantalla de auditoría los encuentra', async () => {
+    const e = await sembrar();
+
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion,
+    });
+
+    const visibles = await prisma.auditLog.findMany({
+      where: { eventId: e.eventId },
+      select: { action: true },
+    });
+
+    expect(visibles.map((v) => v.action)).toContain('payment.proof.take_for_review');
+  });
+});
+
+/**
+ * La carrera de aprobación — PAY-020.
+ *
+ * El caso de uso valida el reparto contra un saldo leído **fuera** de la
+ * transacción. Con dos evidencias en revisión sobre la misma inscripción —el
+ * peregrino que transfiere dos veces por error— dos revisores leen «pendiente
+ * 420.00», los dos asignan 420.00, y el cargo acababa con 840 aplicados sobre
+ * 420 debidos: saldo negativo, sobrepago que nadie hizo y saldo a favor perdido.
+ *
+ * El cerrojo de gestión ya serializaba las aprobaciones; lo que faltaba era
+ * volver a mirar el saldo dentro de la transacción.
+ */
+describe('dos evidencias sobre el mismo cargo', () => {
+  async function segundaEvidencia(e: Escenario) {
+    const proof = await prisma.paymentProof.findUniqueOrThrow({ where: { id: e.proofId } });
+
+    return await prisma.paymentProof.create({
+      data: {
+        eventId: proof.eventId,
+        registrationId: proof.registrationId,
+        channelId: proof.channelId,
+        declaredAmount: '420.00',
+        currency: USD,
+        paidAt: new Date(),
+        reference: `${proof.reference}-BIS`,
+        status: 'SUBMITTED',
+      },
+    });
+  }
+
+  async function aprobarEntera(e: Escenario, proofId: string) {
+    const v0 = await prisma.paymentProof.findUniqueOrThrow({ where: { id: proofId } });
+
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId,
+      expectedVersion: v0.version,
+    });
+
+    return await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId,
+      expectedVersion: v0.version + 1,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('420.00', USD) }],
+    });
+  }
+
+  it('la segunda no puede volver a asignar el cargo ya saldado', async () => {
+    const e = await sembrar();
+    const segunda = await segundaEvidencia(e);
+
+    await aprobarEntera(e, e.proofId);
+
+    await expect(aprobarEntera(e, segunda.id)).rejects.toMatchObject({
+      code: 'PAYMENT_OVER_ALLOCATED',
+    });
+
+    // Y el rechazo revierte la transacción entera: ni pago, ni comprobante.
+    expect(await prisma.payment.count()).toBe(1);
+    expect(await prisma.receipt.count()).toBe(1);
+    expect(await prisma.paymentAllocation.count()).toBe(1);
+  });
+
+  it('el cargo no queda sobreasignado ni con saldo negativo', async () => {
+    const e = await sembrar();
+    const segunda = await segundaEvidencia(e);
+
+    await aprobarEntera(e, e.proofId);
+    await aprobarEntera(e, segunda.id).catch(() => undefined);
+
+    const asignado = await prisma.paymentAllocation.aggregate({
+      where: { chargeId: e.chargeId },
+      _sum: { amount: true },
+    });
+
+    expect(asignado._sum.amount?.toString()).toBe('420');
+  });
+
+  /*
+   * Lo que sí debe poder hacerse: repartir la segunda evidencia contra lo que
+   * quede. Aquí no queda nada, así que se aprueba sin reparto y los 420 enteros
+   * pasan a saldo a favor (DEC-008).
+   */
+  it('la segunda puede aprobarse sin reparto y queda como saldo a favor', async () => {
+    const e = await sembrar();
+    const segunda = await segundaEvidencia(e);
+
+    await aprobarEntera(e, e.proofId);
+
+    const v0 = await prisma.paymentProof.findUniqueOrThrow({ where: { id: segunda.id } });
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: segunda.id,
+      expectedVersion: v0.version,
+    });
+
+    const emitido = await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: segunda.id,
+      expectedVersion: v0.version + 1,
+      outcome: 'APPROVED',
+      allocations: [],
+    });
+
+    expect(emitido).not.toBeNull();
+
+    const pago = await prisma.payment.findFirstOrThrow({ where: { sourceProofId: segunda.id } });
+    const comprobante = await prisma.receipt.findUniqueOrThrow({ where: { paymentId: pago.id } });
+
+    expect(comprobante.snapshot).toMatchObject({ credit: '420.00' });
+  });
+});

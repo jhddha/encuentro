@@ -6,6 +6,7 @@ import type {
   RecordReviewInput,
 } from '@encuentro/application';
 import {
+  assertAllocationsWithinCharges,
   computeBalance,
   formatReceiptNumber,
   money,
@@ -296,6 +297,7 @@ export function createPaymentProofRepository(
         if (updated.count === 0) return false;
 
         await writeAudit(tx, {
+          eventId: await eventOf(tx, input.proofId),
           proofId: input.proofId,
           actorId: input.actorId,
           action: 'payment.proof.take_for_review',
@@ -322,6 +324,7 @@ export function createPaymentProofRepository(
         if (updated.count === 0) return false;
 
         await writeAudit(tx, {
+          eventId: await eventOf(tx, input.proofId),
           proofId: input.proofId,
           actorId: input.actorId,
           action: 'payment.proof.review',
@@ -366,6 +369,25 @@ export function createPaymentProofRepository(
         });
 
         if (updated.count === 0) return null;
+
+        /*
+         * PAY-020 **otra vez, y aquí dentro**.
+         *
+         * El caso de uso ya validó el reparto, pero contra un saldo que leyó
+         * fuera de esta transacción. Entre aquella lectura y este punto el saldo
+         * pudo cambiar, y con dos evidencias en revisión sobre la misma
+         * inscripción —el peregrino que transfiere dos veces por error— eso no
+         * es hipotético: dos revisores leen «pendiente 420.00», los dos asignan
+         * 420.00 y el cargo acaba con 840 aplicados sobre 420 debidos.
+         *
+         * El cerrojo de arriba serializa las aprobaciones de la gestión, así que
+         * la segunda llega aquí con el reparto de la primera ya escrito. Lo
+         * único que faltaba era volver a mirar.
+         *
+         * La comprobación la hace la misma función del dominio que usó el caso
+         * de uso, no una copia: PAY-020 tiene una sola definición.
+         */
+        await assertAllocationsFitCharges(tx, input.allocations);
 
         // PAY-025: solo APPROVED crea el pago. Aquí es donde entra el dinero.
         const payment = await tx.payment.create({
@@ -443,6 +465,7 @@ export function createPaymentProofRepository(
         });
 
         await writeAudit(tx, {
+          eventId: proof.eventId,
           proofId: input.proofId,
           actorId: input.actorId,
           action: 'payment.proof.approve',
@@ -579,9 +602,103 @@ function subtractDecimals(chargeAmount: string, paidAmount: string, currency: st
   return money(toDecimalString({ amount: charged.amount - paid.amount, currency }), currency);
 }
 
+/**
+ * Revalida el reparto contra el saldo real, dentro de la transacción.
+ *
+ * Relee los cargos y lo ya asignado con las escrituras de esta transacción
+ * visibles, y delega en `assertAllocationsWithinCharges`, que además agrupa por
+ * cargo. Lanza `PAYMENT_OVER_ALLOCATED` si el reparto ya no cabe, y ese rechazo
+ * revierte la transacción entera: ni pago, ni asignaciones, ni comprobante.
+ *
+ * Es lo correcto aunque sea tarde en el flujo. La alternativa —dejarlo pasar y
+ * corregir después— exigiría anular un comprobante ya emitido (PAY-033).
+ */
+async function assertAllocationsFitCharges(
+  tx: TransactionClient,
+  allocations: ApproveProofInput['allocations'],
+): Promise<void> {
+  if (allocations.length === 0) return;
+
+  const chargeIds = [...new Set(allocations.map((allocation) => allocation.chargeId))];
+
+  const charges = await tx.charge.findMany({
+    where: { id: { in: chargeIds } },
+    select: { id: true, amount: true, currency: true },
+  });
+
+  const asignado = await tx.paymentAllocation.groupBy({
+    by: ['chargeId'],
+    where: { chargeId: { in: chargeIds } },
+    _sum: { amount: true },
+  });
+
+  const pagado = new Map(
+    asignado.map((row) => [row.chargeId, row._sum.amount?.toString() ?? '0.00']),
+  );
+  const saldo = new Map(
+    charges.map((charge) => [
+      charge.id,
+      subtractDecimals(charge.amount.toString(), pagado.get(charge.id) ?? '0.00', charge.currency),
+    ]),
+  );
+
+  assertAllocationsWithinCharges(
+    allocations.map((allocation) => {
+      const pendiente = saldo.get(allocation.chargeId);
+
+      if (pendiente === undefined) {
+        // El cargo desapareció entre la lectura y esta transacción. No puede
+        // ocurrir —`charges` es inmutable— pero cero es la respuesta segura:
+        // hace que la asignación se rechace en vez de pasar sin comprobar.
+        return {
+          chargeId: allocation.chargeId,
+          amount: allocation.amount,
+          chargeOutstanding: { amount: 0, currency: allocation.amount.currency },
+        };
+      }
+
+      return {
+        chargeId: allocation.chargeId,
+        amount: allocation.amount,
+        chargeOutstanding: pendiente,
+      };
+    }),
+  );
+}
+
+/**
+ * Gestión a la que pertenece una evidencia.
+ *
+ * Se lee dentro de la transacción en vez de aceptarla del llamador: el caso de
+ * uso ya comprobó que coinciden, pero leerla aquí hace que no puedan divergir
+ * nunca, y `approve` ya la tenía a mano por el cerrojo de numeración.
+ */
+async function eventOf(tx: TransactionClient, proofId: string): Promise<string> {
+  const proof = await tx.paymentProof.findUniqueOrThrow({
+    where: { id: proofId },
+    select: { eventId: true },
+  });
+
+  return proof.eventId;
+}
+
+/**
+ * Rastro de auditoría de la revisión — GOV-005, GOV-009, AUD-001.
+ *
+ * **`eventId` es obligatorio y antes no se escribía.** `audit_logs.event_id`
+ * admite nulo porque hay acciones globales —configuración de SMTP, alta de
+ * gestiones—, y las tres escrituras de este módulo lo dejaban sin poner. La
+ * consecuencia no era un dato incompleto sino una ausencia: la pantalla de
+ * auditoría filtra `where: { eventId }`, así que `payment.proof.approve`,
+ * `take_for_review` y `review` **no aparecían en ninguna parte**.
+ *
+ * Es el rastro de quién autorizó cada cobro. Ante un descuadre, la única
+ * pantalla donde buscarlo no lo tenía.
+ */
 async function writeAudit(
   tx: TransactionClient,
   entry: {
+    eventId: string;
     proofId: string;
     actorId: string;
     action: string;
@@ -591,6 +708,7 @@ async function writeAudit(
 ): Promise<void> {
   await tx.auditLog.create({
     data: {
+      eventId: entry.eventId,
       actorId: entry.actorId,
       action: entry.action,
       entity: 'payment_proof',
