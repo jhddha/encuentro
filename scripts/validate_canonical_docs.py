@@ -72,6 +72,12 @@ EXENTOS={
  # Retrospectiva de la sesion: explica la colision de identificadores y por
  # tanto necesita nombrar los retirados. Misma razon que los anteriores.
  'handoff.md',
+ # Informe de revision de la rama, fechado. No es fuente de verdad: es la foto
+ # de un dia. Nombra identificadores retirados porque el defecto que reporta es
+ # justamente que siguen citados en rangos abreviados del codigo y de los
+ # documentos. Cuando esos rangos se corrijan, este informe pasara a historico
+ # y su exencion debera retirarse con el.
+ 'docs/04-delivery/revision-rama-v2.6.md',
 }
 EXENTOS_PREFIJO=('archive/','prototypes/','generated-docx/','node_modules/','dist/','.git/')
 
