@@ -28,6 +28,7 @@ export {
   receiptTokenMatches,
   type ReceiptToken,
 } from './receipt-token.js';
+export { verifyReceipt, type ReceiptVerification } from './receipt-verification.js';
 export {
   createPaymentProofRepository,
   findProofDetail,

@@ -99,6 +99,23 @@ export interface RecordReviewInput {
   readonly actorId: string;
 }
 
+/**
+ * Comprobante recién emitido — PAY-031, DEC-003.
+ *
+ * `verificationToken` es el **valor en claro**, y esta respuesta es el único
+ * momento de su vida en que existe fuera del QR. La base guarda solo su HMAC y
+ * no puede devolverlo: si esta respuesta se descarta, el comprobante queda
+ * emitido y ya nunca podrá verificarse.
+ *
+ * Eso es exactamente lo que ocurría: `approve` devolvía un booleano, el token se
+ * generaba dentro de la transacción y moría con ella. Cada comprobante emitido
+ * nacía inverificable, y no era recuperable ni siquiera con acceso a la base.
+ */
+export interface IssuedReceipt {
+  readonly number: string;
+  readonly verificationToken: string;
+}
+
 export interface PaymentProofRepository {
   findForReview(proofId: string): Promise<ProofForReview | null>;
 
@@ -116,8 +133,10 @@ export interface PaymentProofRepository {
    * Todo junto o nada. Un pago sin comprobante, o un comprobante sin
    * asignaciones, dejaría la contabilidad y el estado de cuenta mintiendo cada
    * uno por su lado.
+   *
+   * Devuelve el comprobante emitido, o `null` si otra operación se adelantó.
    */
-  approve(input: ApproveProofInput): Promise<boolean>;
+  approve(input: ApproveProofInput): Promise<IssuedReceipt | null>;
 
   /** Rechazo o petición de corrección, con motivo y auditoría. */
   recordReview(input: RecordReviewInput): Promise<boolean>;
@@ -156,11 +175,18 @@ export async function takeProofForReview(
   );
 }
 
+/**
+ * Aplica la decisión del revisor.
+ *
+ * Devuelve el comprobante emitido cuando la decisión es aprobar, y `null` en
+ * los otros dos casos. **Quien llame debe hacer algo con él**: contiene el
+ * único ejemplar del token en claro que existirá nunca.
+ */
 export async function reviewPaymentProof(
   deps: ReviewPaymentProofDeps,
   actor: Actor,
   command: ReviewPaymentProofCommand,
-): Promise<void> {
+): Promise<IssuedReceipt | null> {
   const proof = await load(deps, actor, command.eventId, command.proofId);
 
   if (!canTransitionProof(proof.status, command.outcome)) {
@@ -189,10 +215,10 @@ export async function reviewPaymentProof(
         actorId: actor.userId,
       }),
     );
-    return;
+    return null;
   }
 
-  await approve(deps, actor, command, proof);
+  return await approve(deps, actor, command, proof);
 }
 
 async function approve(
@@ -200,7 +226,7 @@ async function approve(
   actor: Actor,
   command: ReviewPaymentProofCommand,
   proof: ProofForReview,
-): Promise<void> {
+): Promise<IssuedReceipt> {
   /*
    * PAY-027 antes que nada. Aprobar dos veces el mismo comprobante bancario
    * duplica un ingreso que nunca entró, y eso no se detecta hasta el arqueo.
@@ -233,17 +259,24 @@ async function approve(
    */
   const credit = unallocatedAmount(proof.amount, amounts);
 
-  await assertApplied(
-    deps.proofs.approve({
-      proofId: command.proofId,
-      expectedVersion: command.expectedVersion,
-      registrationId: proof.registrationId,
-      amount: proof.amount,
-      allocations,
-      credit,
-      actorId: actor.userId,
-    }),
-  );
+  const receipt = await deps.proofs.approve({
+    proofId: command.proofId,
+    expectedVersion: command.expectedVersion,
+    registrationId: proof.registrationId,
+    amount: proof.amount,
+    allocations,
+    credit,
+    actorId: actor.userId,
+  });
+
+  if (receipt === null) {
+    throw new DomainError(
+      'EVENT_VERSION_CONFLICT',
+      'La evidencia cambió mientras preparaba esta operación. Vuelva a cargarla e inténtelo de nuevo.',
+    );
+  }
+
+  return receipt;
 }
 
 function outstandingOf(proof: ProofForReview, chargeId: string): Money {

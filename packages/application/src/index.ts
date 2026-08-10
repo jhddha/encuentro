@@ -76,6 +76,7 @@ export {
   type AllocationRequest,
   type ApproveProofInput,
   type ChargeBalance,
+  type IssuedReceipt,
   type PaymentProofRepository,
   type ProofForReview,
   type RecordReviewInput,

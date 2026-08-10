@@ -24,7 +24,7 @@ export default async function ReceiptVerificationPage({
   params: Promise<{ token: string }>;
 }) {
   const { token } = await params;
-  const result = verifyReceiptToken(token);
+  const result = await verifyReceiptToken(token);
 
   return (
     <Shell title="Verificación de comprobante">
@@ -43,10 +43,15 @@ export default async function ReceiptVerificationPage({
           />
         )}
 
+        {/*
+          Solo ocurre si falta `RECEIPT_VERIFICATION_SECRET`. No se le dice al
+          visitante que el comprobante no existe, porque no es verdad: lo que
+          falla es este servidor.
+        */}
         {result.kind === 'unavailable' && (
           <ErrorState
-            title="Verificación no disponible todavía"
-            description="La emisión de comprobantes se habilita en la fase de pagos. Aún no existe ningún comprobante que verificar."
+            title="Verificación no disponible"
+            description="No podemos comprobar el comprobante en este momento. Vuelva a intentarlo más tarde o consulte con la organización."
           />
         )}
       </div>

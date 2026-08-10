@@ -33,9 +33,22 @@ export type ActionResult =
  * mensaje amable esconde los fallos reales justo donde más caro es no verlos.
  */
 export async function runAction(operation: () => Promise<void>): Promise<ActionResult> {
+  return await runActionWith(operation);
+}
+
+/**
+ * Resultado de una mutación que además **devuelve algo**.
+ *
+ * Hizo falta para la aprobación de evidencias: emite un comprobante cuyo token
+ * en claro solo existe en esa respuesta, y un `{ ok: true }` a secas lo perdía.
+ */
+export type ActionResultWith<T> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly code: string; readonly message: string };
+
+export async function runActionWith<T>(operation: () => Promise<T>): Promise<ActionResultWith<T>> {
   try {
-    await operation();
-    return { ok: true };
+    return { ok: true, value: await operation() };
   } catch (error) {
     if (error instanceof DomainError) {
       return { ok: false, code: error.code, message: error.message };

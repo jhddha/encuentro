@@ -1,6 +1,10 @@
 import { reviewPaymentProof, takeProofForReview } from '@encuentro/application';
 import { money, type Actor } from '@encuentro/domain';
-import { createPaymentProofRepository, type PrismaClient } from '@encuentro/infrastructure';
+import {
+  createPaymentProofRepository,
+  verifyReceipt,
+  type PrismaClient,
+} from '@encuentro/infrastructure';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { resetDatabase, seedEvent, testPrisma } from './helpers';
@@ -325,5 +329,134 @@ describe('rechazo', () => {
     expect(evidencia.status).toBe('REJECTED');
     expect(evidencia.reviewReason).toContain('otra cuenta');
     expect(await prisma.payment.count({ where: { sourceProofId: e.proofId } })).toBe(0);
+  });
+});
+
+/**
+ * El bucle de verificación pública — PAY-031, PAY-033, DEC-003.
+ *
+ * Estaba roto por los dos extremos: `approve` generaba el token en claro y lo
+ * descartaba al terminar la función, y `verifyReceiptToken` era un stub que
+ * devolvía siempre `unavailable`. Cada comprobante emitido nacía inverificable y
+ * no era recuperable, porque la base solo guarda el HMAC.
+ *
+ * Estas pruebas recorren el bucle entero: emitir, recibir el token en claro y
+ * verificarlo contra la base.
+ */
+describe('verificación pública del comprobante', () => {
+  async function emitir(e: Escenario) {
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion,
+    });
+
+    return await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion + 1,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('420.00', USD) }],
+    });
+  }
+
+  it('la aprobación devuelve el comprobante con su token en claro', async () => {
+    const e = await sembrar();
+    const emitido = await emitir(e);
+
+    expect(emitido).not.toBeNull();
+    expect(emitido?.number).toBe(`REC-${e.eventCode}-000001`);
+    // 32 bytes en base64url. Sin esto el QR no puede imprimirse nunca.
+    expect(emitido?.verificationToken).toHaveLength(43);
+  });
+
+  it('el token en claro no llega a la base: solo su HMAC', async () => {
+    const e = await sembrar();
+    const emitido = await emitir(e);
+
+    const fila = await prisma.receipt.findFirstOrThrow({ where: { eventId: e.eventId } });
+
+    expect(fila.verificationTokenHash).not.toBe(emitido?.verificationToken);
+    expect(JSON.stringify(fila)).not.toContain(emitido?.verificationToken ?? '<sin token>');
+  });
+
+  it('ese token verifica el comprobante y devuelve solo lo público', async () => {
+    const e = await sembrar();
+    const emitido = await emitir(e);
+
+    const resultado = await verifyReceipt(
+      prisma,
+      emitido?.verificationToken ?? '',
+      SECRETO.verificationSecret,
+    );
+
+    expect(resultado.kind).toBe('found');
+
+    if (resultado.kind === 'found') {
+      expect(resultado.receipt.number).toBe(`REC-${e.eventCode}-000001`);
+      expect(resultado.receipt.eventCode).toBe(e.eventCode);
+      expect(resultado.receipt.amount).toBe('420.00');
+      expect(resultado.receipt.currency).toBe(USD);
+      expect(resultado.receipt.status).toBe('VALID');
+
+      /*
+       * `data-api-rbac.md` §7: la respuesta pública no lleva nombre, código de
+       * inscripción, referencia, archivo bancario ni aprobador.
+       */
+      expect(Object.keys(resultado.receipt).sort()).toEqual([
+        'amount',
+        'currency',
+        'eventCode',
+        'issuedAt',
+        'number',
+        'status',
+      ]);
+    }
+  });
+
+  it('un token inventado no encuentra nada', async () => {
+    const e = await sembrar();
+    await emitir(e);
+
+    for (const candidato of ['', 'x', 'a'.repeat(43), 'a'.repeat(500)]) {
+      const resultado = await verifyReceipt(prisma, candidato, SECRETO.verificationSecret);
+      expect(resultado.kind).toBe('not-found');
+    }
+  });
+
+  /*
+   * El HMAC necesita la clave, que vive en el entorno y no en la base. Un
+   * volcado de `receipts` no basta para fabricar un token válido.
+   */
+  it('con otra clave el mismo token no verifica', async () => {
+    const e = await sembrar();
+    const emitido = await emitir(e);
+
+    const resultado = await verifyReceipt(
+      prisma,
+      emitido?.verificationToken ?? '',
+      'otra-clave-distinta-de-la-que-emitio-el-token',
+    );
+
+    expect(resultado.kind).toBe('not-found');
+  });
+
+  it('un comprobante anulado se declara anulado, no inexistente (PAY-033)', async () => {
+    const e = await sembrar();
+    const emitido = await emitir(e);
+
+    await prisma.receipt.updateMany({
+      where: { eventId: e.eventId },
+      data: { voidedAt: new Date(), voidReason: 'Corrección de importe' },
+    });
+
+    const resultado = await verifyReceipt(
+      prisma,
+      emitido?.verificationToken ?? '',
+      SECRETO.verificationSecret,
+    );
+
+    expect(resultado.kind).toBe('found');
+    if (resultado.kind === 'found') expect(resultado.receipt.status).toBe('VOID');
   });
 });

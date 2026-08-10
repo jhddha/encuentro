@@ -4,7 +4,7 @@ import { reviewPaymentProof, takeProofForReview } from '@encuentro/application';
 import { money } from '@encuentro/domain';
 import { revalidatePath } from 'next/cache';
 
-import { runAction, type ActionResult } from '@/lib/actions';
+import { runAction, runActionWith, type ActionResult, type ActionResultWith } from '@/lib/actions';
 import { eventRepository, paymentProofRepository } from '@/lib/container';
 import { requireActor } from '@/lib/session';
 
@@ -105,25 +105,37 @@ export interface AllocationForm {
   readonly amount: string;
 }
 
+/**
+ * Comprobante recién emitido, tal como lo recibe la pantalla — PAY-031.
+ *
+ * `verificationUrl` contiene el token en claro y **es lo único que existirá de
+ * él**: la base guarda solo su HMAC. Si esta respuesta se pierde, el
+ * comprobante queda emitido y sin forma de verificarse nunca.
+ */
+export interface IssuedReceiptView {
+  readonly number: string;
+  readonly verificationUrl: string;
+}
+
 export async function approveProofAction(
   eventCode: string,
   proofId: string,
   expectedVersion: number,
   currency: string,
   allocations: readonly AllocationForm[],
-): Promise<ActionResult> {
+): Promise<ActionResultWith<IssuedReceiptView | null>> {
   const actor = await requireActor();
   const eventId = await resolveEventId(eventCode);
 
-  const result = await runAction(async () => {
-    await reviewPaymentProof({ proofs: paymentProofRepository() }, actor, {
+  const result = await runActionWith(async () => {
+    const receipt = await reviewPaymentProof({ proofs: paymentProofRepository() }, actor, {
       eventId,
       proofId,
       expectedVersion,
       outcome: 'APPROVED',
       /*
        * `money()` valida el texto decimal y lanza `MONEY_INVALID` si no lo es.
-       * Se construye aquí, dentro de `runAction`, para que un importe mal
+       * Se construye aquí, dentro de `runActionWith`, para que un importe mal
        * escrito llegue al usuario como mensaje y no como pantalla de error.
        */
       allocations: allocations.map((allocation) => ({
@@ -131,6 +143,21 @@ export async function approveProofAction(
         amount: money(allocation.amount, currency),
       })),
     });
+
+    if (receipt === null) return null;
+
+    /*
+     * La URL se compone aquí y no en el cliente: `APP_URL` es la dirección
+     * pública configurada, y el QR debe apuntar a ella y no a la que tenga el
+     * navegador del revisor abierta —que en una red interna puede ser una IP
+     * que fuera no resuelve.
+     */
+    const base = process.env.APP_URL ?? '';
+
+    return {
+      number: receipt.number,
+      verificationUrl: `${base}/verificar/comprobante/${receipt.verificationToken}`,
+    };
   });
 
   revalidatePath(`/admin/e/${eventCode}/comprobantes`);

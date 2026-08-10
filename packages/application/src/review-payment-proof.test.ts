@@ -58,7 +58,11 @@ function repositorio(registro: ProofForReview | null, aplica = true): RepoFalso 
     },
     approve: (input) => {
       aprobados.push(input);
-      return Promise.resolve(aplica);
+      // El comprobante emitido, con su token en claro: es lo único que lo
+      // contendrá nunca. `null` significa que otra operación se adelantó.
+      return Promise.resolve(
+        aplica ? { number: 'REC-ENC2026-000001', verificationToken: 'tok_de_prueba' } : null,
+      );
     },
     recordReview: (input) => {
       revisiones.push(input);

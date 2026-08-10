@@ -1,5 +1,6 @@
 import type {
   ApproveProofInput,
+  IssuedReceipt,
   PaymentProofRepository,
   ProofForReview,
   RecordReviewInput,
@@ -332,14 +333,14 @@ export function createPaymentProofRepository(
       });
     },
 
-    async approve(input: ApproveProofInput) {
+    async approve(input: ApproveProofInput): Promise<IssuedReceipt | null> {
       return await prisma.$transaction(async (tx) => {
         const proof = await tx.paymentProof.findUnique({
           where: { id: input.proofId },
           select: { eventId: true, event: { select: { code: true } } },
         });
 
-        if (proof === null) return false;
+        if (proof === null) return null;
 
         /*
          * Serializa la numeración de comprobantes de **esta** gestión.
@@ -364,7 +365,7 @@ export function createPaymentProofRepository(
           },
         });
 
-        if (updated.count === 0) return false;
+        if (updated.count === 0) return null;
 
         // PAY-025: solo APPROVED crea el pago. Aquí es donde entra el dinero.
         const payment = await tx.payment.create({
@@ -400,6 +401,20 @@ export function createPaymentProofRepository(
         });
 
         const sequence = (last?.sequence ?? 0) + 1;
+        const number = formatReceiptNumber(proof.event.code, sequence);
+
+        /*
+         * El valor en claro **sale de aquí** dentro del resultado.
+         *
+         * Antes se generaba, se guardaba su HMAC y se descartaba al terminar la
+         * función: cada comprobante emitido nacía imposible de verificar, y no
+         * era recuperable ni con acceso a la base, que solo tiene el hash. El QR
+         * que PAY-031 exige no podía imprimirse nunca.
+         *
+         * DEC-003 dice que el claro «solo existe dentro del QR impreso»; para
+         * que llegue al QR tiene que atravesar esta respuesta. Quien la reciba
+         * es responsable de mostrarlo una vez y no persistirlo.
+         */
         const token = createReceiptToken(secret.verificationSecret);
 
         await tx.receipt.create({
@@ -407,7 +422,7 @@ export function createPaymentProofRepository(
             eventId: proof.eventId,
             paymentId: payment.id,
             sequence,
-            number: formatReceiptNumber(proof.event.code, sequence),
+            number,
             verificationTokenHash: token.hash,
             /*
              * PAY-030 y PAY-033: el comprobante es inmutable, así que guarda una
@@ -447,7 +462,7 @@ export function createPaymentProofRepository(
           paymentId: payment.id,
         });
 
-        return true;
+        return { number, verificationToken: token.token };
       });
     },
   };

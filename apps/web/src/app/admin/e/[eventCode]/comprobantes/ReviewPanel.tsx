@@ -3,7 +3,12 @@
 import { Button } from '@encuentro/ui';
 import { useState, useTransition } from 'react';
 
-import { approveProofAction, rejectProofAction, requestCorrectionAction } from './actions';
+import {
+  approveProofAction,
+  rejectProofAction,
+  requestCorrectionAction,
+  type IssuedReceiptView,
+} from './actions';
 
 /**
  * Panel de revisión de una evidencia — PAY-025, PAY-026, PAY-020.
@@ -57,6 +62,7 @@ export function ReviewPanel({
   const [amounts, setAmounts] = useState<Record<string, string>>({});
   const [reason, setReason] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [issued, setIssued] = useState<IssuedReceiptView | null>(null);
   const [pending, startTransition] = useTransition();
 
   function run(operation: () => Promise<{ ok: boolean; message?: string }>) {
@@ -64,6 +70,28 @@ export function ReviewPanel({
     startTransition(async () => {
       const result = await operation();
       if (!result.ok) setError(result.message ?? 'No se pudo completar la operación.');
+    });
+  }
+
+  /**
+   * Aprobar, aparte del resto.
+   *
+   * Es la única decisión que **devuelve algo que no se puede volver a pedir**:
+   * el token en claro del comprobante. La base guarda solo su HMAC, así que si
+   * esta respuesta se descarta, el comprobante queda emitido y su QR ya no se
+   * puede imprimir nunca.
+   */
+  function approve() {
+    setError(null);
+    startTransition(async () => {
+      const result = await approveProofAction(eventCode, proofId, version, currency, allocations);
+
+      if (!result.ok) {
+        setError(result.message);
+        return;
+      }
+
+      setIssued(result.value);
     });
   }
 
@@ -176,13 +204,28 @@ export function ReviewPanel({
         </p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        <Button
-          disabled={pending}
-          onClick={() => {
-            run(() => approveProofAction(eventCode, proofId, version, currency, allocations));
-          }}
+      {/*
+        El enlace de verificación aparece **una sola vez**, aquí. DEC-003: el
+        valor en claro solo existe en el QR impreso, y la base guarda su HMAC.
+        Recargar esta pantalla no lo recupera, y nadie puede reemitirlo sin
+        anular el comprobante (PAY-033).
+      */}
+      {issued !== null && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex flex-col gap-2 rounded-lg border-2 border-[var(--color-success)] p-4"
         >
+          <p className="text-sm">
+            <strong>Comprobante {issued.number} emitido.</strong> Copie o imprima ahora el enlace de
+            verificación: no se puede volver a mostrar.
+          </p>
+          <code className="text-xs break-all">{issued.verificationUrl}</code>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <Button disabled={pending || issued !== null} onClick={approve}>
           {pending ? 'Procesando…' : 'Aprobar y emitir comprobante'}
         </Button>
 

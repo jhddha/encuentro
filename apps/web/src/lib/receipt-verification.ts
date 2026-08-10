@@ -1,12 +1,22 @@
+import 'server-only';
+
 import type { PublicReceiptVerification } from '@encuentro/domain';
+import { verifyReceipt } from '@encuentro/infrastructure';
+
+import { prisma } from './container';
 
 /**
  * Resultado de consultar un token de verificación.
  *
- * `unavailable` existe porque el servicio real llega en P07 junto con la tabla
- * `receipts`. Es un estado explícito y no un `null` ambiguo: la página debe
- * poder distinguir «este comprobante no existe» de «todavía no puedo
- * responder», y decirle al usuario la verdad en cada caso.
+ * `unavailable` se conserva para el único caso en que sigue siendo cierto: que
+ * falte `RECEIPT_VERIFICATION_SECRET` en el entorno. Sin la clave no se puede
+ * calcular el HMAC, y responder «no encontrado» diría que el comprobante no
+ * existe cuando lo que pasa es que este servidor está mal configurado.
+ *
+ * Hasta ahora era el **único** resultado posible: la función era un stub que
+ * devolvía siempre `unavailable`, así que el QR de todo comprobante emitido
+ * llevaba a una página diciendo que la verificación «se habilita en la fase de
+ * pagos».
  */
 export type VerificationResult =
   | { readonly kind: 'found'; readonly receipt: PublicReceiptVerification }
@@ -14,15 +24,23 @@ export type VerificationResult =
   | { readonly kind: 'unavailable' };
 
 /**
- * Verifica un token de comprobante.
+ * Verifica un token de comprobante — PAY-031, DEC-003.
  *
- * Contrato objetivo (P07): `GET /api/v1/public/receipts/verify/{token}`. El
- * token es opaco, de alta entropía, y se almacena por hash — nunca se compara
- * en claro contra la base (DEC-003, requirements.md §10).
+ * El token es opaco y de alta entropía, y se compara por HMAC contra la columna
+ * indexada: nunca viaja en claro a la base. La proyección pública la hace el
+ * dominio y excluye nombre, código de inscripción, referencia, archivo bancario
+ * y aprobador (`data-api-rbac.md` §7).
  *
- * La comparación deberá ser de tiempo constante y el endpoint deberá ir tras
- * rate limit, porque es la única superficie del sistema accesible sin sesión.
+ * **Sigue sin límite de intentos.** Es la superficie anónima del sistema y el
+ * rate limit corresponde al proxy; el bloque del `Caddyfile` que dice ponerlo no
+ * contiene ninguna directiva que lo haga. Anotado en el informe de revisión.
  */
-export function verifyReceiptToken(_token: string): VerificationResult {
-  return { kind: 'unavailable' };
+export async function verifyReceiptToken(token: string): Promise<VerificationResult> {
+  const secret = process.env.RECEIPT_VERIFICATION_SECRET;
+
+  if (secret === undefined || secret === '') {
+    return { kind: 'unavailable' };
+  }
+
+  return await verifyReceipt(prisma(), token, secret);
 }
