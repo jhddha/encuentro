@@ -633,7 +633,13 @@ model PaymentProof {
 
   /// PAY-027: referencia bancaria. Un índice único por gestión impide cargar
   /// dos veces el mismo comprobante.
-  reference String
+  ///
+  /// `Citext` porque el índice distinguía mayúsculas: `TRX-9981` y `trx-9981`
+  /// convivían como evidencias distintas de la misma transferencia, y el mismo
+  /// comprobante bancario podía aprobarse dos veces. Mismo motivo por el que
+  /// `users.email` lo es (IAM-001). No normaliza espacios ni guiones: fusionar
+  /// esos rechazaría referencias genuinamente distintas.
+  reference String @db.Citext
   payerName String? @map("payer_name")
 
   /// Archivo privado. Se guarda la referencia y el checksum, nunca el binario.

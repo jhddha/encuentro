@@ -445,9 +445,13 @@ describe('verificación pública del comprobante', () => {
     const e = await sembrar();
     const emitido = await emitir(e);
 
+    /*
+     * `receipts_void_is_complete` exige los tres campos: sin `voided_by` no hay
+     * anulación válida, porque PAY-033 pide saber quién la autorizó.
+     */
     await prisma.receipt.updateMany({
       where: { eventId: e.eventId },
-      data: { voidedAt: new Date(), voidReason: 'Corrección de importe' },
+      data: { voidedAt: new Date(), voidedBy: REVISOR, voidReason: 'Corrección de importe' },
     });
 
     const resultado = await verifyReceipt(

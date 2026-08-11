@@ -16,6 +16,19 @@ export default defineConfig({
       '@encuentro/application': src('application'),
       '@encuentro/infrastructure': src('infrastructure'),
       '@encuentro/config': src('config'),
+
+      /*
+       * `server-only` lanza al importarse fuera del servidor de Next, así que
+       * cualquier módulo que lo lleve es imposible de probar. Se sustituye por
+       * un módulo vacío en las pruebas.
+       *
+       * La alternativa habría sido quitar la marca de los módulos que se
+       * quieren probar, y eso es peor: la marca existe para que el build falle
+       * si algo del servidor acaba importado desde un componente cliente
+       * (regla 02-domain-boundaries), y quitarla por comodidad de pruebas
+       * apagaría justo esa garantía.
+       */
+      'server-only': fileURLToPath(new URL('./tests/stubs/server-only.ts', import.meta.url)),
     },
   },
   test: {

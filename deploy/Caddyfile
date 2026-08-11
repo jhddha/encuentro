@@ -36,18 +36,25 @@
 	# render dinámico en el proceso web. Un solo cliente puede saturar la
 	# aplicación durante el evento, que es cuando más caro sale.
 	#
-	# PENDIENTE. Dos caminos, y ninguno se elige aquí sin decidirlo:
-	#   1. Imagen propia de Caddy con `caddy-ratelimit` (xcaddy), y este bloque
-	#      pasa a llevar la directiva de verdad.
-	#   2. Límite en la aplicación, que además puede contar por token y no solo
-	#      por IP.
+	# RESUELTO EL 8-AGO-2026: el límite está EN LA APLICACIÓN, no aquí.
 	#
-	# Mientras tanto se deja lo único que sí se puede hacer sin plugin: aislar la
-	# ruta en su propio bloque —ya lo estaba— para que aplicar el límite sea
-	# cambiar estas líneas y nada más.
+	# Se eligió frente a compilar una imagen propia con `caddy-ratelimit` porque
+	# se aplica **antes de consultar la base**, que es donde está el coste real
+	# —el token de 32 bytes no se adivina; lo que duele es una consulta por
+	# petición en una ruta anónima—, y porque no añade una tubería de compilación
+	# de Caddy que mantener. Ver `apps/web/src/lib/rate-limit.ts`, que documenta
+	# también lo que ese límite NO cubre.
+	#
+	# Lo que sí depende de este bloque: **fijar las cabeceras de origen**. El
+	# contador cuenta por `X-Real-IP`, y si el proxy no la reescribe cualquiera
+	# puede enviarla a mano y saltarse la cuota cambiándola en cada petición.
 	@verificacion path /verificar/comprobante/*
 	handle @verificacion {
-		reverse_proxy web:3000
+		reverse_proxy web:3000 {
+			header_up X-Real-IP {remote_host}
+			# Se descarta lo que traiga el cliente: solo vale lo que vea el proxy.
+			header_up -X-Forwarded-For
+		}
 	}
 
 	# El resto del tráfico.

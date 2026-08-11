@@ -383,7 +383,7 @@ describe('cola de notificaciones contra la base', () => {
       clock,
     });
 
-    expect(result).toEqual({ claimed: 1, sent: 1, retrying: 0, abandoned: 0 });
+    expect(result).toEqual({ claimed: 1, sent: 1, retrying: 0, abandoned: 0, unrecorded: 0 });
     expect(enviados).toEqual(['Pago aprobado — REC-ENC26-000012']);
 
     const row = await prisma.notification.findUniqueOrThrow({ where: { id } });

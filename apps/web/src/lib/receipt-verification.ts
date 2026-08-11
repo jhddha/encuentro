@@ -2,8 +2,10 @@ import 'server-only';
 
 import type { PublicReceiptVerification } from '@encuentro/domain';
 import { verifyReceipt } from '@encuentro/infrastructure';
+import { headers } from 'next/headers';
 
 import { prisma } from './container';
+import { checkRateLimit, clientKey } from './rate-limit';
 
 /**
  * Resultado de consultar un token de verificación.
@@ -21,7 +23,8 @@ import { prisma } from './container';
 export type VerificationResult =
   | { readonly kind: 'found'; readonly receipt: PublicReceiptVerification }
   | { readonly kind: 'not-found' }
-  | { readonly kind: 'unavailable' };
+  | { readonly kind: 'unavailable' }
+  | { readonly kind: 'rate-limited'; readonly retryAfterSeconds: number };
 
 /**
  * Verifica un token de comprobante — PAY-031, DEC-003.
@@ -31,15 +34,22 @@ export type VerificationResult =
  * dominio y excluye nombre, código de inscripción, referencia, archivo bancario
  * y aprobador (`data-api-rbac.md` §7).
  *
- * **Sigue sin límite de intentos.** Es la superficie anónima del sistema y el
- * rate limit corresponde al proxy; el bloque del `Caddyfile` que dice ponerlo no
- * contiene ninguna directiva que lo haga. Anotado en el informe de revisión.
+ * **El límite de ritmo se aplica antes de consultar**, no antes de renderizar.
+ * Lo que hay que proteger es Postgres: el token no se adivina por fuerza bruta,
+ * pero cada petición cuesta una consulta y la ruta es anónima. Ver
+ * `checkRateLimit` para lo que ese límite cubre y lo que no.
  */
 export async function verifyReceiptToken(token: string): Promise<VerificationResult> {
   const secret = process.env.RECEIPT_VERIFICATION_SECRET;
 
   if (secret === undefined || secret === '') {
     return { kind: 'unavailable' };
+  }
+
+  const limite = checkRateLimit(clientKey(await headers()));
+
+  if (!limite.allowed) {
+    return { kind: 'rate-limited', retryAfterSeconds: limite.retryAfterSeconds };
   }
 
   return await verifyReceipt(prisma(), token, secret);

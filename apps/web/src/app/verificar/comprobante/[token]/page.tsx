@@ -43,6 +43,13 @@ export default async function ReceiptVerificationPage({
           />
         )}
 
+        {result.kind === 'rate-limited' && (
+          <ErrorState
+            title="Demasiadas consultas"
+            description={`Espere ${String(result.retryAfterSeconds)} segundos y vuelva a intentarlo. El comprobante no se ha comprobado todavía.`}
+          />
+        )}
+
         {/*
           Solo ocurre si falta `RECEIPT_VERIFICATION_SECRET`. No se le dice al
           visitante que el comprobante no existe, porque no es verdad: lo que
