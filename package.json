@@ -16,7 +16,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "vitest run --config vitest.integration.mts",
-    "test:e2e": "playwright test",
+    "test:e2e": "pnpm build && playwright test",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "docs:validate": "python scripts/validate_canonical_docs.py",
@@ -26,7 +26,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "test:load": "tsx scripts/load-test.mts",
-    "db:fixture": "tsx prisma/dev-fixture.ts"
+    "db:fixture": "tsx prisma/dev-fixture.ts",
+    "db:e2e": "tsx scripts/preparar-base-e2e.mts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

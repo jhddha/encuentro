@@ -29,6 +29,29 @@ jobs:
     env:
       DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro
 
+      # El recorrido autenticado usa una base propia. La siembra deja catálogo
+      # que la limpieza no retira, y para borrar los cargos apaga un disparador
+      # de solo anexado: ninguna de las dos cosas sobre la base que acaban de
+      # usar las pruebas de integración.
+      E2E_DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro_e2e
+
+      # El servidor del recorrido se levanta en 127.0.0.1:3100 y Better Auth
+      # deriva de APP_URL sus orígenes de confianza; la configuración de
+      # Playwright lo sobrescribe para el proceso hijo, pero la semilla lee el
+      # entorno del job.
+      APP_URL: http://127.0.0.1:3100
+
+      # Valores de prueba, no secretos: la validación exige 32 caracteres.
+      SESSION_SECRET: ci-session-secret-de-treinta-y-dos-o-mas
+      RECEIPT_VERIFICATION_SECRET: ci-receipt-secret-de-treinta-y-dos-o-mas
+
+      # No hay MinIO en CI. Se declaran porque `container.ts` los exige al
+      # construir el almacén, y ninguna prueba del recorrido sube un archivo.
+      OBJECT_STORAGE_ENDPOINT: http://localhost:9000
+      OBJECT_STORAGE_BUCKET: encuentro-private
+      OBJECT_STORAGE_ACCESS_KEY: ci-access-key
+      OBJECT_STORAGE_SECRET_KEY: ci-secret-key
+
     steps:
       - uses: actions/checkout@v6
 
@@ -73,8 +96,18 @@ jobs:
       - name: Instalar navegador para E2E
         run: pnpm exec playwright install chromium --with-deps
 
-      - name: Accesibilidad y responsive
-        # Gate de P02: WCAG 2.2 AA sobre los cinco viewports canónicos.
+      - name: Preparar la base del recorrido
+        # `pnpm db:e2e` crea esta base en local, pero lo hace a través de
+        # `docker compose`, que aquí no existe: Postgres es un servicio del job.
+        # El cliente `psql` viene con la imagen de ubuntu-latest.
+        run: |
+          psql "$DATABASE_URL" -c 'CREATE DATABASE encuentro_e2e'
+          DATABASE_URL="$E2E_DATABASE_URL" pnpm exec prisma migrate deploy
+
+      - name: Recorrido de extremo a extremo
+        # Accesibilidad WCAG 2.2 AA sobre los cinco viewports (P02) y el
+        # recorrido autenticado: acceso con segundo factor, fronteras de
+        # autorización y humo de las pantallas con sesión.
         run: pnpm test:e2e
 
       - name: Publicar reporte de fallos

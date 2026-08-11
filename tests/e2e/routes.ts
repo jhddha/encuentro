@@ -25,6 +25,11 @@ export const SAMPLE_ROUTES: readonly SampleRoute[] = [
 ];
 
 /*
+ * La lista completa y clasificada de las treinta y una rutas del contrato vive
+ * en `rutas-contrato.ts`, que las lee del propio `contracts/routes.json` y
+ * lanza si alguna no está clasificada. Esta de aquí es solo la muestra anónima
+ * del gate de accesibilidad, que corre en los cinco viewports.
+ *
  * LO QUE ESTA LISTA YA NO CUBRE, Y POR QUÉ
  *
  * Solo quedan las rutas que un anónimo puede **renderizar de verdad**. Cada vez
