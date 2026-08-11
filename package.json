@@ -33,6 +33,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
+    "@encuentro/infrastructure": "workspace:*",
     "@eslint/js": "9.39.5",
     "@playwright/test": "1.62.1",
     "@prisma/client": "7.9.1",

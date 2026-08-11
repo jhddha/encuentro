@@ -9,9 +9,45 @@ import {
   systemClock,
 } from '@encuentro/infrastructure';
 import { Queue, Worker } from 'bullmq';
+import { config as loadEnvFile } from 'dotenv';
 import { Redis } from 'ioredis';
+import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import pino from 'pino';
+
+/**
+ * Carga del `.env` del monorepo.
+ *
+ * Sin esto el worker **no arrancaba en local**: `loadEnv()` lee `process.env` y
+ * nadie ponía nada ahí. En producción el entorno lo da el contenedor (DEC-001),
+ * así que el hueco solo se notaba al intentar correrlo a mano — y hasta hoy
+ * nadie lo había intentado.
+ *
+ * Se busca hacia arriba en vez de fijar `../../../.env`: la ruta relativa
+ * depende de si se ejecuta el fuente o el compilado, y una constante acertaría
+ * en un caso y fallaría en el otro sin decir por qué. Las variables que ya
+ * estén definidas mandan, que es como se sobrescribe en un despliegue.
+ */
+function cargarEntornoDelMonorepo(): void {
+  let directorio = dirname(fileURLToPath(import.meta.url));
+
+  for (let salto = 0; salto < 6; salto += 1) {
+    const candidato = join(directorio, '.env');
+
+    if (existsSync(candidato)) {
+      loadEnvFile({ path: candidato, quiet: true });
+      return;
+    }
+
+    const padre = dirname(directorio);
+    if (padre === directorio) break;
+    directorio = padre;
+  }
+}
+
+cargarEntornoDelMonorepo();
 
 /**
  * Proceso worker — DEC-001.

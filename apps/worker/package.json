@@ -16,6 +16,7 @@
     "@encuentro/domain": "workspace:*",
     "@encuentro/infrastructure": "workspace:*",
     "bullmq": "6.0.7",
+    "dotenv": "17.4.2",
     "ioredis": "6.0.0",
     "pino": "10.3.1"
   }

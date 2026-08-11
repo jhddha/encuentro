@@ -13,6 +13,12 @@ const PLANTILLA_VERIFICACION = 'AUTH_EMAIL_VERIFICATION';
  * Se reutiliza entre peticiones por el mismo motivo que el cliente Prisma: en
  * desarrollo Next recarga los módulos y crearía una instancia nueva en cada
  * cambio.
+ *
+ * **Consecuencia que cuesta un rato averiguar:** la instancia sobrevive a la
+ * recarga en caliente, así que **editar este fichero no surte efecto hasta
+ * reiniciar el servidor**. Ocurrió al cambiar `sendVerificationEmail`: el alta
+ * seguía escribiendo en la consola con el código nuevo ya en disco, y desde
+ * fuera parecía que el cambio no funcionaba.
  */
 const globalForAuth = globalThis as unknown as {
   encuentroAuth?: ReturnType<typeof createAuth>;
