@@ -4,6 +4,7 @@ import { Button } from '@encuentro/ui';
 import { useRouter } from 'next/navigation';
 import { useState, type SyntheticEvent } from 'react';
 
+import { TwoFactorChallenge } from '@/components/two-factor-challenge';
 import { authClient } from '@/lib/auth-client';
 
 /**
@@ -14,6 +15,21 @@ import { authClient } from '@/lib/auth-client';
  * en un oráculo para averiguar qué direcciones están registradas.
  */
 const GENERIC_ERROR = 'No pudimos iniciar sesión con esos datos. Revise el correo y la contraseña.';
+
+/**
+ * ¿La respuesta pide el segundo factor?
+ *
+ * Con una cuenta protegida, `signIn.email` responde **sin error y sin sesión**:
+ * el plugin marca `twoFactorRedirect` desde un hook posterior, así que el campo
+ * no aparece en el tipo inferido del cliente y hay que mirarlo en ejecución.
+ * Tomar esa respuesta por buena era navegar a una pantalla que rebota a
+ * `/ingresar`, y desde fuera parecía que el formulario se recargaba solo.
+ */
+function pideSegundoFactor(data: unknown): boolean {
+  if (typeof data !== 'object' || data === null) return false;
+
+  return (data as Record<string, unknown>).twoFactorRedirect === true;
+}
 
 const inputClass =
   'min-h-[var(--size-touch-target)] rounded-md border border-[var(--color-ink)]/30 px-3 ' +
@@ -29,6 +45,7 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [segundoFactor, setSegundoFactor] = useState(false);
 
   async function submit(event: SyntheticEvent): Promise<void> {
     event.preventDefault();
@@ -44,8 +61,27 @@ export function SignInForm({
       return;
     }
 
+    if (pideSegundoFactor(result.data)) {
+      // La contraseña ya cumplió su papel y no vuelve a hacer falta; mantenerla
+      // en memoria durante el segundo paso solo alarga su exposición.
+      setPassword('');
+      setSegundoFactor(true);
+      return;
+    }
+
     router.push('/admin');
     router.refresh();
+  }
+
+  if (segundoFactor) {
+    return (
+      <TwoFactorChallenge
+        onCancel={() => {
+          setSegundoFactor(false);
+          setEmail('');
+        }}
+      />
+    );
   }
 
   return (
