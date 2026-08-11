@@ -2,6 +2,8 @@ import { PageHeader, ReadonlyState } from '@encuentro/ui';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { AccountBar } from '@/components/account-bar';
+
 export interface NavItem {
   readonly href: string;
   readonly label: string;
@@ -55,7 +57,13 @@ export function Shell({
       <header className="border-b border-[var(--color-ink)]/15">
         <div className="mx-auto flex max-w-7xl flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
           <span className="font-[family-name:var(--font-display)] text-xl">{title}</span>
-          {nav}
+
+          {/* Navegación y sesión comparten el extremo derecho; con `nav`
+              ausente, `AccountBar` ocupa su lugar sin dejar hueco. */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-5">
+            {nav}
+            <AccountBar />
+          </div>
         </div>
       </header>
 
