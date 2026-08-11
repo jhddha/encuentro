@@ -1,6 +1,7 @@
 import { expect, test as setup } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 
-import { ACTORES, estado } from './actores';
+import { ACTORES, estado, type ClaveActor } from './actores';
 import { sembrar } from './siembra';
 
 /**
@@ -19,7 +20,25 @@ setup('sembrar los actores del recorrido', async () => {
 
   expect(resultado.correos).toHaveLength(Object.keys(ACTORES).length);
 
-  for (const clave of Object.keys(ACTORES) as (keyof typeof ACTORES)[]) {
-    expect(estado(clave)).toBeTruthy();
+  /*
+   * Se lee el fichero, no se comprueba la ruta.
+   *
+   * La versión anterior afirmaba `expect(estado(clave)).toBeTruthy()`, y eso
+   * compara una cadena literal consigo misma: no puede fallar ni aunque la
+   * siembra no hubiera escrito nada. Una afirmación que no puede fallar ocupa
+   * el sitio de la que sí comprobaría algo, y aquí lo que hay que comprobar es
+   * exactamente que la sesión llegó al disco con su cookie dentro.
+   */
+  for (const clave of Object.keys(ACTORES) as ClaveActor[]) {
+    const guardado = JSON.parse(readFileSync(estado(clave), 'utf8')) as {
+      cookies?: { name?: string; value?: string }[];
+    };
+
+    const sesion = guardado.cookies?.find((cookie) =>
+      cookie.name?.endsWith('encuentro.session_token'),
+    );
+
+    expect(sesion, `${clave} no dejó cookie de sesión`).toBeDefined();
+    expect(sesion?.value ?? '', `la cookie de ${clave} está vacía`).not.toBe('');
   }
 });

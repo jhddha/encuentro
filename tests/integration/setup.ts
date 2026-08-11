@@ -1,5 +1,7 @@
 import 'dotenv/config';
 
+import { baseDesechable } from '../base-desechable';
+
 /**
  * Preparación de las pruebas de integración.
  *
@@ -18,22 +20,12 @@ import 'dotenv/config';
  * `pnpm db:test` la crea y le aplica las migraciones.
  */
 
-const url = process.env.TEST_DATABASE_URL;
-
-if (url === undefined || url === '') {
-  throw new Error(
-    'Falta TEST_DATABASE_URL. Las pruebas de integración vacían el esquema entero entre pruebas, ' +
-      'así que necesitan una base propia y no la de desarrollo.\n' +
-      'Créela con `pnpm db:test` y añádala a .env (ver .env.example).',
-  );
-}
-
-if (url === process.env.DATABASE_URL) {
-  throw new Error(
-    'TEST_DATABASE_URL apunta a la misma base que DATABASE_URL. Estas pruebas hacen TRUNCATE de ' +
-      'todo el esquema: use una distinta con `pnpm db:test`.',
-  );
-}
+const url = baseDesechable(
+  'TEST_DATABASE_URL',
+  'pnpm db:test',
+  'Estas pruebas hacen TRUNCATE de todo el esquema entre pruebas: no pueden correr sobre una ' +
+    'base de trabajo.',
+);
 
 /*
  * Los ayudantes y los repositorios leen `DATABASE_URL`. Se sustituye aquí, en

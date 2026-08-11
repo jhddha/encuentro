@@ -3,7 +3,16 @@ import { config as loadEnvFile } from 'dotenv';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 import { ROLES } from '../../prisma/roles';
-import { ACTORES, BASE, EVENTO, PASSWORD, RUN, urlBaseDeDatos, type Actor } from './actores';
+import {
+  ACTORES,
+  BASE,
+  DIRECTORIO_SESIONES,
+  EVENTO,
+  PASSWORD,
+  RUN,
+  urlBaseDeDatos,
+  type Actor,
+} from './actores';
 import { base32Decode, secretoDeUri, segundosRestantes, totp } from './totp';
 
 /**
@@ -119,7 +128,7 @@ async function registrarSegundoFactor(
 }
 
 function guardarEstado(clave: string, cookie: string): void {
-  mkdirSync('test-results/.auth', { recursive: true });
+  mkdirSync(DIRECTORIO_SESIONES, { recursive: true });
 
   const valor = cookie.slice(COOKIE_ESPERADA.length + 1);
 
@@ -129,7 +138,7 @@ function guardarEstado(clave: string, cookie: string): void {
    * cookie. El nombre lo impone el servidor, que corre con NODE_ENV=production.
    */
   writeFileSync(
-    `test-results/.auth/${clave}.json`,
+    `${DIRECTORIO_SESIONES}/${clave}.json`,
     `${JSON.stringify(
       {
         cookies: [

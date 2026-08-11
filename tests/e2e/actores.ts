@@ -1,3 +1,5 @@
+import { baseDesechable } from '../base-desechable';
+
 /**
  * Personajes del recorrido automatizado y dónde vive su sesión.
  *
@@ -63,10 +65,19 @@ export const ACTORES = {
 
 export type ClaveActor = keyof typeof ACTORES;
 
-/** `test-results/` ya está ignorado por git. */
+/**
+ * Dónde vive la sesión de cada personaje.
+ *
+ * **Fuera de `test-results/`**: Playwright vacía ese directorio al arrancar
+ * cualquier corrida, así que ejecutar un solo fichero con `--grep` borraba las
+ * sesiones sembradas y las pruebas se quedaban sin cookie sin decir por qué.
+ */
 export function estado(clave: ClaveActor): string {
-  return `test-results/.auth/${clave}.json`;
+  return `${DIRECTORIO_SESIONES}/${clave}.json`;
 }
+
+/** Ignorado por git; ver `.gitignore`. */
+export const DIRECTORIO_SESIONES = '.sesiones-e2e';
 
 /**
  * Base de datos del recorrido: **propia y obligatoria**.
@@ -84,22 +95,10 @@ export function estado(clave: ClaveActor): string {
  * `pnpm db:e2e` la crea y le aplica las migraciones.
  */
 export function urlBaseDeDatos(): string {
-  const url = process.env.E2E_DATABASE_URL;
-
-  if (url === undefined || url === '') {
-    throw new Error(
-      'Falta E2E_DATABASE_URL. El recorrido automatizado necesita una base propia: siembra ' +
-        'catálogo que no se limpia y apaga un disparador de solo anexado para borrar cargos, y ' +
-        'ninguna de las dos cosas se hace sobre una base de trabajo.\n' +
-        'Cree la suya con `pnpm db:e2e` y añádala a .env (ver .env.example).',
-    );
-  }
-
-  if (url === process.env.DATABASE_URL) {
-    throw new Error(
-      'E2E_DATABASE_URL apunta a la misma base que DATABASE_URL. Use una distinta: `pnpm db:e2e`.',
-    );
-  }
-
-  return url;
+  return baseDesechable(
+    'E2E_DATABASE_URL',
+    'pnpm db:e2e',
+    'El recorrido siembra catálogo que su limpieza no retira y apaga un disparador de solo ' +
+      'anexado para borrar los cargos: no puede correr sobre una base de trabajo.',
+  );
 }
