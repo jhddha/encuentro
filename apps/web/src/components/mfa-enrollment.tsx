@@ -2,7 +2,8 @@
 
 import { Button } from '@encuentro/ui';
 import { useRouter } from 'next/navigation';
-import { useState, type SyntheticEvent } from 'react';
+import { toDataURL } from 'qrcode';
+import { useEffect, useState, type SyntheticEvent } from 'react';
 
 import { authClient } from '@/lib/auth-client';
 
@@ -22,9 +23,13 @@ import { authClient } from '@/lib/auth-client';
  * Activarlo antes dejaría cuentas bloqueadas fuera del sistema si el secreto no
  * llegó a guardarse bien.
  *
- * No hay código QR: exigiría una dependencia nueva y toda aplicación
- * autenticadora admite introducir el secreto a mano. Queda como mejora, no como
- * requisito.
+ * El código QR es el camino principal y la clave a mano el respaldo, no al
+ * revés: teclear treinta y dos caracteres en base32 desde un móvil es lento y
+ * los errores no se ven hasta que el código falla. La clave se queda visible
+ * porque hay aplicaciones sin cámara y personas que no pueden usarla.
+ *
+ * Se genera **en el navegador**, a partir de la URI que ya está en memoria. El
+ * secreto no hace ningún viaje que no hiciera antes.
  */
 
 const inputClass =
@@ -50,8 +55,33 @@ export function MfaEnrollment() {
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [secreto, setSecreto] = useState<Secreto | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+
+  /*
+   * El QR se dibuja aparte del render porque generarlo es asíncrono. Si falla
+   * —y puede, es una librería más— no se rompe la pantalla: queda la clave
+   * escrita, que sigue sirviendo para terminar el registro.
+   */
+  useEffect(() => {
+    if (secreto === null) return;
+
+    let vigente = true;
+
+    toDataURL(secreto.totpURI, { errorCorrectionLevel: 'M', margin: 1, width: 220 }).then(
+      (imagen) => {
+        if (vigente) setQr(imagen);
+      },
+      () => {
+        if (vigente) setQr(null);
+      },
+    );
+
+    return () => {
+      vigente = false;
+    };
+  }, [secreto]);
 
   async function empezar(event: SyntheticEvent): Promise<void> {
     event.preventDefault();
@@ -139,14 +169,43 @@ export function MfaEnrollment() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-base font-semibold">1. Añada esta clave a su aplicación</h2>
+      <div className="flex flex-col gap-3">
+        <h2 className="text-base font-semibold">1. Escanee este código</h2>
         <p className="text-sm">
-          En su aplicación autenticadora elija «introducir clave manualmente» y pegue esto:
+          Abra su aplicación autenticadora y añada una cuenta nueva escaneando el código.
         </p>
-        <code className="rounded-md border border-[var(--color-ink)]/20 p-3 font-mono text-sm break-all">
-          {secretoDe(secreto.totpURI)}
-        </code>
+
+        {qr === null ? (
+          <p className="text-sm" role="status">
+            Preparando el código… si no aparece, use la clave de abajo.
+          </p>
+        ) : (
+          /*
+           * `img` y no `next/image`: la fuente es una data URI generada en el
+           * navegador, así que no hay nada que optimizar ni servir.
+           *
+           * `alt` vacío y no un texto descriptivo: la alternativa accesible de
+           * un QR no es «código QR» —que no sirve de nada— sino la clave escrita
+           * que va justo debajo y que cualquiera puede leer o copiar.
+           */
+          <img
+            src={qr}
+            alt=""
+            width={220}
+            height={220}
+            className="rounded-md border border-[var(--color-ink)]/20 bg-white p-2"
+          />
+        )}
+
+        <details className="text-sm">
+          <summary className="cursor-pointer">No puedo escanear el código</summary>
+          <p className="mt-2">
+            En su aplicación elija «introducir clave manualmente» y escriba esto:
+          </p>
+          <code className="mt-1 block rounded-md border border-[var(--color-ink)]/20 p-3 font-mono text-sm break-all select-all">
+            {secretoDe(secreto.totpURI)}
+          </code>
+        </details>
       </div>
 
       {/*
