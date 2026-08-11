@@ -160,3 +160,5 @@ export {
   type PublicReceiptStatus,
   type PublicReceiptVerification,
 } from './receipt.js';
+
+export { formatRate, parseRate, requireRate, type ExchangeRate } from './exchange-rate.js';

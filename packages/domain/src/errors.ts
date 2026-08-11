@@ -16,6 +16,15 @@ export type DomainErrorCode =
   | 'FORBIDDEN'
   | 'MONEY_INVALID'
   | 'MONEY_CURRENCY_MISMATCH'
+  /**
+   * No hay tasa registrada para esa moneda y ese día.
+   *
+   * Distinto de `MONEY_CURRENCY_MISMATCH`, que dice «estas dos monedas no
+   * casan». Este dice «casarían, pero falta el dato», y quien lo lee puede
+   * resolverlo: registrar la tasa está a un clic. Confundirlos mandaría a
+   * tesorería a buscar un error de configuración que no existe.
+   */
+  | 'EXCHANGE_RATE_MISSING'
   | 'MINOR_NOT_ALLOWED'
   | 'ADVANCE_RATE_EXPIRED'
   | 'ADVANCE_BENEFIT_NOT_UNLOCKED'
