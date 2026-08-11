@@ -1,6 +1,6 @@
 # Handoff — sesiones del 7 y del 8 de agosto de 2026
 
-**Rama:** `migracion-linea-base-v2.6`, **veintiocho commits** por delante de `main` (`626ad05`). Los trece últimos **sin subir a GitHub**.
+**Rama:** `migracion-linea-base-v2.6`, **veintiocho commits** por delante de `main` (`626ad05`). Los **quince** últimos **sin subir a GitHub**.
 **Gate al cerrar la sesión del 7:** validador, prettier, ESLint, `tsc --build`, **345 unitarias**, **129 de integración**, `pnpm build`. Todo en verde.
 **Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **424 unitarias**, `prisma validate`, `pnpm build`. En verde. **Las de integración no se pudieron ejecutar en la segunda mitad de la sesión**: ver §9.4.
 
