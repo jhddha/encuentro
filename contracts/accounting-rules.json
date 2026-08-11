@@ -4,9 +4,19 @@
   "status": "APPROVED",
   "decision": "DEC-018",
   "scope": "Contabilidad administrativa y control financiero del evento; no sustituye libros fiscales ni legales (ACC-001).",
-  "idempotencyKey": ["eventId", "sourceType", "sourceId", "entryKind"],
+  "idempotencyKey": [
+    "eventId",
+    "sourceType",
+    "sourceId",
+    "entryKind"
+  ],
   "roles": {
-    "financial": ["CASH_ON_HAND", "BANK_ACCOUNT", "QR_CLEARING", "PAYMENT_GATEWAY_CLEARING"],
+    "financial": [
+      "CASH_ON_HAND",
+      "BANK_ACCOUNT",
+      "QR_CLEARING",
+      "PAYMENT_GATEWAY_CLEARING"
+    ],
     "revenue": [
       "REGISTRATION_REVENUE",
       "LODGING_REVENUE",
@@ -14,23 +24,43 @@
       "MONETARY_DONATION_REVENUE",
       "IN_KIND_DONATION_REVENUE"
     ],
-    "liability": ["PARTICIPANT_ADVANCES", "ACCOUNTS_PAYABLE", "STAFF_REIMBURSEMENTS_PAYABLE"],
-    "asset": ["ADVANCES_TO_ACCOUNT_FOR", "INVENTORY", "FIXED_ASSETS"],
+    "liability": [
+      "PARTICIPANT_ADVANCES",
+      "ACCOUNTS_PAYABLE",
+      "STAFF_REIMBURSEMENTS_PAYABLE"
+    ],
+    "asset": [
+      "ADVANCES_TO_ACCOUNT_FOR",
+      "INVENTORY",
+      "FIXED_ASSETS"
+    ],
     "expense": [
       "OPERATING_EXPENSE",
       "FOOD_AND_MATERIALS_EXPENSE",
       "LOSS_AND_WASTE_EXPENSE",
       "PAYMENT_PROCESSING_FEES"
     ],
-    "adjustment": ["RECONCILIATION_DIFFERENCES", "INVENTORY_SURPLUS"]
+    "adjustment": [
+      "RECONCILIATION_DIFFERENCES",
+      "INVENTORY_SURPLUS"
+    ]
   },
   "resolvers": {
     "FINANCIAL_ACCOUNT_BY_CHANNEL": {
-      "resolvesTo": ["CASH_ON_HAND", "BANK_ACCOUNT", "QR_CLEARING", "PAYMENT_GATEWAY_CLEARING"],
+      "resolvesTo": [
+        "CASH_ON_HAND",
+        "BANK_ACCOUNT",
+        "QR_CLEARING",
+        "PAYMENT_GATEWAY_CLEARING"
+      ],
       "resolvesBy": "paymentChannel"
     },
     "REVENUE_ROLE_BY_CONCEPT": {
-      "resolvesTo": ["REGISTRATION_REVENUE", "LODGING_REVENUE", "TRANSPORT_REVENUE"],
+      "resolvesTo": [
+        "REGISTRATION_REVENUE",
+        "LODGING_REVENUE",
+        "TRANSPORT_REVENUE"
+      ],
       "resolvesBy": "chargeConcept"
     },
     "EXPENSE_OR_ASSET_BY_ITEM": {
@@ -41,6 +71,24 @@
         "FIXED_ASSETS"
       ],
       "resolvesBy": "itemNature"
+    },
+    "FINANCIAL_ACCOUNT_BY_SOURCE_CHANNEL": {
+      "resolvesTo": [
+        "CASH_ON_HAND",
+        "BANK_ACCOUNT",
+        "QR_CLEARING",
+        "PAYMENT_GATEWAY_CLEARING"
+      ],
+      "resolvesBy": "sourceChannel"
+    },
+    "FINANCIAL_ACCOUNT_BY_TARGET_CHANNEL": {
+      "resolvesTo": [
+        "CASH_ON_HAND",
+        "BANK_ACCOUNT",
+        "QR_CLEARING",
+        "PAYMENT_GATEWAY_CLEARING"
+      ],
+      "resolvesBy": "targetChannel"
     }
   },
   "rules": [
@@ -49,8 +97,18 @@
       "entryKind": "REVENUE_RECOGNITION",
       "sourceType": "paymentAllocation",
       "trigger": "Pago aprobado con asignación a un cargo",
-      "debits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "allocatedAmount" }],
-      "credits": [{ "resolver": "REVENUE_ROLE_BY_CONCEPT", "amount": "allocatedAmount" }],
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "allocatedAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "amount": "allocatedAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -58,8 +116,18 @@
       "entryKind": "PARTICIPANT_ADVANCE",
       "sourceType": "payment",
       "trigger": "Pago aprobado sin asignación final",
-      "debits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "unallocatedAmount" }],
-      "credits": [{ "role": "PARTICIPANT_ADVANCES", "amount": "unallocatedAmount" }],
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "unallocatedAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "PARTICIPANT_ADVANCES",
+          "amount": "unallocatedAmount"
+        }
+      ],
       "appliesInV1": true,
       "notes": "DEC-008: el sobrepago es pasivo, nunca ingreso."
     },
@@ -68,8 +136,18 @@
       "entryKind": "ADVANCE_APPLICATION",
       "sourceType": "paymentAllocation",
       "trigger": "Asignación aprobada desde saldo a favor existente",
-      "debits": [{ "role": "PARTICIPANT_ADVANCES", "amount": "allocatedAmount" }],
-      "credits": [{ "resolver": "REVENUE_ROLE_BY_CONCEPT", "amount": "allocatedAmount" }],
+      "debits": [
+        {
+          "role": "PARTICIPANT_ADVANCES",
+          "amount": "allocatedAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "amount": "allocatedAmount"
+        }
+      ],
       "appliesInV1": true,
       "notes": "No vuelve a mover efectivo."
     },
@@ -78,8 +156,18 @@
       "entryKind": "REVENUE_REVERSAL_TO_ADVANCE",
       "sourceType": "registration",
       "trigger": "Cancelación auditada de una inscripción con pago ya aplicado",
-      "debits": [{ "resolver": "REVENUE_ROLE_BY_CONCEPT", "amount": "recognizedAmount" }],
-      "credits": [{ "role": "PARTICIPANT_ADVANCES", "amount": "recognizedAmount" }],
+      "debits": [
+        {
+          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "amount": "recognizedAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "PARTICIPANT_ADVANCES",
+          "amount": "recognizedAmount"
+        }
+      ],
       "appliesInV1": true,
       "notes": "DEC-007: no hay devolución de dinero; el importe queda como saldo a favor."
     },
@@ -88,8 +176,18 @@
       "entryKind": "DONATION_RECEIVED",
       "sourceType": "donation",
       "trigger": "Donación monetaria recibida y confirmada",
-      "debits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "donationAmount" }],
-      "credits": [{ "role": "MONETARY_DONATION_REVENUE", "amount": "donationAmount" }],
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "donationAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "MONETARY_DONATION_REVENUE",
+          "amount": "donationAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -97,8 +195,18 @@
       "entryKind": "DONATION_IN_KIND",
       "sourceType": "donation",
       "trigger": "Recepción en especie con valoración aprobada",
-      "debits": [{ "role": "INVENTORY", "amount": "appraisedValue" }],
-      "credits": [{ "role": "IN_KIND_DONATION_REVENUE", "amount": "appraisedValue" }],
+      "debits": [
+        {
+          "role": "INVENTORY",
+          "amount": "appraisedValue"
+        }
+      ],
+      "credits": [
+        {
+          "role": "IN_KIND_DONATION_REVENUE",
+          "amount": "appraisedValue"
+        }
+      ],
       "nonCash": true,
       "appliesInV1": true
     },
@@ -107,8 +215,18 @@
       "entryKind": "DONATION_IN_KIND",
       "sourceType": "donation",
       "trigger": "Servicio donado aceptado con valoración aprobada",
-      "debits": [{ "role": "OPERATING_EXPENSE", "amount": "appraisedValue" }],
-      "credits": [{ "role": "IN_KIND_DONATION_REVENUE", "amount": "appraisedValue" }],
+      "debits": [
+        {
+          "role": "OPERATING_EXPENSE",
+          "amount": "appraisedValue"
+        }
+      ],
+      "credits": [
+        {
+          "role": "IN_KIND_DONATION_REVENUE",
+          "amount": "appraisedValue"
+        }
+      ],
       "nonCash": true,
       "appliesInV1": true
     },
@@ -117,8 +235,18 @@
       "entryKind": "PURCHASE",
       "sourceType": "purchase",
       "trigger": "Compra aprobada y pagada",
-      "debits": [{ "resolver": "EXPENSE_OR_ASSET_BY_ITEM", "amount": "purchaseAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "purchaseAmount" }],
+      "debits": [
+        {
+          "resolver": "EXPENSE_OR_ASSET_BY_ITEM",
+          "amount": "purchaseAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "purchaseAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -126,8 +254,18 @@
       "entryKind": "PURCHASE_PAYABLE",
       "sourceType": "purchase",
       "trigger": "Obligación aprobada con documento suficiente",
-      "debits": [{ "resolver": "EXPENSE_OR_ASSET_BY_ITEM", "amount": "purchaseAmount" }],
-      "credits": [{ "role": "ACCOUNTS_PAYABLE", "amount": "purchaseAmount" }],
+      "debits": [
+        {
+          "resolver": "EXPENSE_OR_ASSET_BY_ITEM",
+          "amount": "purchaseAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "ACCOUNTS_PAYABLE",
+          "amount": "purchaseAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -135,8 +273,18 @@
       "entryKind": "PAYABLE_SETTLEMENT",
       "sourceType": "supplierPayment",
       "trigger": "Pago a proveedor confirmado",
-      "debits": [{ "role": "ACCOUNTS_PAYABLE", "amount": "paidAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "paidAmount" }],
+      "debits": [
+        {
+          "role": "ACCOUNTS_PAYABLE",
+          "amount": "paidAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "paidAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -144,8 +292,18 @@
       "entryKind": "ADVANCE_TO_ACCOUNT_FOR",
       "sourceType": "cashAdvance",
       "trigger": "Entrega de fondos a un responsable, confirmada",
-      "debits": [{ "role": "ADVANCES_TO_ACCOUNT_FOR", "amount": "advanceAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "advanceAmount" }],
+      "debits": [
+        {
+          "role": "ADVANCES_TO_ACCOUNT_FOR",
+          "amount": "advanceAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "advanceAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -153,8 +311,18 @@
       "entryKind": "ADVANCE_CLEARING",
       "sourceType": "expenseReport",
       "trigger": "Rendición aprobada",
-      "debits": [{ "resolver": "EXPENSE_OR_ASSET_BY_ITEM", "amount": "approvedLineAmount" }],
-      "credits": [{ "role": "ADVANCES_TO_ACCOUNT_FOR", "amount": "approvedLineAmount" }],
+      "debits": [
+        {
+          "resolver": "EXPENSE_OR_ASSET_BY_ITEM",
+          "amount": "approvedLineAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "ADVANCES_TO_ACCOUNT_FOR",
+          "amount": "approvedLineAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -162,8 +330,18 @@
       "entryKind": "ADVANCE_RETURN",
       "sourceType": "advanceReturn",
       "trigger": "Devolución de fondos no utilizados, confirmada",
-      "debits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "returnedAmount" }],
-      "credits": [{ "role": "ADVANCES_TO_ACCOUNT_FOR", "amount": "returnedAmount" }],
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "returnedAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "ADVANCES_TO_ACCOUNT_FOR",
+          "amount": "returnedAmount"
+        }
+      ],
       "appliesInV1": true,
       "notes": "No confundir con un reembolso a un peregrino: DEC-007 no lo admite."
     },
@@ -172,8 +350,18 @@
       "entryKind": "STAFF_REIMBURSEMENT_ACCRUAL",
       "sourceType": "expenseReport",
       "trigger": "Rendición aprobada de gasto con recursos propios",
-      "debits": [{ "resolver": "EXPENSE_OR_ASSET_BY_ITEM", "amount": "approvedLineAmount" }],
-      "credits": [{ "role": "STAFF_REIMBURSEMENTS_PAYABLE", "amount": "approvedLineAmount" }],
+      "debits": [
+        {
+          "resolver": "EXPENSE_OR_ASSET_BY_ITEM",
+          "amount": "approvedLineAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "STAFF_REIMBURSEMENTS_PAYABLE",
+          "amount": "approvedLineAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -181,8 +369,18 @@
       "entryKind": "STAFF_REIMBURSEMENT_SETTLEMENT",
       "sourceType": "staffReimbursement",
       "trigger": "Pago del reembolso confirmado",
-      "debits": [{ "role": "STAFF_REIMBURSEMENTS_PAYABLE", "amount": "paidAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "paidAmount" }],
+      "debits": [
+        {
+          "role": "STAFF_REIMBURSEMENTS_PAYABLE",
+          "amount": "paidAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "paidAmount"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -190,8 +388,18 @@
       "entryKind": "INVENTORY_OUT",
       "sourceType": "inventoryMovement",
       "trigger": "Entrega o salida aprobada",
-      "debits": [{ "role": "FOOD_AND_MATERIALS_EXPENSE", "amount": "movementValue" }],
-      "credits": [{ "role": "INVENTORY", "amount": "movementValue" }],
+      "debits": [
+        {
+          "role": "FOOD_AND_MATERIALS_EXPENSE",
+          "amount": "movementValue"
+        }
+      ],
+      "credits": [
+        {
+          "role": "INVENTORY",
+          "amount": "movementValue"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -199,8 +407,18 @@
       "entryKind": "INVENTORY_LOSS",
       "sourceType": "inventoryMovement",
       "trigger": "Ajuste de pérdida o desperdicio, aprobado con evidencia",
-      "debits": [{ "role": "LOSS_AND_WASTE_EXPENSE", "amount": "movementValue" }],
-      "credits": [{ "role": "INVENTORY", "amount": "movementValue" }],
+      "debits": [
+        {
+          "role": "LOSS_AND_WASTE_EXPENSE",
+          "amount": "movementValue"
+        }
+      ],
+      "credits": [
+        {
+          "role": "INVENTORY",
+          "amount": "movementValue"
+        }
+      ],
       "appliesInV1": true
     },
     {
@@ -208,8 +426,18 @@
       "entryKind": "INVENTORY_IN_ADJUSTMENT",
       "sourceType": "inventoryMovement",
       "trigger": "Ajuste de sobrante, aprobado con evidencia",
-      "debits": [{ "role": "INVENTORY", "amount": "movementValue" }],
-      "credits": [{ "role": "INVENTORY_SURPLUS", "amount": "movementValue" }],
+      "debits": [
+        {
+          "role": "INVENTORY",
+          "amount": "movementValue"
+        }
+      ],
+      "credits": [
+        {
+          "role": "INVENTORY_SURPLUS",
+          "amount": "movementValue"
+        }
+      ],
       "appliesInV1": true,
       "notes": "MAT-003: el sobrante es un movimiento distinto del ajuste."
     },
@@ -218,9 +446,20 @@
       "entryKind": "TRANSFER",
       "sourceType": "financialTransfer",
       "trigger": "Transferencia entre cuentas propias, conciliada",
-      "debits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "transferAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "transferAmount" }],
-      "appliesInV1": true
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_TARGET_CHANNEL",
+          "amount": "transferAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_SOURCE_CHANNEL",
+          "amount": "transferAmount"
+        }
+      ],
+      "appliesInV1": true,
+      "notes": "DEC-018 regla 19: debita la cuenta de DESTINO y acredita la de ORIGEN. Ambos lados usaban el mismo resolvedor sobre el mismo paymentChannel, asi que resolvian a la misma cuenta: el asiento cuadraba y no movia nada."
     },
     {
       "code": "GATEWAY_SETTLEMENT",
@@ -228,30 +467,79 @@
       "sourceType": "gatewaySettlement",
       "trigger": "Liquidación de pasarela confirmada, con retención",
       "debits": [
-        { "role": "BANK_ACCOUNT", "amount": "netAmount" },
-        { "role": "PAYMENT_PROCESSING_FEES", "amount": "feeAmount" }
+        {
+          "role": "BANK_ACCOUNT",
+          "amount": "netAmount"
+        },
+        {
+          "role": "PAYMENT_PROCESSING_FEES",
+          "amount": "feeAmount"
+        }
       ],
-      "credits": [{ "role": "PAYMENT_GATEWAY_CLEARING", "amount": "grossAmount" }],
+      "credits": [
+        {
+          "role": "PAYMENT_GATEWAY_CLEARING",
+          "amount": "grossAmount"
+        }
+      ],
       "appliesInV1": false,
       "notes": "Dos débitos: sin la línea de comisión el asiento no cuadra. Ningún canal de DEC-002 retiene comisión, así que no aplica en v1."
     },
     {
-      "code": "RECONCILIATION_DIFFERENCE",
+      "code": "RECONCILIATION_SHORTFALL",
       "entryKind": "RECONCILIATION_ADJUSTMENT",
       "sourceType": "reconciliation",
-      "trigger": "Diferencia de conciliación aprobada con causa registrada",
-      "debits": [{ "role": "RECONCILIATION_DIFFERENCES", "amount": "differenceAmount" }],
-      "credits": [{ "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL", "amount": "differenceAmount" }],
+      "trigger": "Diferencia de conciliacion aprobada: falta dinero frente a lo registrado",
+      "debits": [
+        {
+          "role": "RECONCILIATION_DIFFERENCES",
+          "amount": "differenceAmount"
+        }
+      ],
+      "credits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "differenceAmount"
+        }
+      ],
       "appliesInV1": true,
-      "notes": "Si la diferencia es a favor, débito y crédito se invierten."
+      "notes": "DEC-018 regla 21, direccion faltante."
+    },
+    {
+      "code": "RECONCILIATION_SURPLUS",
+      "entryKind": "RECONCILIATION_ADJUSTMENT",
+      "sourceType": "reconciliation",
+      "trigger": "Diferencia de conciliacion aprobada: sobra dinero frente a lo registrado",
+      "debits": [
+        {
+          "resolver": "FINANCIAL_ACCOUNT_BY_CHANNEL",
+          "amount": "differenceAmount"
+        }
+      ],
+      "credits": [
+        {
+          "role": "RECONCILIATION_DIFFERENCES",
+          "amount": "differenceAmount"
+        }
+      ],
+      "appliesInV1": true,
+      "notes": "DEC-018 regla 21, direccion sobrante. Estaba en una nota en prosa («si la diferencia es a favor, debito y credito se invierten»), asi que un motor que aplicara la regla declarada contabilizaba un faltante sobre una caja que sobraba. DEC-018 ya habia retirado RECONCILIATION_DIFFERENCES_OR_DEFINED_COUNTERPART por la misma razon: un identificador con un «o» dentro no es resoluble por maquina."
     },
     {
       "code": "REVERSAL",
       "entryKind": "REVERSAL",
       "sourceType": "journalEntry",
       "trigger": "Anulación autorizada de un asiento contabilizado",
-      "debits": [{ "inverseOf": "originalCredits" }],
-      "credits": [{ "inverseOf": "originalDebits" }],
+      "debits": [
+        {
+          "inverseOf": "originalCredits"
+        }
+      ],
+      "credits": [
+        {
+          "inverseOf": "originalDebits"
+        }
+      ],
       "appliesInV1": true,
       "notes": "ACC-003: el original permanece; la reversión lo enlaza."
     }

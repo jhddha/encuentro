@@ -39,6 +39,68 @@ text=(root/'docs/01-product/requirements.md').read_text(encoding='utf-8')
 for phrase in ['no se prorratea','50%','Documento de control interno','7 noches','8 días','Paquetes privados']:
     if phrase.lower() not in text.lower(): errors.append(f'REQUIREMENT_PHRASE_MISSING {phrase}')
 
+# --- Reglas contables (DEC-018) --------------------------------------------
+#
+# Nada comprobaba contracts/accounting-rules.json, y tenia dos defectos que un
+# vistazo no encuentra: FINANCIAL_TRANSFER resolvia debito y credito con el
+# MISMO resolvedor sobre el mismo campo, de modo que el asiento cuadraba y no
+# movia nada; y el signo de la diferencia de conciliacion vivia en una nota en
+# prosa en vez de en la regla, asi que un motor que la aplicara tal como estaba
+# declarada contabilizaba un faltante sobre una caja que sobraba.
+#
+# Las cuatro comprobaciones de abajo son las que habrian atrapado ambos.
+acc=json.loads((root/'contracts/accounting-rules.json').read_text(encoding='utf-8'))
+# `roles` agrupa por naturaleza contable (financial, revenue, liability, asset,
+# expense, adjustment); lo que citan las reglas son los roles de dentro.
+roles_acc={rol for grupo in acc.get('roles',{}).values() for rol in grupo}
+resolvers_acc=set(acc.get('resolvers',{}))
+
+for regla in acc.get('rules',[]):
+    code=regla.get('code','<sin code>')
+    debits=regla.get('debits',[])
+    credits=regla.get('credits',[])
+
+    # 1. Partida doble: ACC-001 exige que todo asiento tenga los dos lados.
+    if not debits or not credits:
+        errors.append(f'ACCOUNTING_RULE_UNBALANCED {code}')
+
+    # 2. Todo rol y todo resolvedor citados existen.
+    #
+    # `inverseOf` es la tercera forma valida de nombrar un destino: la reversion
+    # (DEC-018 regla 22) no cita cuentas, sino las lineas inversas del original.
+    for lado in (*debits, *credits):
+        rol=lado.get('role')
+        res=lado.get('resolver')
+        inv=lado.get('inverseOf')
+        if rol is not None and rol not in roles_acc:
+            errors.append(f'ACCOUNTING_UNKNOWN_ROLE {rol} en {code}')
+        if res is not None and res not in resolvers_acc:
+            errors.append(f'ACCOUNTING_UNKNOWN_RESOLVER {res} en {code}')
+        if rol is None and res is None and inv is None:
+            errors.append(f'ACCOUNTING_LINE_WITHOUT_TARGET en {code}')
+
+    # 3. El asiento que se anula a si mismo: el mismo destino a ambos lados.
+    #
+    # Se ignoran las lineas por `inverseOf`, cuyo destino depende del asiento
+    # original y no puede compararse aqui.
+    def destinos(lineas):
+        return {(l.get('role'), l.get('resolver'))
+                for l in lineas if l.get('inverseOf') is None}
+    repetidos=destinos(debits) & destinos(credits)
+    if repetidos:
+        errors.append(f'ACCOUNTING_RULE_SELF_CANCELLING {code}: {sorted(map(str,repetidos))}')
+
+# 4. Ningun ROL lleva un «o» dentro. DEC-018 retiro
+#    `RECONCILIATION_DIFFERENCES_OR_DEFINED_COUNTERPART` por eso mismo: un
+#    identificador con un «o» no es resoluble por maquina.
+#
+#    Los resolvedores quedan fuera a proposito: elegir entre varias cuentas es
+#    justamente su trabajo, y `EXPENSE_OR_ASSET_BY_ITEM` declara en `resolvesTo`
+#    a cuales puede resolver.
+for nombre in roles_acc:
+    if '_OR_' in nombre:
+        errors.append(f'ACCOUNTING_AMBIGUOUS_ROLE {nombre}')
+
 # --- Trazabilidad de identificadores ---------------------------------------
 #
 # Anadido tras la renumeracion a la base v2.6. Sin esta comprobacion, una cita
