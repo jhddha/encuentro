@@ -1,6 +1,6 @@
 {
   "version": "2.7",
-  "rulesVersion": 1,
+  "rulesVersion": 2,
   "status": "APPROVED",
   "decision": "DEC-018",
   "scope": "Contabilidad administrativa y control financiero del evento; no sustituye libros fiscales ni legales (ACC-001).",
@@ -18,9 +18,8 @@
       "PAYMENT_GATEWAY_CLEARING"
     ],
     "revenue": [
-      "REGISTRATION_REVENUE",
-      "LODGING_REVENUE",
-      "TRANSPORT_REVENUE",
+      "PILGRIM_OFFERING_DOMESTIC",
+      "PILGRIM_OFFERING_INTERNATIONAL",
       "MONETARY_DONATION_REVENUE",
       "IN_KIND_DONATION_REVENUE"
     ],
@@ -55,14 +54,6 @@
       ],
       "resolvesBy": "paymentChannel"
     },
-    "REVENUE_ROLE_BY_CONCEPT": {
-      "resolvesTo": [
-        "REGISTRATION_REVENUE",
-        "LODGING_REVENUE",
-        "TRANSPORT_REVENUE"
-      ],
-      "resolvesBy": "chargeConcept"
-    },
     "EXPENSE_OR_ASSET_BY_ITEM": {
       "resolvesTo": [
         "OPERATING_EXPENSE",
@@ -89,6 +80,13 @@
         "PAYMENT_GATEWAY_CLEARING"
       ],
       "resolvesBy": "targetChannel"
+    },
+    "OFFERING_ROLE_BY_ORIGIN": {
+      "resolvesTo": [
+        "PILGRIM_OFFERING_DOMESTIC",
+        "PILGRIM_OFFERING_INTERNATIONAL"
+      ],
+      "resolvesBy": "pilgrimOrigin"
     }
   },
   "rules": [
@@ -105,7 +103,7 @@
       ],
       "credits": [
         {
-          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "resolver": "OFFERING_ROLE_BY_ORIGIN",
           "amount": "allocatedAmount"
         }
       ],
@@ -144,7 +142,7 @@
       ],
       "credits": [
         {
-          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "resolver": "OFFERING_ROLE_BY_ORIGIN",
           "amount": "allocatedAmount"
         }
       ],
@@ -158,7 +156,7 @@
       "trigger": "Cancelación auditada de una inscripción con pago ya aplicado",
       "debits": [
         {
-          "resolver": "REVENUE_ROLE_BY_CONCEPT",
+          "resolver": "OFFERING_ROLE_BY_ORIGIN",
           "amount": "recognizedAmount"
         }
       ],
@@ -558,10 +556,11 @@
     "Cierre financiero: bloquea asientos ordinarios, no genera asiento"
   ],
   "openSubDecisions": [
-    "Códigos de cuenta por rol: configuración de la organización",
     "Método de valoración de donaciones en especie (ACC-006)",
     "Moneda funcional de los libros y diferencia de cambio",
     "Umbrales y responsables de aprobación (ACC-007)",
-    "Depreciación de activos: fuera de alcance en v1"
+    "Depreciación de activos: fuera de alcance en v1",
+    "Qué países cuentan como nacional para OFFERING_ROLE_BY_ORIGIN",
+    "Qué hacer cuando la persona no tiene país registrado: persons.country admite nulo"
   ]
 }

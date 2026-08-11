@@ -121,6 +121,8 @@ const ROL_POR_CODIGO: Readonly<Record<string, string>> = {
   '111010004': 'CASH_ON_HAND', // caja inscripciones M/N
   '111010005': 'CASH_ON_HAND', // caja inscripciones M/E
   '111020001': 'BANK_ACCOUNT', // BMSC — también recibe los cobros por QR
+  '411010001': 'PILGRIM_OFFERING_DOMESTIC',
+  '411010002': 'PILGRIM_OFFERING_INTERNATIONAL',
   '113010003': 'INVENTORY',
   '122010004': 'FIXED_ASSETS',
   '411020001': 'MONETARY_DONATION_REVENUE',
@@ -150,13 +152,4 @@ export const ROLES_SIN_CUENTA: Readonly<Record<string, string>> = {
     'BANK_ACCOUNT. No hay cuenta puente, y crear una que nadie concilia sería inventar ' +
     'movimiento. El resolutor de canales debe llevar el canal QR a BANK_ACCOUNT.',
   PAYMENT_GATEWAY_CLEARING: 'No hay pasarela de pago en v1 (DEC-015).',
-  REGISTRATION_REVENUE:
-    'La organización imputa la ofrenda según la nacionalidad del peregrino —411010001 nacional, ' +
-    '411010002 internacional— y el contrato tiene un solo rol. Asignárselo a una de las dos ' +
-    'mandaría la mitad de las ofrendas a la cuenta equivocada sin que nada lo dijera. Espera ' +
-    'partir el rol en dos.',
-  LODGING_REVENUE:
-    'El hospedaje no es un ingreso aparte: forma parte de la inscripción y no se separa en el ' +
-    'libro. El rol sobra en este plan.',
-  TRANSPORT_REVENUE: 'Mismo motivo que el hospedaje.',
 };
