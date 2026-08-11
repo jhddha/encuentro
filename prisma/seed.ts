@@ -2,6 +2,7 @@ import 'dotenv/config';
 
 import { createPrismaClient } from '@encuentro/infrastructure';
 
+import { PLAN_DE_CUENTAS, ROLES_SIN_CUENTA } from './accounts-chart';
 import { ROLES } from './roles';
 
 /**
@@ -118,10 +119,44 @@ async function main(): Promise<void> {
     });
   }
 
+  /*
+   * Plan de cuentas de la organización — DEC-018.
+   *
+   * A diferencia de las plantillas, esto **sí** es configuración de la
+   * organización: son los códigos de su sistema contable. Vive en el seed
+   * porque hoy no hay pantalla que los administre; cuando la fase 11 la traiga,
+   * esto pasa a ser el estado inicial y no la única vía.
+   */
+  for (const cuenta of PLAN_DE_CUENTAS) {
+    await prisma.account_.upsert({
+      where: { eventId_code: { eventId: event.id, code: cuenta.code } },
+      update: {
+        name: cuenta.name,
+        kind: cuenta.kind,
+        currency: cuenta.currency,
+        role: cuenta.role,
+      },
+      create: {
+        eventId: event.id,
+        code: cuenta.code,
+        name: cuenta.name,
+        kind: cuenta.kind,
+        currency: cuenta.currency,
+        role: cuenta.role,
+      },
+    });
+  }
+
+  const nuevas = PLAN_DE_CUENTAS.filter((cuenta) => 'nueva' in cuenta).length;
+
   console.log(
     `Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, 1 usuario, ` +
-      `${String(TEMPLATES.length)} plantillas de correo.`,
+      `${String(TEMPLATES.length)} plantillas de correo, ` +
+      `${String(PLAN_DE_CUENTAS.length)} cuentas contables (${String(nuevas)} por abrir en el plan real).`,
   );
+
+  const sinCuenta = Object.keys(ROLES_SIN_CUENTA);
+  console.log(`Roles de DEC-018 sin cuenta, a propósito: ${sinCuenta.join(', ')}.`);
 }
 
 main()

@@ -1050,8 +1050,12 @@ model Account_ {
   kind String
 
   /// Rol contable de DEC-018. La decisión fija roles; la organización asigna a
-  /// cada rol una cuenta de su plan. Es nulo mientras nadie lo haya asignado, y
-  /// un rol corresponde como mucho a una cuenta por gestión.
+  /// cada rol una cuenta de su plan. Es nulo mientras nadie lo haya asignado.
+  ///
+  /// Un rol corresponde como mucho a una cuenta **por gestión y moneda**: un
+  /// plan de cuentas que lleva divisas separa «caja moneda nacional» de «caja
+  /// moneda extranjera», y las dos son el mismo rol. El índice único que lo
+  /// impone vive en la migración `20260811180000_accounts_role_per_currency`.
   role String?
 
   currency String  @db.Char(3)
