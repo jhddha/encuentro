@@ -53,7 +53,7 @@ export async function verifyReceipt(
       issuedAt: true,
       voidedAt: true,
       snapshot: true,
-      event: { select: { code: true } },
+      event: { select: { code: true, timezone: true } },
     },
   });
 
@@ -87,6 +87,7 @@ export async function verifyReceipt(
       number: receipt.number,
       eventCode: receipt.event.code,
       issuedAt: receipt.issuedAt,
+      timezone: receipt.event.timezone,
       amount,
       currency,
       voidedAt: receipt.voidedAt,

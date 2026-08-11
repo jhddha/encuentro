@@ -22,6 +22,16 @@ export interface PublicReceiptVerification {
   readonly number: string;
   readonly eventCode: string;
   readonly issuedAt: string;
+  /**
+   * Zona horaria de la gestión, para que la fecha pueda leerse.
+   *
+   * No es un dato nuevo que se revele: DEC-003 autoriza mostrar **la fecha**, y
+   * un instante sin su zona no es una fecha. Sin esto la página imprimía el
+   * sello UTC crudo, y para un cobro hecho por la tarde en La Paz eso anuncia
+   * el día siguiente: quien contrastara el comprobante contra un extracto o
+   * contra el cierre del día cuadraba con un día de diferencia (NFR-013).
+   */
+  readonly timezone: string;
   readonly amount: string;
   readonly currency: string;
   readonly status: PublicReceiptStatus;
@@ -37,6 +47,7 @@ export const PUBLIC_RECEIPT_FIELDS = [
   'number',
   'eventCode',
   'issuedAt',
+  'timezone',
   'amount',
   'currency',
   'status',
@@ -54,6 +65,7 @@ export function toPublicReceiptVerification(source: {
   readonly number: string;
   readonly eventCode: string;
   readonly issuedAt: Date | string;
+  readonly timezone: string;
   readonly amount: string;
   readonly currency: string;
   readonly voidedAt?: Date | string | null;
@@ -62,6 +74,7 @@ export function toPublicReceiptVerification(source: {
     number: source.number,
     eventCode: source.eventCode,
     issuedAt: typeof source.issuedAt === 'string' ? source.issuedAt : source.issuedAt.toISOString(),
+    timezone: source.timezone,
     amount: source.amount,
     currency: source.currency,
     status: source.voidedAt === undefined || source.voidedAt === null ? 'VALID' : 'VOID',

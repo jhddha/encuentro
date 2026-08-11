@@ -11,6 +11,7 @@ const internalReceipt = {
   number: 'REC-ENC2026-000042',
   eventCode: 'ENC2026',
   issuedAt: new Date('2026-11-03T15:04:05.000Z'),
+  timezone: 'America/La_Paz',
   amount: '350.00',
   currency: 'USD',
 
@@ -50,10 +51,29 @@ describe('proyección pública de comprobante (PAY-031, data-api-rbac §7)', () 
       number: 'REC-ENC2026-000042',
       eventCode: 'ENC2026',
       issuedAt: '2026-11-03T15:04:05.000Z',
+      timezone: 'America/La_Paz',
       amount: '350.00',
       currency: 'USD',
       status: 'VALID',
     });
+  });
+
+  /*
+   * NFR-013: guardar en UTC, mostrar en la zona de la gestión. La proyección no
+   * formatea —eso es de la interfaz— pero sí tiene que llevar la zona, porque
+   * sin ella la única pantalla pública del sistema no puede hacer otra cosa que
+   * imprimir el sello UTC. Para un cobro de la tarde en La Paz ese sello anuncia
+   * el día siguiente.
+   */
+  it('lleva la zona de la gestión, sin la cual la fecha no se puede leer', () => {
+    const publicView = toPublicReceiptVerification(internalReceipt);
+
+    expect(publicView.timezone).toBe('America/La_Paz');
+    expect(
+      new Intl.DateTimeFormat('es', { dateStyle: 'short', timeZone: publicView.timezone }).format(
+        new Date(publicView.issuedAt),
+      ),
+    ).toBe('3/11/26');
   });
 
   it('declara VOID cuando el comprobante fue anulado (PAY-033)', () => {

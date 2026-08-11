@@ -12,6 +12,24 @@ import { StatusBadge } from './StatusBadge.js';
  *
  * PAY-029 exige el pie «Documento de control interno».
  */
+/**
+ * Fecha y hora en la zona de la gestión.
+ *
+ * Si la zona resultara inválida, `Intl` lanza. Vale más enseñar el sello UTC
+ * que romper la única pantalla pública del sistema, así que se cae a él.
+ */
+function fechaCivil(receipt: PublicReceiptVerification): string {
+  try {
+    return new Intl.DateTimeFormat('es', {
+      dateStyle: 'long',
+      timeStyle: 'short',
+      timeZone: receipt.timezone,
+    }).format(new Date(receipt.issuedAt));
+  } catch {
+    return receipt.issuedAt;
+  }
+}
+
 export function ReceiptVerificationResult({
   receipt,
 }: {
@@ -47,7 +65,14 @@ export function ReceiptVerificationResult({
         <div>
           <dt className="text-xs uppercase tracking-wide">Fecha de emisión</dt>
           <dd className="text-base">
-            <time dateTime={receipt.issuedAt}>{receipt.issuedAt}</time>
+            {/*
+              El atributo conserva el instante UTC —es el valor de máquina— y el
+              texto muestra el día civil de la gestión (NFR-013). Antes se
+              imprimía el sello crudo en los dos sitios, y para un cobro de la
+              tarde en La Paz eso anuncia el día siguiente: quien contrastara el
+              comprobante contra un extracto cuadraba con un día de diferencia.
+            */}
+            <time dateTime={receipt.issuedAt}>{fechaCivil(receipt)}</time>
           </dd>
         </div>
         <div>

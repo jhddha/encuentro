@@ -399,6 +399,10 @@ describe('verificación pública del comprobante', () => {
       expect(resultado.receipt.currency).toBe(USD);
       expect(resultado.receipt.status).toBe('VALID');
 
+      // NFR-013: la zona viaja con la fecha para que la página pública muestre
+      // el día civil de la gestión y no el sello UTC.
+      expect(resultado.receipt.timezone).toBe('America/La_Paz');
+
       /*
        * `data-api-rbac.md` §7: la respuesta pública no lleva nombre, código de
        * inscripción, referencia, archivo bancario ni aprobador.
@@ -410,6 +414,7 @@ describe('verificación pública del comprobante', () => {
         'issuedAt',
         'number',
         'status',
+        'timezone',
       ]);
     }
   });

@@ -150,9 +150,17 @@ export default async function MyAccountPage({
           <p className="mt-1 text-2xl tabular-nums">
             {statement.credit} <span className="text-base">{currency}</span>
           </p>
+          {/*
+            Decía «se usará en lo que quede pendiente», y eso no es cierto:
+            DEC-008 dice que aplicar el saldo a otro cargo es **una acción
+            explícita de una persona autorizada, no un efecto automático**. Nadie
+            va a ver ese saldo aplicarse solo. Prometerlo produce exactamente la
+            reclamación en mostrador que el aviso pretendía evitar.
+          */}
           <p className="mt-2 text-sm">
             Es dinero cobrado que todavía no se aplicó a ningún cargo. Queda registrado a su favor y
-            se usará en lo que quede pendiente; no se devuelve en efectivo.
+            no se devuelve en efectivo. Para aplicarlo a un cargo pendiente, pídalo a la
+            organización: no se aplica solo.
           </p>
         </Card>
       )}
