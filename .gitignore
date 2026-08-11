@@ -45,3 +45,6 @@ Thumbs.db
 # Sesiones sembradas por el recorrido de extremo a extremo. Fuera de
 # test-results/, que Playwright vacía al arrancar cualquier corrida.
 .sesiones-e2e/
+
+# Cache de los scripts de Python.
+__pycache__/
