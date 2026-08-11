@@ -1,10 +1,10 @@
 # Handoff — sesiones del 7 y del 8 de agosto de 2026
 
-**Rama:** `migracion-linea-base-v2.6`, trece commits por delante de `main` (`626ad05`), subida a GitHub.
+**Rama:** `migracion-linea-base-v2.6`, **veintiocho commits** por delante de `main` (`626ad05`). Los trece últimos **sin subir a GitHub**.
 **Gate al cerrar la sesión del 7:** validador, prettier, ESLint, `tsc --build`, **345 unitarias**, **129 de integración**, `pnpm build`. Todo en verde.
-**Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **418 unitarias**, **162 de integración**, `pnpm build`. Todo en verde.
+**Gate al cerrar la sesión del 8:** validador, prettier, ESLint, `tsc --build`, **424 unitarias**, `prisma validate`, `pnpm build`. En verde. **Las de integración no se pudieron ejecutar en la segunda mitad de la sesión**: ver §9.4.
 
-> Las secciones 1 a 6 son la sesión del 7 de agosto y se conservan como se escribieron. Las §7 y §8 son la del 8.
+> Las secciones 1 a 6 son la sesión del 7 de agosto y se conservan como se escribieron. Las §7 a §9 son la del 8.
 
 ---
 
@@ -346,3 +346,60 @@ Vale la pena anotar el patrón: un verificador que pregunta «¿puede darse este
 3. **El camino manual apenas tiene casos hoy.** Su razón real es la exención total de REG-017, que es alcance aplazado. Conviene revisarlo cuando llegue la caja, que será el segundo disparador del derivado.
 
 Gate: validador, prettier, ESLint, `tsc`, **418 unitarias**, **162 de integración**, `pnpm build`. Sigue sin recorrerse ninguna pantalla a mano.
+
+---
+
+# 9. Revisión de la rama y corrección de hallazgos — 8 de agosto, tarde
+
+## 9.1 La revisión
+
+Siete revisores independientes por subsistema sobre los quince commits de `main..HEAD` —166 archivos, ~16.600 líneas—, y un verificador por hallazgo con el encargo de refutarlo. **41 hallazgos, 33 sobrevivieron.** El informe completo está en [`docs/04-delivery/revision-rama-v2.6.md`](docs/04-delivery/revision-rama-v2.6.md).
+
+Ninguno lo detectaba el gate, que estaba en verde.
+
+Al verificador se le cambió una pregunta respecto a la revisión de la mañana: «¿es correcto este código?» en vez de «¿puede ocurrir hoy?». Sirvió — el hallazgo del archivo huérfano, que el verificador anterior había refutado por inalcanzable, este lo confirmó.
+
+## 9.2 Lo corregido, en once commits
+
+| | |
+|---|---|
+| **Nadie podía crear una cuenta** | `/ingresar` solo iniciaba sesión. IAM-011 exige el formulario público y estaba en una fase dada por entregada. Sin él, los 600 no pueden llegar a nada |
+| **La auditoría la leía cualquiera** | La pantalla no comprobaba permiso alguno. El barrido encontró otras tres igual: eventos, dashboard y configuración |
+| **Los comprobantes nacían inverificables** | El token en claro se generaba y se descartaba, y la verificación pública era un stub. Roto por los dos extremos |
+| **Dos asignaciones al mismo cargo lo sobreasignaban** | Se validaba línea a línea; ahora se agrupa |
+| **La contabilidad se podía vaciar** | `journal_lines` sin triggers ni `REVOKE`, y el cuadre se rendía a cero líneas |
+| **El rastro de pagos no llegaba a la auditoría** | `event_id` nulo, y la pantalla filtra por gestión |
+| **La carrera de aprobación no se rechazaba** | El saldo se leía fuera de la transacción |
+| **Los procesos de fondo fallaban en silencio** | Correos muertos en `SENDING`, correos duplicados, SMTP colgado congelando `HELD`, y un worker inerte que se veía sano |
+| **El generador podía destruir la línea base** | `rebuild_package_v2_7.py` devolvía el contrato a 68 requisitos. Desarmado |
+| **La renumeración partió los rangos** | ~20 sitios citando requisitos inexistentes, invisibles al validador |
+| **Un asiento que se anulaba a sí mismo** | `FINANCIAL_TRANSFER` resolvía ambos lados a la misma cuenta |
+| **Documentación que mentía** | El triage daba por operativas pantallas que no escriben nada |
+
+El validador creció de cuatro comprobaciones a nueve: rangos abreviados prohibidos, y cuatro sobre las reglas contables que nadie miraba.
+
+## 9.3 Lo que queda de los 33
+
+Cinco, ninguno de los cuales se puede cerrar sin una decisión o sin infraestructura:
+
+1. **PAY-006, idempotencia.** Ningún comando de cobro acepta clave. Un reintento tras un corte de red da conflicto de versión en vez del mismo resultado. Es diseño, no un parche.
+2. **PAY-027 distingue mayúsculas.** `TRX-9981` y `trx-9981` conviven. Exige migrar la columna a `CITEXT` o un índice funcional, normalizar al escribir y alinear el recuento del lado de la revisión.
+3. **El archivo huérfano en el almacén.** Una carga rechazada tras guardar el objeto lo deja sin fila que lo apunte. Necesita política de retención, que roza DEC-011.
+4. **89 de 163 requisitos sin ninguna cita en código**, con informes de fase que los dan por cubiertos.
+5. **El rate limit de la verificación pública.** Caddy no lo trae de serie; hace falta imagen propia con el módulo o límite en la aplicación. El comentario ya no miente, pero la protección no existe.
+
+## 9.4 Lo que no pude verificar, y es mucho
+
+**Docker estuvo caído toda la tarde.** Un socket huérfano —`dockerInference`— impedía arrancar el motor, y el borrado que hacía falta es suyo, no mío.
+
+Consecuencia: **veinticuatro pruebas de integración nuevas sin ejecutar ni una vez**, y **una migración sin aplicar** que además toca triggers de Postgres, que es donde menos vale la intuición. De todas ellas solo sé que compilan, y esta misma mañana una prueba sin correr escondía un constraint que no había leído.
+
+```bash
+rm -f "/c/Users/josed/AppData/Local/Docker/run/dockerInference"
+# arrancar Docker Desktop, y después:
+pnpm db:up && pnpm exec prisma migrate deploy && pnpm test:integration
+```
+
+Lo que sí está verde: validador, prettier, ESLint, `tsc`, **424 unitarias**, `prisma validate` y `pnpm build`.
+
+**Y sigue sin recorrerse ninguna pantalla a mano.** El alta pública ya existe, así que el recorrido es posible en cuanto haya base de datos.

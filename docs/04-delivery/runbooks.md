@@ -87,14 +87,37 @@ docker compose -f deploy/docker-compose.prod.yml exec postgres \
 
 docker compose -f deploy/docker-compose.prod.yml exec postgres createdb -U "$POSTGRES_USER" encuentro
 
-# 3. Restaurar.
-docker compose -f deploy/docker-compose.prod.yml exec postgres bash -c \
-  'gpg --batch --decrypt --passphrase "$BACKUP_PASSPHRASE" /backups/encuentro-<marca>.dump.gpg | pg_restore -d encuentro --no-owner --no-acl'
+# 3. Restaurar. DESDE EL CONTENEDOR `backup`, NO DESDE `postgres`.
+#
+#    El contenedor de Postgres no tiene montado el volumen de respaldos ni
+#    conoce BACKUP_PASSPHRASE: los dos viven en el servicio `backup`
+#    (docker-compose.prod.yml). Este paso decia `exec postgres`, asi que NUNCA
+#    HABRIA FUNCIONADO: gpg no encontraria el fichero y la variable expandiria
+#    a cadena vacia. Corregido el 8-ago-2026.
+docker compose -f deploy/docker-compose.prod.yml exec backup bash -c \
+  'gpg --batch --decrypt --passphrase "$BACKUP_PASSPHRASE" /backups/encuentro-<marca>.dump.gpg \
+     | pg_restore -h postgres -U "$PGUSER" -d encuentro --no-owner --no-acl'
 
-# 4. Levantar y verificar.
+# 4. REAPLICAR LA SEPARACION DE ROLES. Sin esto la aplicacion no arranca.
+#
+#    `--no-owner --no-acl` restaura los datos y descarta propiedad y permisos,
+#    que es lo que se quiere para no arrastrar los del origen. La consecuencia
+#    es que `encuentro_app` se queda sin SELECT ni INSERT sobre ninguna tabla:
+#    cada consulta responde «permission denied for table ...» y la aplicacion no
+#    sirve una sola pagina. Este paso faltaba.
+docker compose -f deploy/docker-compose.prod.yml exec -T postgres \
+  psql -U "$POSTGRES_USER" -d encuentro < deploy/db-roles.sql
+
+# 5. Levantar y verificar.
 docker compose -f deploy/docker-compose.prod.yml up -d web worker
 curl -fsS https://<dominio>/api/health
+
+#    Y comprobar que la aplicacion LEE de verdad: /api/health puede responder
+#    sin tocar una sola tabla, asi que por si solo no prueba nada del paso 4.
+curl -fsS https://<dominio>/ | grep -q Encuentro
 ```
+
+> **Este procedimiento nunca se ha ejecutado de principio a fin.** `restore-drill.sh` ensaya el ciclo por su cuenta, pero el runbook escrito a mano llevaba dos errores que lo hacían imposible —el contenedor equivocado y el paso de permisos ausente—, y eso solo pasa si se redactó sin recorrerlo. Los dos están corregidos arriba, pero **corregidos sobre el papel**: hacerlo una vez de verdad sigue esperando al VPS, y hasta entonces la capacidad de recuperación de DEC-012 no está demostrada.
 
 **Después de restaurar, y antes de reabrir las cajas:** hasta 1 hora de operación puede haberse perdido. Los comprobantes emitidos en esa ventana existen en papel pero no en la base. Reconcilie contra los comprobantes físicos antes de seguir cobrando, o habrá cobros duplicados.
 
