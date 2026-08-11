@@ -41,7 +41,9 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - mensaje para quien lo ejecute
     sys.exit("Falta openpyxl. Instálelo con: pip install openpyxl")
 
-DESTINO = Path(__file__).resolve().parent.parent / "prisma" / "plan-de-cuentas.json"
+RAIZ = Path(__file__).resolve().parent.parent
+DESTINO = RAIZ / "prisma" / "plan-de-cuentas.json"
+DESTINO_COMISIONES = RAIZ / "prisma" / "comisiones.json"
 
 MONEDA_FUNCIONAL = "BOB"
 MONEDA_EXTRANJERA = "USD"
@@ -61,6 +63,14 @@ GRUPOS = {
 RENUMERADAS = {("111010006", "MONEDA EXTRANJERA"): "111010007"}
 
 MARCAS_EXTRANJERA = ("MONEDA EXTRANJERA", "M/E")
+
+# El plan agrupa las comisiones por área en sus cabeceras: «fondos recibidos en
+# area espiritualidad», «gastos comisiones area logistica». El área se lee de
+# ahí porque no está en ninguna otra parte.
+AREA_APOYO = "COMISIONES DE APOYO"
+
+# El plan escribe dos veces la misma comisión con una errata de por medio.
+COMISIONES_UNIFICADAS = {"PRESENTACI{ON DE TALLERES": "PRESENTACION DE TALLERES"}
 
 # Siglas reales del plan. Se listan en vez de detectarlas por «va en mayúsculas»,
 # porque el fichero entero está en mayúsculas sostenidas y esa heurística deja
@@ -94,12 +104,20 @@ def titular(nombre: str) -> str:
     return " ".join(palabras)
 
 
-def leer(ruta: Path) -> tuple[list[dict[str, str]], list[str]]:
+def codigo_de_comision(nombre: str) -> str:
+    """Código estable a partir del nombre. El plan no los tiene."""
+    limpio = re.sub(r"[^A-Z0-9]+", "_", sin_acentos(nombre)).strip("_")
+    return limpio[:40]
+
+
+def leer(ruta: Path) -> tuple[list[dict[str, str]], list[str], list[dict[str, str]]]:
     hoja = openpyxl.load_workbook(ruta, data_only=True)["Sheet1"]
 
     cuentas: list[dict[str, str]] = []
     avisos: list[str] = []
     vistos: dict[str, str] = {}
+    comisiones: dict[str, tuple[str, str]] = {}
+    area_actual = ""
 
     for numero, fila in enumerate(hoja.iter_rows(min_row=2, values_only=True), start=2):
         celdas = [("" if c is None else str(c).strip()) for c in fila]
@@ -115,6 +133,16 @@ def leer(ruta: Path) -> tuple[list[dict[str, str]], list[str]]:
                 continue
             celdas = ["S", *celdas]
             avisos.append(f"fila {numero}: sin marcador de nivel, tratada como imputable")
+
+        if celdas[0] == "C" and len(celdas) > 2:
+            cabecera = sin_acentos(celdas[2])
+            despues = re.search(r"\bAREA\s+(.+)$", cabecera)
+            if despues is not None:
+                area_actual = despues.group(1).strip()
+            elif AREA_APOYO in cabecera:
+                area_actual = AREA_APOYO
+            else:
+                area_actual = ""
 
         if celdas[0] != "S":
             continue
@@ -160,21 +188,45 @@ def leer(ruta: Path) -> tuple[list[dict[str, str]], list[str]]:
             {"code": codigo, "name": titular(nombre), "kind": kind, "currency": moneda}
         )
 
+        # El nombre se saca del original, no de la version normalizada: esta
+        # sirve para reconocer el patron y aquella conserva los acentos.
+        patron = r"\bCOMIS\.?\s+(.+)$"
+        de_comision = re.search(patron, nombre, re.IGNORECASE)
+
+        if de_comision is not None and area_actual:
+            nombre_comision = de_comision.group(1).strip()
+            clave = sin_acentos(nombre_comision)
+            clave = COMISIONES_UNIFICADAS.get(clave, clave)
+            # El area se toma de la primera cabecera donde aparece: las tres
+            # familias de cuentas -fondos, donaciones y gastos- repiten la
+            # misma comision bajo la misma area.
+            comisiones.setdefault(clave, (nombre_comision, area_actual))
+
     cuentas.sort(key=lambda c: c["code"])
-    return cuentas, avisos
+
+    lista = [
+        {"code": codigo_de_comision(clave), "name": titular(nombre), "area": titular(area)}
+        for clave, (nombre, area) in sorted(comisiones.items())
+    ]
+
+    return cuentas, avisos, lista
 
 
 def main() -> None:
     if len(sys.argv) != 2:
         sys.exit("Uso: python scripts/importar_plan_contable.py <ruta.xlsx>")
 
-    cuentas, avisos = leer(Path(sys.argv[1]))
+    cuentas, avisos, comisiones = leer(Path(sys.argv[1]))
 
     DESTINO.write_text(json.dumps(cuentas, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    DESTINO_COMISIONES.write_text(
+        json.dumps(comisiones, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
     extranjeras = sum(1 for c in cuentas if c["currency"] == MONEDA_EXTRANJERA)
     print(f"{len(cuentas)} cuentas imputables -> {DESTINO.relative_to(DESTINO.parents[1])}")
     print(f"  {extranjeras} en {MONEDA_EXTRANJERA}, el resto en {MONEDA_FUNCIONAL}")
+    print(f"{len(comisiones)} comisiones -> {DESTINO_COMISIONES.name}")
 
     if avisos:
         print(f"\n{len(avisos)} avisos:")

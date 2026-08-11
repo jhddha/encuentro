@@ -182,23 +182,63 @@ model RolePermission {
 /// Los cuatro scopes son global, gestión, comisión y caja. Las columnas de
 /// ámbito son nullable porque cada tipo usa unas u otras; la coherencia la
 /// garantiza un CHECK en la migración, no la aplicación.
+/// Comisión de una gestión — EVT-002, SRV-001, ACC-007, ACC-014.
+///
+/// Hasta el 11 de agosto de 2026 no existía: el alcance de comisión era un
+/// código en texto libre sin integridad referencial, y el plan de cuentas de la
+/// organización compensaba esa ausencia abriendo una subcuenta por comisión
+/// —124 de sus 226 cuentas—.
+///
+/// Por gestión y no global: una comisión que desaparece de una edición a la
+/// siguiente no debe arrastrar permisos ni asientos. Es la misma razón por la
+/// que las asignaciones de rol tampoco se copian.
+model Commission {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+
+  code String
+  name String
+
+  /// Agrupación que la organización ya usa en su plan: espiritualidad,
+  /// atención al peregrino, alimentación, comunicación, logística, liturgia y
+  /// comisiones de apoyo.
+  area String
+
+  active Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event       Event            @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  assignments RoleAssignment[]
+  entries     JournalEntry[]
+
+  @@unique([eventId, code])
+  @@index([eventId, area])
+  @@map("commissions")
+}
+
 model RoleAssignment {
   id            String  @id @default(uuid()) @db.Uuid
   userId        String  @map("user_id") @db.Uuid
   roleId        String  @map("role_id") @db.Uuid
   scopeType     String  @map("scope_type")
   eventId       String? @map("event_id") @db.Uuid
-  commissionId  String? @map("commission_id")
+  commissionId  String? @map("commission_id") @db.Uuid
+  /// `cashAccountId` sigue siendo un código sin tabla propia: las cajas llegan
+  /// con su fase. La comisión dejó de serlo.
   cashAccountId String? @map("cash_account_id")
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  user  User   @relation(fields: [userId], references: [id], onDelete: Restrict)
-  role  Role   @relation(fields: [roleId], references: [id], onDelete: Restrict)
-  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  event      Event?      @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  commission Commission? @relation(fields: [commissionId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([eventId])
+  @@index([commissionId])
   @@map("role_assignments")
 }
 
@@ -254,6 +294,7 @@ model Event {
   inventory      InventoryItem[]
   vehicles       Vehicle[]
   accounts       Account_[]
+  commissions    Commission[]
   journalEntries JournalEntry[]
   notifications  Notification[]
 
@@ -1094,14 +1135,28 @@ model JournalEntry {
 
   currency String @db.Char(3)
 
+  /// Comisión responsable — ACC-007 y ACC-014.
+  ///
+  /// Nula a propósito: no todo asiento pertenece a una comisión. Un cobro de
+  /// inscripción es de la gestión; un gasto sí tiene responsable, y ACC-007 lo
+  /// exige.
+  ///
+  /// No sustituye a la cuenta. La cuenta dice **qué** y la comisión **quién**:
+  /// cuando el plan ya distingue por comisión las dos coinciden, y cuando el
+  /// gasto va contra una cuenta genérica la dimensión aporta lo que la cuenta
+  /// no sabe. Un disparador impide que sea de otra gestión (EVT-008).
+  commissionId String? @map("commission_id") @db.Uuid
+
   actorId   String   @map("actor_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  lines JournalLine[]
+  event      Event         @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  commission Commission?   @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  lines      JournalLine[]
 
   @@index([eventId, entryDate])
   @@index([sourceEntity, sourceId])
+  @@index([commissionId])
   @@map("journal_entries")
 }
 

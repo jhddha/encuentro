@@ -3,6 +3,7 @@ import 'dotenv/config';
 import { createPrismaClient } from '@encuentro/infrastructure';
 
 import { PLAN_DE_CUENTAS, ROLES_SIN_CUENTA } from './accounts-chart';
+import COMISIONES from './comisiones.json';
 import { ROLES } from './roles';
 
 /**
@@ -122,6 +123,29 @@ async function main(): Promise<void> {
   }
 
   /*
+   * Comisiones — EVT-002, SRV-001, ACC-007, ACC-014.
+   *
+   * Las cuarenta y dos que la organización tiene hoy, extraídas de su plan de
+   * cuentas: es donde vivían, repartidas en 124 subcuentas, porque su sistema
+   * contable no tiene esta dimensión.
+   *
+   * Por gestión, como el resto del catálogo. `prisma/comisiones.json` lo genera
+   * el mismo importador que el plan; no se edita a mano.
+   */
+  for (const comision of COMISIONES) {
+    await prisma.commission.upsert({
+      where: { eventId_code: { eventId: event.id, code: comision.code } },
+      update: { name: comision.name, area: comision.area },
+      create: {
+        eventId: event.id,
+        code: comision.code,
+        name: comision.name,
+        area: comision.area,
+      },
+    });
+  }
+
+  /*
    * Plan de cuentas de la organización — DEC-018.
    *
    * A diferencia de las plantillas, esto **sí** es configuración de la
@@ -191,7 +215,8 @@ async function main(): Promise<void> {
   console.log(
     `Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, 1 usuario, ` +
       `${String(TEMPLATES.length)} plantillas de correo, ` +
-      `${String(PLAN_DE_CUENTAS.length)} cuentas contables (${String(nuevas)} por abrir en el plan real).`,
+      `${String(PLAN_DE_CUENTAS.length)} cuentas contables (${String(nuevas)} por abrir en el plan real), ` +
+      `${String(COMISIONES.length)} comisiones.`,
   );
 
   const sinCuenta = Object.keys(ROLES_SIN_CUENTA);

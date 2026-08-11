@@ -1,0 +1,212 @@
+[
+  {
+    "code": "ACOGIDA",
+    "name": "Acogida",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "ADMINISTRACION_DE_ALIMENTOS",
+    "name": "Administracion de alimentos",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "ADORACION_AL_SANTISIMO",
+    "name": "Adoracion al santisimo",
+    "area": "Comisiones de apoyo"
+  },
+  {
+    "code": "ARREGLO_FLORAL_DE_ALTAR",
+    "name": "Arreglo floral de altar",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "ASISTENCIA_DE_VIAJES",
+    "name": "Asistencia de viajes",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "CAMBIO_DE_MONEDAS",
+    "name": "Cambio de monedas",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "COMIDA_PEREGRINO",
+    "name": "Comida peregrino",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "COMIDAS_PADRES",
+    "name": "Comidas padres",
+    "area": "Comisiones de apoyo"
+  },
+  {
+    "code": "CONFESIONES",
+    "name": "Confesiones",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "DECORACION_DE_ALTAR",
+    "name": "Decoracion de altar",
+    "area": "Liturgia"
+  },
+  {
+    "code": "DESAYUNO",
+    "name": "Desayuno",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "DESAYUNO_PADRES",
+    "name": "Desayuno padres",
+    "area": "Comisiones de apoyo"
+  },
+  {
+    "code": "DISENOS",
+    "name": "Diseños",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "ENTREGA_COMIDA_SERVIDORES",
+    "name": "Entrega comida servidores",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "ESTUDIO_TV",
+    "name": "Estudio TV",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "HOSPEDAJE",
+    "name": "Hospedaje",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "INFUSIONES_Y_POSTRES",
+    "name": "Infusiones y postres",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "INSCRIPCION_PEREGRINO",
+    "name": "Inscripción peregrino",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "INTERCESION_Y_DON_DE_LENGUAS",
+    "name": "Intercesion y don de lenguas",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "JARDINERIA",
+    "name": "Jardineria",
+    "area": "Logistica"
+  },
+  {
+    "code": "JORNADA_DE_SANACION",
+    "name": "Jornada de sanación",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "LECTORES_EN_MISA",
+    "name": "Lectores en misa",
+    "area": "Liturgia"
+  },
+  {
+    "code": "LIMPIEZA",
+    "name": "Limpieza",
+    "area": "Logistica"
+  },
+  {
+    "code": "LITURGIA",
+    "name": "Liturgia",
+    "area": "Liturgia"
+  },
+  {
+    "code": "LOGISTICA_DE_AREAS",
+    "name": "Logistica de areas",
+    "area": "Logistica"
+  },
+  {
+    "code": "MATERIAL_PEREGRINO",
+    "name": "Material peregrino",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "MINISTERIOS_DE_MUSICA",
+    "name": "Ministerios de musica",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "MINISTRO_DE_COMUNION",
+    "name": "Ministro de comunion",
+    "area": "Liturgia"
+  },
+  {
+    "code": "NOCHE_DE_ADORACION",
+    "name": "Noche de adoración",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "ORDEN_Y_SEGURIDAD",
+    "name": "Orden y seguridad",
+    "area": "Logistica"
+  },
+  {
+    "code": "ORNAMIENTO_Y_ALTAR",
+    "name": "Ornamiento y altar",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "PREPARACION_COMIDA_SERVIDORES",
+    "name": "Preparacion comida servidores",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "PRESENTACION_DE_TALLERES",
+    "name": "Presentación de talleres",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "RADIO",
+    "name": "Radio",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "REFRESCOS",
+    "name": "Refrescos",
+    "area": "Alimentacion"
+  },
+  {
+    "code": "SANACION",
+    "name": "Sanación",
+    "area": "Espiritualidad"
+  },
+  {
+    "code": "SERVICIOS_MEDICOS",
+    "name": "Servicios medicos",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "TRANSPORTE",
+    "name": "Transporte",
+    "area": "Atencion al peregrino"
+  },
+  {
+    "code": "VENTA_DE_LIBROS_Y_SOUVENIRS",
+    "name": "Venta de libros y souvenirs",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "VENTA_DE_POLERAS",
+    "name": "Venta de poleras",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "VIDEOS",
+    "name": "Videos",
+    "area": "Comunicacion"
+  },
+  {
+    "code": "WEB_Y_REDES_SOCIALES",
+    "name": "Web y redes sociales",
+    "area": "Comunicacion"
+  }
+]
