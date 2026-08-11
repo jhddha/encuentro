@@ -103,10 +103,17 @@ export default async function ReceiptsPage({
         }
       />
 
-      {detalle !== null && detalle.status === 'UNDER_REVIEW' && (
+      {/*
+        La condición es `detalle !== null` a secas, y el estado se le pasa al
+        panel. Filtrar aquí por UNDER_REVIEW lo desmontaba justo al aprobar
+        —`revalidatePath` devuelve el árbol con la evidencia ya APPROVED— y con
+        él se iba el único sitio donde existe el token en claro del comprobante.
+      */}
+      {detalle !== null && (
         <ReviewPanel
           eventCode={eventCode}
           proofId={detalle.id}
+          status={detalle.status}
           version={detalle.version}
           declaredAmount={detalle.declaredAmount}
           currency={detalle.currency}
