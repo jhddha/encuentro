@@ -44,6 +44,23 @@ export async function currentUser(): Promise<SessionUser | null> {
 }
 
 /**
+ * Revoca la sesión en curso, sin dejar que su fallo tape el motivo.
+ *
+ * Se llama justo antes de una redirección de expulsión, así que va aparte y con
+ * su propio `catch`: `redirect` de Next funciona **lanzando**, y meterlo dentro
+ * de este `try` haría que la propia redirección se tragara. Si la revocación
+ * falla, expulsar sigue siendo lo correcto.
+ */
+async function revokeCurrentSession(): Promise<void> {
+  try {
+    await auth().api.signOut({ headers: await headers() });
+  } catch {
+    // Sin registro: aquí no hay nada accionable y el mensaje llevaría la
+    // cabecera de sesión, que es material de credencial.
+  }
+}
+
+/**
  * Exige sesión y devuelve el actor del dominio con sus asignaciones.
  *
  * Redirige, en este orden:
@@ -67,9 +84,17 @@ export async function requireActor(): Promise<Actor> {
 
   const actor = await actorResolver().resolve(user.id);
 
-  // `resolve` devuelve null si la cuenta no está ACTIVE. Una cuenta suspendida
-  // con sesión viva no debe conservar permisos hasta que la sesión caduque.
+  /*
+   * `resolve` devuelve null si la cuenta no está ACTIVE. Una cuenta suspendida
+   * con sesión viva no debe conservar permisos hasta que la sesión caduque.
+   *
+   * Redirigir sin más dejaba la sesión en pie, y con ella un ciclo del que no se
+   * salía: la contraseña sigue siendo válida, así que quien volvía a entrar era
+   * devuelto aquí y expulsado otra vez, sin que nada dijera por qué. IAM-008
+   * pide que deshabilitar una cuenta impida operar, no solo que estorbe.
+   */
   if (actor === null) {
+    await revokeCurrentSession();
     redirect('/ingresar');
   }
 
