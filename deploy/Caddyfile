@@ -23,11 +23,28 @@
 		-Server
 	}
 
-	# Rate limit del endpoint público de verificación.
+	# Verificación pública de comprobante — PAY-031.
 	#
-	# Es la única superficie del sistema accesible sin sesión (PAY-031), y el
-	# token es lo único que la protege. Sin límite, alguien podría probar tokens
-	# a gran velocidad.
+	# ATENCIÓN: este bloque decía «rate limit del endpoint público» y NO CONTIENE
+	# NINGUNA DIRECTIVA QUE LO HAGA. Nunca la tuvo: `caddy:2-alpine` no trae
+	# limitación de ritmo de serie —requiere compilar con el módulo
+	# `caddy-ratelimit` vía xcaddy—, así que el comentario prometía una
+	# protección inexistente y quien leyera el Caddyfile la daría por puesta.
+	#
+	# El riesgo real no es la fuerza bruta sobre el token: son 32 bytes y no se
+	# adivina. Es que la ruta es anónima, sin cuota, y cada petición fuerza
+	# render dinámico en el proceso web. Un solo cliente puede saturar la
+	# aplicación durante el evento, que es cuando más caro sale.
+	#
+	# PENDIENTE. Dos caminos, y ninguno se elige aquí sin decidirlo:
+	#   1. Imagen propia de Caddy con `caddy-ratelimit` (xcaddy), y este bloque
+	#      pasa a llevar la directiva de verdad.
+	#   2. Límite en la aplicación, que además puede contar por token y no solo
+	#      por IP.
+	#
+	# Mientras tanto se deja lo único que sí se puede hacer sin plugin: aislar la
+	# ruta en su propio bloque —ya lo estaba— para que aplicar el límite sea
+	# cambiar estas líneas y nada más.
 	@verificacion path /verificar/comprobante/*
 	handle @verificacion {
 		reverse_proxy web:3000

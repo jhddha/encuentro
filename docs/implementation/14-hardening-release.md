@@ -127,9 +127,11 @@ No es un juicio sobre la calidad de lo construido, sino la aplicación literal d
 |---|---|
 | Primer ensayo de restauración desde el destino externo | Configuración: faltan credenciales |
 | Firewall y SSH restringido del VPS | **Infraestructura: el VPS todavía no existe** |
-| Rol de aplicación no propietario de las tablas | Trabajo pendiente, ejecutable hoy |
-| Prueba de carga | Trabajo pendiente, ejecutable hoy; umbrales en `NFR-002` y `NFR-003` |
+| ~~Rol de aplicación no propietario de las tablas~~ | **Cerrado el 7-ago-2026**; ver §7.2 |
+| ~~Prueba de carga~~ | **Ejecutada el 7-ago-2026**; ver §7.5 |
 | Requisitos declarados y no construidos | Consecuencia de haber ampliado el contrato de 64 a 163 |
+
+> Las dos filas tachadas seguían aquí como «trabajo pendiente, ejecutable hoy» mientras el §7 del mismo archivo, editado en el mismo commit, las daba por cerradas y verificadas. Quien evaluara el go/no-go por esta tabla habría reasignado trabajo ya hecho. Corregido el 8 de agosto de 2026.
 
 Los dos primeros presuponen un servidor que aún no está aprovisionado. No son trabajo pendiente sino infraestructura pendiente, y conviene no confundirlos al planificar.
 

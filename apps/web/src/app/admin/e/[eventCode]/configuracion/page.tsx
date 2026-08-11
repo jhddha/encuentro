@@ -93,9 +93,16 @@ export default async function EventConfigurationPage({
         </dl>
       </Card>
 
+      {/*
+        Decía que la edición estaba «bloqueada por DEC-016». Esa decisión eligió
+        Better Auth y se resolvió en P04: la sesión existe, y esta misma pantalla
+        exige `event.read` para llegar hasta aquí. Lo que falta no es
+        autenticación, es la acción de servidor que escriba la configuración con
+        `event.update` — trabajo pendiente, no una decisión bloqueada.
+      */}
       <ReadonlyState
         title="Edición no disponible"
-        description="Modificar la configuración y ejecutar transiciones requiere sesión autenticada, bloqueada por DEC-016. La lógica de transición y su auditoría ya están implementadas y probadas."
+        description="Falta la acción de servidor que guarda los cambios; exigirá el permiso event.update. La lógica de transición de estado y su auditoría ya están implementadas y probadas."
       />
     </div>
   );

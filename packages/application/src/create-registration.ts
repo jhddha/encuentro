@@ -102,7 +102,18 @@ export function prepareRegistration(
     );
   }
 
-  // 5. Una persona, una inscripción por gestión (PAY-001, GOV-001).
+  /*
+   * 5. Una persona, una inscripción por gestión — IAM-002.
+   *
+   * «Una persona puede participar en varias gestiones sin duplicar la cuenta.
+   * Existe una inscripción por gestión y persona.» Citaba PAY-001 y GOV-001, que
+   * hablan del cargo congelado y del contexto de gestión: ninguno dice esto, y
+   * quien buscara por IAM-002 no habría encontrado el único sitio donde se
+   * aplica.
+   *
+   * La base lo impone además con `@@unique([eventId, personId])`. Esta
+   * comprobación existe para dar un mensaje en vez de una violación de índice.
+   */
   if (context.hasExistingRegistration) {
     throw new DomainError(
       'EVENT_CONTEXT_REQUIRED',

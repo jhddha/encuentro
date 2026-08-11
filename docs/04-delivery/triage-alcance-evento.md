@@ -28,18 +28,26 @@ Los informes de implementación fueron honestos sobre esto. El de P07 dice liter
 
 ## Lo que ya funciona
 
-| Ruta | Qué hace |
-|---|---|
-| `/` | Landing, resuelve la gestión pública |
-| `/e/[eventCode]/inscripcion` | Formulario público de preinscripción |
-| `/ingresar`, `/verificar-correo`, `/configurar-mfa` | Identidad completa: sesión, verificación y segundo factor |
-| `/verificar/comprobante/[token]` | Verificación pública del comprobante, sin PII |
-| `/admin/eventos`, `/admin/e/…/configuracion` | Alta y configuración de gestiones |
-| `/admin/e/…/catalogo` | Paquetes y versiones de precio |
-| `/admin/e/…/inscripciones` | Consulta de inscripciones |
-| `/admin/e/…/dashboard`, `/auditoria` | Panel y consulta de auditoría |
+> **Corregido el 8 de agosto de 2026.** Esta tabla declaraba operativas tres pantallas que **no mutan nada**, y la más grave era la preinscripción: `/e/…/inscripcion` es un comparador de modalidades sobre un estado de solo lectura que dice «catálogo aún no disponible». **Nadie podía inscribirse.** Quien planificara el bloque 2 sobre esta tabla lo habría hecho sobre una base que no existe. La columna «Qué hace» distingue ahora leer de escribir.
+
+| Ruta | Qué hace | ¿Escribe? |
+|---|---|---|
+| `/` | Landing, resuelve la gestión pública | no |
+| `/e/[eventCode]/inscripcion` | **Solo el comparador de modalidades.** No hay formulario ni alta: el caso de uso `prepareRegistration` existe y ninguna pantalla lo invoca | **no** |
+| `/ingresar` | Acceso **y alta pública** (IAM-011), desde el 8-ago-2026 | sí |
+| `/verificar-correo`, `/configurar-mfa` | Verificación y segundo factor | sí |
+| `/verificar/comprobante/[token]` | Verificación pública del comprobante, sin PII. Conectada de verdad desde el 8-ago-2026; antes devolvía siempre «no disponible» | no |
+| `/admin/eventos` | **Solo listado**, filtrado por alcance. El alta de gestiones no existe en la interfaz | **no** |
+| `/admin/e/…/configuracion` | **Solo lectura.** Falta la acción que guarda | **no** |
+| `/admin/e/…/catalogo` | Paquetes y versiones de precio | no |
+| `/admin/e/…/inscripciones` | Consulta, y confirmar inscripción desde el 8-ago-2026 | sí |
+| `/admin/e/…/dashboard`, `/auditoria` | Panel y consulta de auditoría | no |
+| `/admin/e/…/comprobantes` | Bandeja y panel de revisión: aprobar, rechazar, pedir corrección | sí |
+| `/e/…/mi-cuenta`, `/e/…/mi-cuenta/pagos` | Estado de cuenta y carga de evidencias | sí |
 
 Más los dos procesos de fondo de P16: expiración de `HELD` y envío de correo.
+
+**Lo que sigue roto en el camino del peregrino.** Puede crear una cuenta y, si alguien le crea la inscripción por otra vía, declarar pagos y ver su estado de cuenta. Lo que no puede es **inscribirse**: ese eslabón no tiene pantalla.
 
 ## Lo que falta, ordenado por el momento en que se necesita
 
