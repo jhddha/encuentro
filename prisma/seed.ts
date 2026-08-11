@@ -52,7 +52,9 @@ async function main(): Promise<void> {
       year: 2026,
       name: 'Encuentro 2026',
       timezone: 'America/La_Paz',
-      currency: 'USD',
+      // Moneda funcional: los libros de la organización se llevan en bolivianos.
+      // Un cobro en dólares se convierte a la tasa congelada (DEC-009).
+      currency: 'BOB',
       // 8 días es la referencia actual (EVT-016), aquí como dato, no como regla.
       startAt: new Date('2026-11-01T00:00:00Z'),
       endAt: new Date('2026-11-08T23:59:59Z'),
@@ -145,6 +147,43 @@ async function main(): Promise<void> {
         role: cuenta.role,
       },
     });
+  }
+
+  /*
+   * El plan es la fuente de verdad, no un acumulador.
+   *
+   * Con `upsert` a secas, una cuenta retirada del fichero se quedaba en la base
+   * para siempre. Pasó al corregir el eje de las ofrendas: sobrevivió un
+   * «anticipos de peregrinos M/E» que ya no debía existir, y una cuenta
+   * fantasma en el plan es una a la que alguien puede imputar.
+   *
+   * Solo se retira lo que no tiene movimiento. Si tiene líneas, la clave
+   * foránea lo impide y hay que decidirlo a mano: borrar una cuenta con
+   * historia no es tarea de un seed.
+   */
+  const codigos = PLAN_DE_CUENTAS.map((cuenta) => cuenta.code);
+
+  const sobrantes = await prisma.account_.findMany({
+    where: { eventId: event.id, code: { notIn: codigos }, lines: { none: {} } },
+    select: { id: true, code: true, name: true },
+  });
+
+  if (sobrantes.length > 0) {
+    await prisma.account_.deleteMany({ where: { id: { in: sobrantes.map((c) => c.id) } } });
+    console.log(
+      `Retiradas ${String(sobrantes.length)} cuentas que ya no están en el plan: ` +
+        sobrantes.map((c) => `${c.code} ${c.name}`).join(', '),
+    );
+  }
+
+  const conMovimiento = await prisma.account_.count({
+    where: { eventId: event.id, code: { notIn: codigos } },
+  });
+
+  if (conMovimiento > 0) {
+    console.warn(
+      `Aviso: ${String(conMovimiento)} cuentas fuera del plan conservan movimiento y no se retiran.`,
+    );
   }
 
   const nuevas = PLAN_DE_CUENTAS.filter((cuenta) => 'nueva' in cuenta).length;

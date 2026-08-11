@@ -7,27 +7,23 @@
  * plan que la organización usa hoy en su sistema contable, no de una
  * numeración inventada.
  *
- * DOS MONEDAS
+ * LA MONEDA FUNCIONAL ES EL BOLIVIANO
  *
- * Los libros llevan bolivianos y dólares con **cuentas separadas** —«caja
- * moneda nacional» frente a «caja moneda extranjera»—, que es la práctica
- * habitual con divisas. Por eso un rol puede aparecer dos veces, una por
- * moneda, y por eso el índice único pasó a `(gestión, rol, moneda)`.
+ * Los libros se llevan en bolivianos. Solo **caja y bancos** aparecen por
+ * duplicado, una cuenta por divisa, porque son los únicos que guardan dinero
+ * real en cada una — es lo que hace su plan con «caja moneda nacional» y «caja
+ * moneda extranjera». Ingresos, gastos y pasivos viven en bolivianos: un cobro
+ * en dólares se convierte a la tasa congelada (DEC-009) y la diferencia va a
+ * `421010001` o `621010002`.
+ *
+ * Confundir los dos ejes es fácil y caro: «ofrenda peregrino nacional» e
+ * «internacional» distinguen el **origen del peregrino**, no la moneda. Un
+ * peregrino nacional puede pagar en dólares. La primera versión de este fichero
+ * las mapeó a BOB y USD, y estaba mal.
  *
  * El disparador `journal_line_must_match_entry` exige que la línea, su asiento
  * y su cuenta compartan moneda: es lo que impide imputar un cobro en dólares
  * contra la caja en bolivianos.
- *
- * LO QUE NO ESTÁ, Y POR QUÉ
- *
- * `QR_CLEARING` no tiene cuenta. La organización imputa los cobros por QR
- * directamente a su cuenta del BMSC, así que no existe cuenta puente. Crear una
- * duplicando el código del banco es imposible —`(gestión, código)` es único— y
- * duplicar la cuenta con otro código sería inventar una que nadie concilia. El
- * resolutor `FINANCIAL_ACCOUNT_BY_CHANNEL` debe llevar el canal QR a
- * `BANK_ACCOUNT`. Vacío deliberado, no olvido.
- *
- * `PAYMENT_GATEWAY_CLEARING` tampoco: no hay pasarela en v1 (DEC-015).
  */
 
 export type Moneda = 'BOB' | 'USD';
@@ -118,14 +114,6 @@ export const PLAN_DE_CUENTAS = [
     nueva: true,
   },
   {
-    code: '211110002',
-    name: 'Anticipos de peregrinos M/E',
-    kind: 'LIABILITY',
-    currency: 'USD',
-    role: 'PARTICIPANT_ADVANCES',
-    nueva: true,
-  },
-  {
     code: '211100001',
     name: 'Cuentas por pagar generales',
     kind: 'LIABILITY',
@@ -144,30 +132,36 @@ export const PLAN_DE_CUENTAS = [
 
   // --- Ingresos -------------------------------------------------------------
   /*
-   * Los tres conceptos —inscripción, hospedaje y transporte— van a la **misma**
-   * ofrenda. Es la contabilidad que la organización lleva hoy: el peregrino no
-   * paga una cuota por partidas, da una ofrenda; hospedaje y transporte son
-   * gastos, no ingresos.
+   * LAS DOS OFRENDAS ESTÁN SEMBRADAS Y SIN ROL, A PROPÓSITO.
    *
-   * La separación por concepto sigue existiendo **en el sistema**, en los
-   * cargos, que es donde hace falta para cobrar y para el estado de cuenta. No
-   * se traslada al libro. Por eso `LODGING_REVENUE` y `TRANSPORT_REVENUE` no
-   * tienen cuenta y el resolutor `REVENUE_ROLE_BY_CONCEPT` debe llevar los tres
-   * conceptos a `REGISTRATION_REVENUE`.
+   * La organización imputa la ofrenda a una cuenta o a otra **según la
+   * nacionalidad del peregrino**. Hospedaje y transporte no son ingresos
+   * aparte: forman parte de la inscripción y no se separan en el libro.
+   *
+   * Eso deja el contrato de DEC-018 desalineado en dos sentidos. Tiene tres
+   * roles de ingreso donde hacen falta dos, y los suyos discriminan por
+   * concepto donde aquí se discrimina por origen. Mientras no se resuelva,
+   * `REGISTRATION_REVENUE` se queda **sin cuenta**: asignárselo a la nacional
+   * mandaría en silencio las ofrendas internacionales a la cuenta equivocada, y
+   * un motor que falla es preferible a un mayor que miente.
+   *
+   * La corrección propuesta —partir el rol en dos y retirar los de hospedaje y
+   * transporte— toca `contracts/accounting-rules.json`, que es fuente de verdad
+   * de una decisión aprobada. Espera autorización explícita.
    */
   {
     code: '411010001',
     name: 'Ofrenda peregrino nacional',
     kind: 'INCOME',
     currency: 'BOB',
-    role: 'REGISTRATION_REVENUE',
+    role: null,
   },
   {
     code: '411010002',
     name: 'Ofrenda peregrino internacional',
     kind: 'INCOME',
-    currency: 'USD',
-    role: 'REGISTRATION_REVENUE',
+    currency: 'BOB',
+    role: null,
   },
   {
     code: '411020001',
@@ -264,8 +258,12 @@ export const ROLES_SIN_CUENTA: Readonly<Record<string, string>> = {
     'Los cobros por QR se imputan directamente a la cuenta del BMSC. El resolutor de canales ' +
     'debe llevar el canal QR a BANK_ACCOUNT en vez de a una cuenta puente que nadie concilia.',
   PAYMENT_GATEWAY_CLEARING: 'No hay pasarela de pago en v1 (DEC-015).',
+  REGISTRATION_REVENUE:
+    'La organización imputa la ofrenda según la nacionalidad del peregrino, y el contrato tiene ' +
+    'un solo rol. Asignárselo a la cuenta nacional mandaría las ofrendas internacionales a la ' +
+    'cuenta equivocada sin que nada lo dijera. Espera partir el rol en dos.',
   LODGING_REVENUE:
-    'El hospedaje no es un ingreso en este plan: el peregrino da una ofrenda y el hospedaje es ' +
-    'un gasto. El resolutor por concepto lleva el cargo a REGISTRATION_REVENUE.',
+    'El hospedaje no es un ingreso aparte: forma parte de la inscripción y no se separa en el ' +
+    'libro. El rol sobra en este plan.',
   TRANSPORT_REVENUE: 'Mismo motivo que el hospedaje.',
 };

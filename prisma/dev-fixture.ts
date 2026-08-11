@@ -66,6 +66,16 @@ const storage = createObjectStorage({
   secretKey: process.env.OBJECT_STORAGE_SECRET_KEY ?? '',
 });
 
+/**
+ * Importe del cargo de ejemplo.
+ *
+ * La **moneda** no se fija aquí: sale de la gestión. Estaba en dólares a mano,
+ * y al pasar los libros a bolivianos el fixture habría sembrado un cargo en una
+ * moneda que la gestión ya no usa — justo el histórico incoherente que la
+ * restricción de moneda existe para impedir.
+ */
+const IMPORTE = '420.00';
+
 /** PNG de 1×1 px que hace de comprobante escaneado. */
 const COMPROBANTE = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -184,7 +194,7 @@ async function main(): Promise<void> {
 
   let price = await prisma.priceVersion.findFirst({ where: { packageId: pkg.id } });
   price ??= await prisma.priceVersion.create({
-    data: { packageId: pkg.id, paymentMode: 'ARRIVAL', amount: '420.00', currency: 'USD' },
+    data: { packageId: pkg.id, paymentMode: 'ARRIVAL', amount: IMPORTE, currency: event.currency },
   });
 
   const registration = await prisma.registration.create({
@@ -203,8 +213,8 @@ async function main(): Promise<void> {
     data: {
       registrationId: registration.id,
       concept: 'PACKAGE',
-      amount: '420.00',
-      currency: 'USD',
+      amount: IMPORTE,
+      currency: event.currency,
       snapshot: { packageCode: 'GENERAL', priceVersionId: price.id },
     },
   });
@@ -231,7 +241,7 @@ async function main(): Promise<void> {
     create: {
       eventId: event.id,
       code: 'US_ACCOUNT_MANUAL',
-      currency: 'USD',
+      currency: event.currency,
       instructions: 'Cuenta de desarrollo 0000-0000. Datos ficticios, no transfiera nada.',
     },
   });
@@ -241,8 +251,8 @@ async function main(): Promise<void> {
       eventId: event.id,
       registrationId: registration.id,
       channelId: channel.id,
-      declaredAmount: '420.00',
-      currency: 'USD',
+      declaredAmount: IMPORTE,
+      currency: event.currency,
       paidAt: new Date(),
       reference: `TRF-${marca.toUpperCase()}`,
       payerName: person.fullName,
@@ -268,7 +278,7 @@ Y el circuito completo, que es lo que no se había recorrido nunca:
 
   6. En otro navegador o ventana privada, entre con ${emailPeregrino}
   7. Abra http://localhost:3000/e/${event.code}/mi-cuenta — debe ver el cargo
-     de 420.00 y el saldo pendiente
+     de ${IMPORTE} y el saldo pendiente
   8. En /mi-cuenta/pagos declare un pago nuevo con otra referencia
   9. Como revisor, pida corrección de esa evidencia
  10. Como peregrino, corríjala: la fila vuelve a «Enviado» sin duplicarse
@@ -278,9 +288,9 @@ Y el circuito completo, que es lo que no se había recorrido nunca:
 Escenario listo.
 
   Gestión        ${event.code}
-  Inscripción    ${registration.code} — saldo pendiente 420.00 USD
-  Evidencia      ${proof.reference} — 420.00 USD, con archivo adjunto
-  Canal          ${channel.code} (USD), activo y con instrucciones
+  Inscripción    ${registration.code} — saldo pendiente ${IMPORTE} ${event.currency}
+  Evidencia      ${proof.reference} — ${IMPORTE} ${event.currency}, con archivo adjunto
+  Canal          ${channel.code} (${event.currency}), activo y con instrucciones
   Permiso        TESORERIA sobre ${event.code}, concedido a ${email}
 ${ladoPeregrino}
 
@@ -292,7 +302,7 @@ Para usarlo:
      con permisos, y acaba de recibir uno.
   4. Abra http://localhost:3000/admin/e/${event.code}/comprobantes
   5. Pulse «Tomar para revisión», luego «Revisar», abra el comprobante y
-     reparta los 420.00 contra el cargo.
+     reparta los ${IMPORTE} contra el cargo.
 
 Al aprobar debería aparecer un comprobante numerado REC-${event.code}-000001.
 ${pasosPeregrino}`);
