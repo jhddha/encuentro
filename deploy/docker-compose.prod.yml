@@ -66,7 +66,27 @@ services:
       SMTP_PORT: ${SMTP_PORT}
       SMTP_USER: ${SMTP_USER}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
+      WORKER_HEALTH_PORT: 3001
     networks: [internal]
+    # Un worker vivo pero inerte se veía sano: si Redis deja de aceptar
+    # conexiones, el contenedor sigue en `running` y `docker ps` lo da por bueno
+    # mientras no expira ninguna retención ni sale ningún correo. El endpoint
+    # responde 503 cuando algún trabajo lleva tres cadencias sin completarse, así
+    # que `restart: unless-stopped` deja de ser la única defensa.
+    #
+    # Sin `curl` ni `wget` en la imagen: se usa el Node que ya está dentro.
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy

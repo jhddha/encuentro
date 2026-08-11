@@ -53,6 +53,7 @@ export {
 
 export {
   MAX_DELIVERY_ATTEMPTS,
+  STALE_SENDING_MS,
   canTransitionNotification,
   nextRetryDelayMs,
   renderTemplate,

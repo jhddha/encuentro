@@ -77,7 +77,7 @@ describe('dispatchNotifications', () => {
 
     const result = await dispatchNotifications({ notifications: repo, email, clock });
 
-    expect(result).toEqual({ claimed: 1, sent: 1, retrying: 0, abandoned: 0 });
+    expect(result).toEqual({ claimed: 1, sent: 1, retrying: 0, abandoned: 0, unrecorded: 0 });
     expect(email.messages[0]?.subject).toBe('Pago aprobado — REC-ENC26-000012');
     expect(email.messages[0]?.body).toBe('Hola Ana, su pago de Bs 350,00 fue aprobado.');
     expect(repo.sent).toEqual([{ id: 'ntf-1', at: NOW }]);
@@ -109,7 +109,7 @@ describe('dispatchNotifications', () => {
 
     const result = await dispatchNotifications({ notifications: repo, email, clock });
 
-    expect(result).toEqual({ claimed: 1, sent: 0, retrying: 0, abandoned: 1 });
+    expect(result).toEqual({ claimed: 1, sent: 0, retrying: 0, abandoned: 1, unrecorded: 0 });
     expect(repo.failed[0]?.retryAt).toBeNull();
     // No se intentó enviar: un correo con un hueco es peor que ningún correo.
     expect(email.messages).toHaveLength(0);
@@ -139,7 +139,7 @@ describe('dispatchNotifications', () => {
 
     const result = await dispatchNotifications({ notifications: repo, email, clock });
 
-    expect(result).toEqual({ claimed: 3, sent: 2, retrying: 0, abandoned: 1 });
+    expect(result).toEqual({ claimed: 3, sent: 2, retrying: 0, abandoned: 1, unrecorded: 0 });
     expect(repo.sent.map((s) => s.id)).toEqual(['ntf-1', 'ntf-3']);
   });
 
@@ -160,13 +160,61 @@ describe('dispatchNotifications', () => {
     expect(repo.failed[0]?.error).toBe('535 auth fallida');
   });
 
+  /*
+   * El defecto que encontró la revisión: `markSent` estaba dentro del mismo
+   * `try` que el envío, así que un tropiezo de la base **después** de que el
+   * correo saliera se trataba como fallo de envío y reprogramaba un mensaje ya
+   * entregado. El peregrino lo recibía dos veces.
+   */
+  describe('cuando el correo sale pero no se puede anotar', () => {
+    function repoQueNoAnota(claimed: readonly PendingNotification[]): FakeRepo {
+      const repo = fakeRepository(claimed);
+
+      return {
+        ...repo,
+        markSent: () => Promise.reject(new Error('conexión con Postgres perdida')),
+      };
+    }
+
+    it('no lo reprograma: reenviarlo sería duplicarlo', async () => {
+      const repo = repoQueNoAnota([pending()]);
+      const email = sender();
+
+      const result = await dispatchNotifications({ notifications: repo, email, clock });
+
+      expect(email.messages).toHaveLength(1);
+      // Lo que fallaba: aquí se llamaba a `markFailed` con fecha de reintento.
+      expect(repo.failed).toHaveLength(0);
+      expect(result.retrying).toBe(0);
+      expect(result.abandoned).toBe(0);
+    });
+
+    it('lo cuenta aparte para que se vea en el registro', async () => {
+      const repo = repoQueNoAnota([pending()]);
+
+      const result = await dispatchNotifications({ notifications: repo, email: sender(), clock });
+
+      expect(result).toEqual({ claimed: 1, sent: 0, retrying: 0, abandoned: 0, unrecorded: 1 });
+    });
+
+    it('el resto del lote sigue saliendo', async () => {
+      const repo = repoQueNoAnota([pending({ id: 'ntf-1' }), pending({ id: 'ntf-2' })]);
+      const email = sender();
+
+      const result = await dispatchNotifications({ notifications: repo, email, clock });
+
+      expect(email.messages).toHaveLength(2);
+      expect(result.unrecorded).toBe(2);
+    });
+  });
+
   it('no hace nada cuando no hay envíos vencidos', async () => {
     const repo = fakeRepository([]);
     const email = sender();
 
     const result = await dispatchNotifications({ notifications: repo, email, clock });
 
-    expect(result).toEqual({ claimed: 0, sent: 0, retrying: 0, abandoned: 0 });
+    expect(result).toEqual({ claimed: 0, sent: 0, retrying: 0, abandoned: 0, unrecorded: 0 });
     expect(email.messages).toHaveLength(0);
   });
 });

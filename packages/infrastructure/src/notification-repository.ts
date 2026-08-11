@@ -1,4 +1,5 @@
 import type { NotificationRepository, PendingNotification } from '@encuentro/application';
+import { STALE_SENDING_MS } from '@encuentro/domain';
 
 import type { PrismaClient } from './prisma.js';
 
@@ -48,6 +49,15 @@ function toVariables(value: unknown): Record<string, string> {
 export function createNotificationRepository(prisma: PrismaClient): NotificationRepository {
   return {
     async claimDue(now: Date, limit: number) {
+      /*
+       * El instante a partir del cual una reclamación se da por abandonada.
+       *
+       * Se calcula aquí y se pasa como parámetro en vez de usar `NOW()` de
+       * Postgres, para que la política siga viniendo del dominio y del reloj
+       * inyectado, no del reloj del servidor de base de datos.
+       */
+      const staleBefore = new Date(now.getTime() - STALE_SENDING_MS);
+
       const rows = await prisma.$queryRaw<ClaimedRow[]>`
         WITH claimed AS (
           UPDATE notifications
@@ -56,8 +66,15 @@ export function createNotificationRepository(prisma: PrismaClient): Notification
            WHERE id IN (
              SELECT id
                FROM notifications
-              WHERE status = 'PENDING'
-                AND scheduled_at <= ${now}
+              WHERE (status = 'PENDING' AND scheduled_at <= ${now})
+                 -- Recuperacion de reclamaciones abandonadas (GOV-008).
+                 -- Sin esta rama, un envio que quedo en SENDING porque el
+                 -- worker murio a mitad de tanda no volvia NUNCA: la consulta
+                 -- solo miraba PENDING. updated_at se fija al reclamar, asi que
+                 -- es la marca de cuando alguien lo tomo. La ventana es amplia
+                 -- (ver STALE_SENDING_MS) porque reclamar un envio todavia en
+                 -- curso produciria un duplicado.
+                 OR (status = 'SENDING' AND updated_at <= ${staleBefore})
               ORDER BY scheduled_at ASC
               LIMIT ${limit}
                 FOR UPDATE SKIP LOCKED

@@ -26,6 +26,15 @@ export const envSchema = z.object({
   OBJECT_STORAGE_ACCESS_KEY: z.string().min(1),
   OBJECT_STORAGE_SECRET_KEY: z.string().min(1),
 
+  /**
+   * Puerto del healthcheck del worker.
+   *
+   * Solo lo usa `apps/worker`. Con un valor por defecto porque no es un secreto
+   * ni una decisión de despliegue: quien necesite cambiarlo lo hará, y exigirlo
+   * obligaría a declararlo también en la web, que no lo usa.
+   */
+  WORKER_HEALTH_PORT: z.coerce.number().int().positive().max(65535).default(3001),
+
   SMTP_HOST: z.string().default(''),
   SMTP_PORT: z.coerce.number().int().positive().max(65535).default(587),
   SMTP_USER: z.string().default(''),

@@ -1,5 +1,5 @@
 import { dispatchNotifications, expireHeldReservations, type Clock } from '@encuentro/application';
-import { HELD_DURATION_MS } from '@encuentro/domain';
+import { HELD_DURATION_MS, STALE_SENDING_MS } from '@encuentro/domain';
 import {
   createNotificationRepository,
   createReservationRepository,
@@ -404,5 +404,64 @@ describe('cola de notificaciones contra la base', () => {
 
     const row = await prisma.notification.findUniqueOrThrow({ where: { id } });
     expect(row.status).toBe('FAILED');
+  });
+
+  /*
+   * Recuperación de reclamaciones abandonadas — GOV-008.
+   *
+   * `claimDue` mueve los envíos a SENDING para que dos réplicas no tomen los
+   * mismos, y solo miraba PENDING para leer. Un worker que muriera a mitad de
+   * tanda —un despliegue, un SIGKILL, un contenedor sin memoria— dejaba esos
+   * envíos muertos para siempre: cuarenta correos aprobados un viernes podían no
+   * salir nunca y nadie enterarse.
+   */
+  describe('reclamaciones abandonadas', () => {
+    /** Simula el worker que murió: reclamado hace rato y nunca resuelto. */
+    async function abandonada(hace: number): Promise<string> {
+      const id = await seedNotification({});
+      await notifications.claimDue(NOW, 10);
+
+      await prisma.notification.update({
+        where: { id },
+        data: { updatedAt: new Date(NOW.getTime() - hace) },
+      });
+
+      return id;
+    }
+
+    it('vuelve a la cola pasada la ventana', async () => {
+      const id = await abandonada(STALE_SENDING_MS + 60_000);
+
+      const reclamadas = await notifications.claimDue(NOW, 10);
+
+      expect(reclamadas.map((n) => n.id)).toEqual([id]);
+    });
+
+    /*
+     * La otra mitad, y la que evita el daño peor: reclamar un envío todavía en
+     * curso produciría un correo duplicado.
+     */
+    it('no se toca la que aún puede estar en curso', async () => {
+      await abandonada(60_000);
+
+      expect(await notifications.claimDue(NOW, 10)).toHaveLength(0);
+    });
+
+    it('el envío recuperado conserva sus intentos y su plantilla', async () => {
+      const id = await abandonada(STALE_SENDING_MS + 60_000);
+
+      const reclamadas = await notifications.claimDue(NOW, 10);
+
+      expect(reclamadas[0]?.id).toBe(id);
+      expect(reclamadas[0]?.subjectTemplate).toBe('Pago aprobado — {{receiptNumber}}');
+      expect(reclamadas[0]?.attempts).toBe(0);
+    });
+
+    it('un envío ya enviado no se recupera', async () => {
+      const id = await abandonada(STALE_SENDING_MS + 60_000);
+      await notifications.markSent(id, NOW);
+
+      expect(await notifications.claimDue(NOW, 10)).toHaveLength(0);
+    });
   });
 });

@@ -61,6 +61,27 @@ export function nextRetryDelayMs(attempts: number): number {
 }
 
 /**
+ * Cuándo se da por abandonada una reclamación — GOV-008.
+ *
+ * `claimDue` mueve los envíos a `SENDING` para que dos réplicas no tomen los
+ * mismos. El problema es lo que pasa si quien los tomó no vuelve: un despliegue
+ * a mitad de tanda, un `SIGKILL`, un contenedor que se queda sin memoria.
+ * Aquellos envíos **no volvían nunca a la cola**, porque la consulta solo mira
+ * `PENDING`. Cuarenta correos aprobados un viernes podían no salir jamás y nadie
+ * enterarse.
+ *
+ * Diez minutos. El margen es deliberadamente amplio: reclamar un envío que
+ * todavía está en curso produciría un correo duplicado, y un lote de cincuenta
+ * contra un SMTP lento puede tardar minutos. Más vale que un correo tarde diez
+ * minutos de más a que salga dos veces.
+ *
+ * Es al menos una vez, no exactamente una vez. Con SMTP no existe lo segundo: el
+ * servidor puede aceptar el mensaje y morir la conexión antes de decirlo. Se
+ * elige a conciencia el lado en que se falla.
+ */
+export const STALE_SENDING_MS = 10 * 60 * 1000;
+
+/**
  * Sustitución de variables en una plantilla.
  *
  * INFERIDO. Dos decisiones deliberadas:

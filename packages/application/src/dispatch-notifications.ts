@@ -35,6 +35,15 @@ export interface DispatchNotificationsResult {
   readonly retrying: number;
   /** Fallidos definitivamente: intentos agotados o error determinista. */
   readonly abandoned: number;
+  /**
+   * Correos **entregados** cuyo resultado no se pudo escribir.
+   *
+   * El envío salió y la base falló al anotarlo. La fila se queda en `SENDING` y
+   * la recuperación de reclamaciones abandonadas la retomará más tarde, lo que
+   * puede producir un duplicado. Es lo menos malo: ver el comentario del
+   * `catch`.
+   */
+  readonly unrecorded: number;
 }
 
 const BATCH_LIMIT = 50;
@@ -49,6 +58,7 @@ export async function dispatchNotifications(
   let sent = 0;
   let retrying = 0;
   let abandoned = 0;
+  let unrecorded = 0;
 
   for (const notification of claimed) {
     const message = render(notification);
@@ -65,14 +75,18 @@ export async function dispatchNotifications(
       continue;
     }
 
+    /*
+     * El envío y su registro son dos fallos distintos, y confundirlos era un
+     * defecto: `markSent` estaba dentro de este `try`, así que un tropiezo de la
+     * base **después de que el correo saliera** se trataba como fallo de envío y
+     * reprogramaba un mensaje ya entregado. El peregrino lo recibía dos veces.
+     */
     try {
       await deps.email.send({
         to: notification.toEmail,
         subject: message.subject,
         body: message.body,
       });
-      await deps.notifications.markSent(notification.id, deps.clock.now());
-      sent += 1;
     } catch (error) {
       const attempts = notification.attempts + 1;
 
@@ -84,10 +98,29 @@ export async function dispatchNotifications(
         await deps.notifications.markFailed(notification.id, describe(error), null);
         abandoned += 1;
       }
+
+      continue;
+    }
+
+    /*
+     * A partir de aquí el correo YA SALIÓ. Lo único que puede fallar es
+     * anotarlo, y ante ese fallo no se toca la fila: marcarla `PENDING` la
+     * reenviaría con certeza.
+     *
+     * Se deja en `SENDING`. La recuperación de reclamaciones abandonadas la
+     * retomará pasados diez minutos, así que puede acabar duplicándose — pero
+     * solo si la base estuvo caída en esa ventana concreta, en vez de duplicarse
+     * siempre que la base tropiece un instante.
+     */
+    try {
+      await deps.notifications.markSent(notification.id, deps.clock.now());
+      sent += 1;
+    } catch {
+      unrecorded += 1;
     }
   }
 
-  return { claimed: claimed.length, sent, retrying, abandoned };
+  return { claimed: claimed.length, sent, retrying, abandoned, unrecorded };
 }
 
 function render(

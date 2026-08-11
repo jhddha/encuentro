@@ -10,6 +10,7 @@ import {
 } from '@encuentro/infrastructure';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { createServer } from 'node:http';
 import pino from 'pino';
 
 /**
@@ -58,7 +59,22 @@ const logger = pino({
  */
 const SYSTEM_ACTOR_ID = '00000000-0000-4000-8000-000000000001';
 
-const QUEUE_NAME = 'encuentro-mantenimiento';
+/**
+ * Dos colas, no una — y esta es la razón.
+ *
+ * Con una sola cola y `concurrency: 1`, los dos trabajos compartían la única
+ * ranura de ejecución. Un SMTP que no responde —no rechaza: se queda callado,
+ * que es el fallo típico de un bloqueo por reputación o un cortafuegos— consume
+ * su tiempo de espera completo por cada uno de los cincuenta envíos del lote.
+ * Mientras tanto **la expiración de `HELD` no corría**, y DEC-005 promete
+ * treinta minutos: las camas retenidas se quedaban ocupadas por un problema de
+ * correo.
+ *
+ * Cada cola tiene su Worker y su conexión. Un Worker bloquea su conexión
+ * esperando trabajo, así que compartirla los volvería a acoplar.
+ */
+const QUEUE_HELD = 'encuentro-retenciones';
+const QUEUE_MAIL = 'encuentro-correo';
 
 const JOB_EXPIRE_HELD = 'expirar-retenciones';
 const JOB_SEND_MAIL = 'enviar-notificaciones';
@@ -81,21 +97,27 @@ const prisma = createPrismaClient(env.DATABASE_URL);
 /*
  * Queue y Worker reciben conexiones distintas. El Worker bloquea su conexión
  * esperando trabajo (BRPOPLPUSH), así que compartirla dejaría a la Queue sin
- * poder emitir mientras tanto.
+ * poder emitir mientras tanto. Y cada Worker necesita la suya por lo mismo: dos
+ * Workers sobre una conexión volverían a serializarse.
  */
 const queueConnection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
-const workerConnection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+const heldConnection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
+const mailConnection = new Redis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
-for (const [name, connection] of [
+const connections = [
   ['queue', queueConnection],
-  ['worker', workerConnection],
-] as const) {
+  ['worker-retenciones', heldConnection],
+  ['worker-correo', mailConnection],
+] as const;
+
+for (const [name, connection] of connections) {
   connection.on('error', (error: Error) => {
     logger.error({ err: error, connection: name }, 'fallo de conexión con Redis');
   });
 }
 
-const queue = new Queue(QUEUE_NAME, { connection: queueConnection });
+const heldQueue = new Queue(QUEUE_HELD, { connection: queueConnection });
+const mailQueue = new Queue(QUEUE_MAIL, { connection: queueConnection });
 
 const reservations = createReservationRepository(prisma);
 const notifications = createNotificationRepository(prisma);
@@ -151,31 +173,48 @@ async function runSendMail(): Promise<void> {
   }
 }
 
-const handlers: Readonly<Record<string, () => Promise<void>>> = {
-  [JOB_EXPIRE_HELD]: runExpireHeld,
-  [JOB_SEND_MAIL]: runSendMail,
+/**
+ * Última vez que cada trabajo **terminó** correctamente.
+ *
+ * Alimenta el healthcheck. Se marca al terminar y no al empezar: lo que interesa
+ * saber no es que el worker intentara algo, sino que lo completara.
+ */
+const lastSuccess: Record<string, number> = {
+  [JOB_EXPIRE_HELD]: Date.now(),
+  [JOB_SEND_MAIL]: Date.now(),
 };
 
-const worker = new Worker(
-  QUEUE_NAME,
-  async (job) => {
-    const handler = handlers[job.name];
+function createJobWorker(
+  queueName: string,
+  jobName: string,
+  handler: () => Promise<void>,
+  connection: Redis,
+): Worker {
+  const worker = new Worker(
+    queueName,
+    async (job) => {
+      if (job.name !== jobName) {
+        // Trabajo de una versión anterior que ya no existe. Fallar sería
+        // reintentarlo para siempre; se registra y se descarta.
+        logger.warn({ jobName: job.name, queueName }, 'trabajo desconocido; se descarta');
+        return;
+      }
 
-    if (handler === undefined) {
-      // Trabajo de una versión anterior que ya no existe. Fallar sería
-      // reintentarlo para siempre; se registra y se descarta.
-      logger.warn({ jobName: job.name }, 'trabajo desconocido; se descarta');
-      return;
-    }
+      await handler();
+      lastSuccess[jobName] = Date.now();
+    },
+    { connection, concurrency: 1 },
+  );
 
-    await handler();
-  },
-  { connection: workerConnection, concurrency: 1 },
-);
+  worker.on('failed', (job, error) => {
+    logger.error({ err: error, jobName: job?.name, queueName }, 'trabajo fallido');
+  });
 
-worker.on('failed', (job, error) => {
-  logger.error({ err: error, jobName: job?.name }, 'trabajo fallido');
-});
+  return worker;
+}
+
+const heldWorker = createJobWorker(QUEUE_HELD, JOB_EXPIRE_HELD, runExpireHeld, heldConnection);
+const mailWorker = createJobWorker(QUEUE_MAIL, JOB_SEND_MAIL, runSendMail, mailConnection);
 
 /*
  * `upsertJobScheduler` en vez de `add`: es idempotente entre despliegues.
@@ -184,18 +223,68 @@ worker.on('failed', (job, error) => {
  * arranque hasta multiplicar la carga por el número de despliegues.
  */
 async function scheduleJobs(): Promise<void> {
-  await queue.upsertJobScheduler(
+  await heldQueue.upsertJobScheduler(
     JOB_EXPIRE_HELD,
     { every: EXPIRE_HELD_INTERVAL_MS },
     { name: JOB_EXPIRE_HELD, opts: { removeOnComplete: 100, removeOnFail: 500 } },
   );
 
-  await queue.upsertJobScheduler(
+  await mailQueue.upsertJobScheduler(
     JOB_SEND_MAIL,
     { every: SEND_MAIL_INTERVAL_MS },
     { name: JOB_SEND_MAIL, opts: { removeOnComplete: 100, removeOnFail: 500 } },
   );
 }
+
+/**
+ * Señal de vida — NFR-001.
+ *
+ * Un worker **vivo pero inerte** no se distinguía de uno sano. Si Redis se queda
+ * sin memoria un viernes por la noche, el contenedor sigue en `running` y
+ * `docker ps` lo da por bueno; durante el fin de semana no expira ninguna
+ * retención ni sale ningún correo, y nadie se entera hasta el lunes.
+ *
+ * Responde 503 si algún trabajo lleva más de tres cadencias sin completarse. Tres
+ * y no una: una ejecución lenta o un reinicio no deben marcar el proceso como
+ * enfermo, pero tres seguidas ya no son ruido.
+ *
+ * Es el mínimo que hace accionable un `HEALTHCHECK` de contenedor. No sustituye
+ * a la supervisión externa, que sigue pendiente con el VPS.
+ */
+const HEALTH_TOLERANCE = 3;
+
+const healthDeadlines: Readonly<Record<string, number>> = {
+  [JOB_EXPIRE_HELD]: EXPIRE_HELD_INTERVAL_MS * HEALTH_TOLERANCE,
+  [JOB_SEND_MAIL]: SEND_MAIL_INTERVAL_MS * HEALTH_TOLERANCE,
+};
+
+function healthReport(): { healthy: boolean; jobs: Record<string, number> } {
+  const now = Date.now();
+  const jobs: Record<string, number> = {};
+  let healthy = true;
+
+  for (const [jobName, deadline] of Object.entries(healthDeadlines)) {
+    const age = now - (lastSuccess[jobName] ?? 0);
+    jobs[jobName] = Math.round(age / 1000);
+    if (age > deadline) healthy = false;
+  }
+
+  return { healthy, jobs };
+}
+
+const health = createServer((request, response) => {
+  if (request.url !== '/health') {
+    response.writeHead(404).end();
+    return;
+  }
+
+  const report = healthReport();
+
+  response
+    .writeHead(report.healthy ? 200 : 503, { 'content-type': 'application/json' })
+    // Solo antigüedades en segundos: ni PII ni detalle de la cola.
+    .end(JSON.stringify({ status: report.healthy ? 'ok' : 'stale', secondsSince: report.jobs }));
+});
 
 let shuttingDown = false;
 
@@ -205,12 +294,18 @@ async function shutdown(signal: string): Promise<void> {
 
   logger.info({ signal }, 'apagando worker');
 
-  // `worker.close()` espera a que termine el trabajo en curso. Matarlo a mitad
-  // dejaría notificaciones en `SENDING`, que ninguna consulta vuelve a tomar.
-  await worker.close();
-  await queue.close();
-  await queueConnection.quit();
-  await workerConnection.quit();
+  health.close();
+
+  /*
+   * `close()` espera a que termine el trabajo en curso, que sigue siendo lo
+   * correcto. Antes era además la única defensa: una muerte a mitad dejaba
+   * notificaciones en `SENDING` que ninguna consulta volvía a tomar. Ya no —
+   * `claimDue` recupera las reclamaciones abandonadas—, pero apagar limpio
+   * evita que esa recuperación haga falta y con ella el riesgo de duplicado.
+   */
+  await Promise.all([heldWorker.close(), mailWorker.close()]);
+  await Promise.all([heldQueue.close(), mailQueue.close()]);
+  await Promise.all([queueConnection.quit(), heldConnection.quit(), mailConnection.quit()]);
   await prisma.$disconnect();
 
   process.exit(0);
@@ -221,10 +316,13 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 
 await scheduleJobs();
 
+health.listen(env.WORKER_HEALTH_PORT);
+
 logger.info(
   {
     startedAt: systemClock.now().toISOString(),
-    jobs: [JOB_EXPIRE_HELD, JOB_SEND_MAIL],
+    queues: [QUEUE_HELD, QUEUE_MAIL],
+    healthPort: env.WORKER_HEALTH_PORT,
   },
   'worker ENCUENTRO iniciado',
 );
