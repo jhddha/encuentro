@@ -175,6 +175,15 @@ export interface NotificationRepository {
    * o el fallo es determinista y repetirlo daría el mismo resultado.
    */
   markFailed(id: string, error: string, retryAt: Date | null): Promise<void>;
+
+  /**
+   * Cierra un envío cuya cuota ya estaba agotada al reclamarlo.
+   *
+   * Distinto de `markFailed`, que además **cuenta un intento**: aquí no se
+   * intentó nada. Llamar a `markFailed` dejaría la fila con más intentos que el
+   * máximo, y una cola muerta que dice 6 de 5 no se puede leer.
+   */
+  markExhausted(id: string, error: string): Promise<void>;
 }
 
 export interface EmailMessage {

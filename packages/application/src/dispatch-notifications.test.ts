@@ -29,15 +29,18 @@ function pending(overrides: Partial<PendingNotification> = {}): PendingNotificat
 interface FakeRepo extends NotificationRepository {
   readonly sent: { id: string; at: Date }[];
   readonly failed: { id: string; error: string; retryAt: Date | null }[];
+  readonly exhausted: { id: string; error: string }[];
 }
 
 function fakeRepository(claimed: readonly PendingNotification[]): FakeRepo {
   const sent: { id: string; at: Date }[] = [];
   const failed: { id: string; error: string; retryAt: Date | null }[] = [];
+  const exhausted: { id: string; error: string }[] = [];
 
   return {
     sent,
     failed,
+    exhausted,
     claimDue: () => Promise.resolve(claimed),
     markSent: (id, at) => {
       sent.push({ id, at });
@@ -45,6 +48,10 @@ function fakeRepository(claimed: readonly PendingNotification[]): FakeRepo {
     },
     markFailed: (id, error, retryAt) => {
       failed.push({ id, error, retryAt });
+      return Promise.resolve();
+    },
+    markExhausted: (id, error) => {
+      exhausted.push({ id, error });
       return Promise.resolve();
     },
   };
@@ -206,6 +213,27 @@ describe('dispatchNotifications', () => {
       expect(email.messages).toHaveLength(2);
       expect(result.unrecorded).toBe(2);
     });
+  });
+
+  /*
+   * NTF-009. Una fila puede llegar con la cuota ya agotada: la recuperación de
+   * reclamaciones abandonadas gasta un intento al reclamar, así que un envío que
+   * reproduce el fallo *después* de salir el correo va consumiendo cuota hasta
+   * terminarla. Ahí hay que parar, no volver a enviar.
+   */
+  it('no envía una notificación que llega con la cuota agotada', async () => {
+    const repo = fakeRepository([pending({ attempts: MAX_DELIVERY_ATTEMPTS })]);
+    const email = sender();
+
+    const result = await dispatchNotifications({ notifications: repo, email, clock });
+
+    expect(email.messages).toHaveLength(0);
+    expect(result.abandoned).toBe(1);
+    expect(result.sent).toBe(0);
+
+    // Se cierra sin contar otro intento: no se intentó nada.
+    expect(repo.exhausted).toHaveLength(1);
+    expect(repo.failed).toHaveLength(0);
   });
 
   it('no hace nada cuando no hay envíos vencidos', async () => {

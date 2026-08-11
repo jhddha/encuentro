@@ -1,4 +1,10 @@
-import { DomainError, nextRetryDelayMs, renderTemplate, shouldRetry } from '@encuentro/domain';
+import {
+  DomainError,
+  MAX_DELIVERY_ATTEMPTS,
+  nextRetryDelayMs,
+  renderTemplate,
+  shouldRetry,
+} from '@encuentro/domain';
 
 import type { Clock, EmailSender, NotificationRepository, PendingNotification } from './ports.js';
 
@@ -61,6 +67,26 @@ export async function dispatchNotifications(
   let unrecorded = 0;
 
   for (const notification of claimed) {
+    /*
+     * Tope antes de enviar, no solo después de fallar.
+     *
+     * `attempts` cuenta intentos consumidos, y una recuperación consume uno.
+     * Una fila que llegue aquí con la cuota agotada ya salió tantas veces como
+     * la política permite; volver a enviarla sería exactamente el reenvío
+     * indefinido que NTF-009 prohíbe.
+     *
+     * Para una fila que viene de `PENDING` esta rama no se alcanza: al quinto
+     * fallo se abandona y no vuelve a la cola. Solo la alcanzan las recuperadas.
+     */
+    if (notification.attempts >= MAX_DELIVERY_ATTEMPTS) {
+      await deps.notifications.markExhausted(
+        notification.id,
+        `Se agotaron los ${String(MAX_DELIVERY_ATTEMPTS)} intentos de entrega. No se reintenta.`,
+      );
+      abandoned += 1;
+      continue;
+    }
+
     const message = render(notification);
 
     if (message === null) {

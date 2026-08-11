@@ -1,5 +1,5 @@
 import { dispatchNotifications, expireHeldReservations, type Clock } from '@encuentro/application';
-import { HELD_DURATION_MS, STALE_SENDING_MS } from '@encuentro/domain';
+import { HELD_DURATION_MS, MAX_DELIVERY_ATTEMPTS, STALE_SENDING_MS } from '@encuentro/domain';
 import {
   createNotificationRepository,
   createReservationRepository,
@@ -447,14 +447,72 @@ describe('cola de notificaciones contra la base', () => {
       expect(await notifications.claimDue(NOW, 10)).toHaveLength(0);
     });
 
-    it('el envío recuperado conserva sus intentos y su plantilla', async () => {
+    /*
+     * Esta prueba afirmaba lo contrario —«conserva sus intentos»— y con ello
+     * fijaba un reenvío sin fin: una fila que reproduzca el fallo después de
+     * enviar se recupera cada diez minutos, el correo sale otra vez en cada
+     * ciclo, y `MAX_DELIVERY_ATTEMPTS` no llega a aplicarse nunca porque el
+     * contador no avanza. NTF-009 pide que un fallo permanente termine en cola
+     * muerta. Recuperar es gastar un intento.
+     */
+    it('el envío recuperado gasta un intento y conserva su plantilla', async () => {
       const id = await abandonada(STALE_SENDING_MS + 60_000);
 
       const reclamadas = await notifications.claimDue(NOW, 10);
 
       expect(reclamadas[0]?.id).toBe(id);
       expect(reclamadas[0]?.subjectTemplate).toBe('Pago aprobado — {{receiptNumber}}');
+      expect(reclamadas[0]?.attempts).toBe(1);
+    });
+
+    it('una reclamación normal no gasta ningún intento', async () => {
+      // La otra mitad de la regla: solo la recuperación cuenta. Si contara
+      // también la reclamación normal, cada envío nacería con un intento
+      // gastado y la cuota real sería de cuatro, no de cinco.
+      const id = await seedNotification({});
+
+      const reclamadas = await notifications.claimDue(NOW, 10);
+
+      expect(reclamadas.map((n) => n.id)).toEqual([id]);
       expect(reclamadas[0]?.attempts).toBe(0);
+    });
+
+    it('la recuperación se detiene al agotar la cuota, en vez de reenviar sin fin', async () => {
+      const id = await abandonada(STALE_SENDING_MS + 60_000);
+
+      // `updatedAt` se repone en la misma escritura: la columna es `@updatedAt`,
+      // así que tocar solo `attempts` la pondría al día y la fila dejaría de
+      // parecer abandonada.
+      await prisma.notification.update({
+        where: { id },
+        data: {
+          attempts: MAX_DELIVERY_ATTEMPTS - 1,
+          updatedAt: new Date(NOW.getTime() - (STALE_SENDING_MS + 60_000)),
+        },
+      });
+
+      const enviados: unknown[] = [];
+
+      const resultado = await dispatchNotifications({
+        notifications,
+        email: {
+          send: (mensaje) => {
+            enviados.push(mensaje);
+            return Promise.resolve();
+          },
+        },
+        clock,
+      });
+
+      // La recuperación gasta el último intento, así que el despacho encuentra
+      // la cuota agotada y no vuelve a enviar.
+      expect(enviados).toHaveLength(0);
+      expect(resultado.sent).toBe(0);
+      expect(resultado.abandoned).toBe(1);
+
+      const fila = await prisma.notification.findUniqueOrThrow({ where: { id } });
+      expect(fila.status).toBe('FAILED');
+      expect(fila.attempts).toBe(MAX_DELIVERY_ATTEMPTS);
     });
 
     it('un envío ya enviado no se recupera', async () => {

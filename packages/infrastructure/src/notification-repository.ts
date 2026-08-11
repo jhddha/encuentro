@@ -62,7 +62,19 @@ export function createNotificationRepository(prisma: PrismaClient): Notification
         WITH claimed AS (
           UPDATE notifications
              SET status = 'SENDING',
-                 updated_at = NOW()
+                 updated_at = NOW(),
+                 -- Una recuperacion consume un intento; una reclamacion normal
+                 -- no. En un UPDATE, la parte derecha ve todavia el valor viejo
+                 -- de status, asi que esto distingue las dos ramas del WHERE.
+                 --
+                 -- Sin esto, una fila que reproduzca el fallo DESPUES de enviar
+                 -- —markSent que falla siempre, o el proceso muerto entre el
+                 -- envio y su registro— se reclamaba cada diez minutos para
+                 -- siempre: el correo salia otra vez en cada ciclo y
+                 -- MAX_DELIVERY_ATTEMPTS no aplicaba nunca porque attempts no
+                 -- avanzaba. NTF-009 exige que un fallo permanente termine en
+                 -- cola muerta, y por este camino no terminaba jamas.
+                 attempts = attempts + CASE WHEN status = 'SENDING' THEN 1 ELSE 0 END
            WHERE id IN (
              SELECT id
                FROM notifications
@@ -121,6 +133,18 @@ export function createNotificationRepository(prisma: PrismaClient): Notification
      * abriría una ventana en la que un envío queda `FAILED` sin fecha de
      * reintento si el proceso muere entre ambas.
      */
+    /*
+     * Sin `increment`: la cuota ya estaba agotada al reclamar y aquí no se
+     * intentó ningún envío. Sumar otro dejaría la fila en seis intentos de
+     * cinco.
+     */
+    async markExhausted(id: string, error: string) {
+      await prisma.notification.update({
+        where: { id },
+        data: { status: 'FAILED', lastError: error },
+      });
+    },
+
     async markFailed(id: string, error: string, retryAt: Date | null) {
       await prisma.notification.update({
         where: { id },
