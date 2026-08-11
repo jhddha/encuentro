@@ -155,8 +155,32 @@ FROM encuentro_app;
 -- 5. Comprobación
 -- ---------------------------------------------------------------------------
 
+-- La comprobación miraba **solo `audit_logs`**, y las otras ocho tablas de la
+-- lista de arriba no las miraba nadie. Una auditoría encontró que en una base ya
+-- creada `encuentro_app` conservaba UPDATE y DELETE sobre `journal_lines`: la
+-- línea del REVOKE se añadió después de crear el rol y el script nunca se volvió
+-- a ejecutar. El bloque dio «separación correcta» igualmente.
+--
+-- Un privilegio que solo se comprueba en una tabla de nueve no es una
+-- comprobación: es una muestra. Ahora recorre la lista entera, y la lista vive
+-- en un solo sitio para que añadir una tabla al REVOKE la añada también aquí.
 DO $$
-DECLARE propias int;
+DECLARE
+  append_only text[] := ARRAY[
+    'audit_logs',
+    'charges',
+    'inventory_movements',
+    'journal_entries',
+    'journal_lines',
+    'material_deliveries',
+    'meal_deliveries',
+    'payment_allocations',
+    'payments'
+  ];
+  tabla text;
+  privilegio text;
+  propias int;
+  faltan text := '';
 BEGIN
   SELECT count(*) INTO propias FROM pg_tables
   WHERE schemaname = 'public' AND tableowner = 'encuentro_app';
@@ -165,14 +189,23 @@ BEGIN
     RAISE EXCEPTION 'encuentro_app sigue siendo propietario de % tablas', propias;
   END IF;
 
-  IF has_table_privilege('encuentro_app', 'audit_logs', 'TRUNCATE') THEN
-    RAISE EXCEPTION 'encuentro_app conserva TRUNCATE sobre audit_logs';
+  FOREACH tabla IN ARRAY append_only LOOP
+    -- TRUNCATE vacía la tabla sin disparar los triggers por fila, así que se
+    -- comprueba junto a UPDATE y DELETE y no aparte.
+    FOREACH privilegio IN ARRAY ARRAY['UPDATE', 'DELETE', 'TRUNCATE'] LOOP
+      IF has_table_privilege('encuentro_app', tabla, privilegio) THEN
+        faltan := faltan || format(E'\n  - %s conserva %s', tabla, privilegio);
+      END IF;
+    END LOOP;
+  END LOOP;
+
+  -- Se acumulan todos y se falla una vez: con un RAISE por hallazgo, arreglar el
+  -- primero solo destapa el siguiente, y hacen falta tantas vueltas como fallos.
+  IF faltan <> '' THEN
+    RAISE EXCEPTION 'encuentro_app conserva privilegios sobre tablas de solo anexado:%', faltan;
   END IF;
 
-  IF has_table_privilege('encuentro_app', 'audit_logs', 'DELETE') THEN
-    RAISE EXCEPTION 'encuentro_app conserva DELETE sobre audit_logs';
-  END IF;
-
-  RAISE NOTICE 'Separación de roles correcta: encuentro_app no es propietario y no puede truncar.';
+  RAISE NOTICE 'Separación de roles correcta: encuentro_app no es propietario y no puede alterar ninguna de las % tablas de solo anexado.',
+    array_length(append_only, 1);
 END
 $$;
