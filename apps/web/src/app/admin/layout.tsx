@@ -1,7 +1,8 @@
+import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
 
 import { Shell, ShellNav } from '@/components/shell';
-import { requireActor } from '@/lib/session';
+import { pilgrimHome, requireActor } from '@/lib/session';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,9 +17,19 @@ export const dynamic = 'force-dynamic';
  * Ojo: esto garantiza *autenticación*. La *autorización* por permiso y scope la
  * exige cada acción con `requirePermission`, porque el permiso depende del
  * recurso concreto, no del hecho de estar dentro de /admin.
+ *
+ * Lo único que sí se decide aquí es la puerta: sin ninguna asignación de rol no
+ * hay permiso que conceder en ninguna pantalla de administración (IAM-003), así
+ * que quien llega sin asignaciones se va a su cuenta. Se resuelve en la
+ * frontera y no en cada botón que navega, porque también entran por aquí el
+ * marcador guardado y la URL escrita a mano.
  */
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  await requireActor();
+  const actor = await requireActor();
+
+  if (actor.assignments.length === 0) {
+    redirect(await pilgrimHome());
+  }
 
   return (
     <Shell

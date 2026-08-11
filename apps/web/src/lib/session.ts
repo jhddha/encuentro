@@ -4,7 +4,7 @@ import { authorize, type Actor, type ResourceContext } from '@encuentro/domain';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { actorResolver } from './container';
+import { actorResolver, eventRepository } from './container';
 import { auth } from './auth';
 
 /**
@@ -80,6 +80,27 @@ export async function requireActor(): Promise<Actor> {
   }
 
   return actor;
+}
+
+/**
+ * Adónde pertenece quien no tiene ninguna asignación de rol.
+ *
+ * `IAM-003` no da un rol a la cuenta: los permisos salen de las asignaciones.
+ * Sin ninguna, no existe permiso que conceder, así que `/admin` no es una
+ * pantalla vacía para esa persona sino una pantalla que no le corresponde.
+ *
+ * La gestión se resuelve por la única habilitada públicamente (EVT-004,
+ * EVT-006), que es la misma que usa la portada. Si esa persona todavía no está
+ * inscrita, `mi-cuenta` ya lo trata: lo dice y ofrece el enlace a la
+ * inscripción. Sin ninguna gestión publicada no hay cuenta que enseñar y queda
+ * la portada.
+ *
+ * Ninguna ruta nueva: las dos están en `contracts/routes.json`.
+ */
+export async function pilgrimHome(): Promise<string> {
+  const event = await eventRepository().findPubliclyEnabled();
+
+  return event === null ? '/' : `/e/${event.code}/mi-cuenta`;
 }
 
 /**
