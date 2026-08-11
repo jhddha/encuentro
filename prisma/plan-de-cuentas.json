@@ -1,0 +1,1358 @@
+[
+  {
+    "code": "111010001",
+    "name": "Caja moneda nacional",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111010002",
+    "name": "Caja moneda extranjera",
+    "kind": "ASSET",
+    "currency": "USD"
+  },
+  {
+    "code": "111010003",
+    "name": "Caja chica",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111010004",
+    "name": "Caja inscripciones moneda nacional",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111010005",
+    "name": "Caja inscripciones moneda extranjera",
+    "kind": "ASSET",
+    "currency": "USD"
+  },
+  {
+    "code": "111010006",
+    "name": "Caja comision inscripciones moneda nacional",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111010007",
+    "name": "Caja comision inscripciones moneda extranjera",
+    "kind": "ASSET",
+    "currency": "USD"
+  },
+  {
+    "code": "111020001",
+    "name": "BMSC 4011072765 M/N",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111020003",
+    "name": "BNB 2000278435",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111020004",
+    "name": "BMSC caja de ahorro 4074876078",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "111020005",
+    "name": "BMSC fondo dinamico CTA. NRO.10111132040",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "112010001",
+    "name": "Cuenta por cobrar peregrino internacional",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "112010002",
+    "name": "Cuenta por cobrar peregrino nacional",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "112010003",
+    "name": "Cuenta por cobrar servidores",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "112010004",
+    "name": "Anticipos terceros",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "113010001",
+    "name": "Bolsones",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "113010002",
+    "name": "Poleras",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "113010003",
+    "name": "Productos del encuentro",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "122010001",
+    "name": "Muebles y enseres",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "122010002",
+    "name": "Equipo de computacion",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "122010003",
+    "name": "Equipo de comunicacion",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "122010004",
+    "name": "Equipos e instalaciones",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "122010005",
+    "name": "Equipos de cocina",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "124010001",
+    "name": "Activo transitorio",
+    "kind": "ASSET",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020001",
+    "name": "Fondos comis. intercesion y don de lenguas",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020002",
+    "name": "Fondos comis. sanación",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020003",
+    "name": "Fondos comis. presentación de talleres",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020004",
+    "name": "Fondos comis. ornamiento y altar",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020005",
+    "name": "Fondos comis. jornada de sanación",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020006",
+    "name": "Fondos comis. confesiones",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020007",
+    "name": "Fondos comis. arreglo floral de altar",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211020008",
+    "name": "Fondos comis. ministerios de musica",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030001",
+    "name": "Fondos comis. acogida",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030002",
+    "name": "Fondos comis. inscripción peregrino",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030003",
+    "name": "Fondos comis. material peregrino",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030004",
+    "name": "Fondos comis. hospedaje",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030005",
+    "name": "Fondos comis. transporte",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030006",
+    "name": "Fondos comis. asistencia de viajes",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030007",
+    "name": "Fondos comis. cambio de monedas",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211030008",
+    "name": "Fondos comis. servicios medicos",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050001",
+    "name": "Fondos comis. administracion de alimentos",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050002",
+    "name": "Fondos comis. desayuno",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050003",
+    "name": "Fondos comis. comida peregrino",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050004",
+    "name": "Fondos comis. refrescos",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050005",
+    "name": "Fondos comis. infusiones y postres",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050006",
+    "name": "Fondos comis. preparacion comida servidores",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211050007",
+    "name": "Fondos comis. entrega comida servidores",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060001",
+    "name": "Fondos comis. radio",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060002",
+    "name": "Fondos comis. diseños",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060003",
+    "name": "Fondos comis.informaciones",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060004",
+    "name": "Fondos comis. estudio TV",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060005",
+    "name": "Fondos comis. videos",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060006",
+    "name": "Fondos comis. venta de libros y souvenirs",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211060007",
+    "name": "Fondos comis. venta de poleras",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211070001",
+    "name": "Fondos comis. orden y seguridad",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211070002",
+    "name": "Fondos comis. limpieza",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211070003",
+    "name": "Fondos comis. jardineria",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211070004",
+    "name": "Fondos comis. logistica de areas",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211080001",
+    "name": "Fondos comis. adoracion al santisimo",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211080002",
+    "name": "Fondos comis. desayuno padres",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211080003",
+    "name": "Fondos comis. comidas padres",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "211090001",
+    "name": "Sueldos por pagar",
+    "kind": "LIABILITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "311010001",
+    "name": "Activo neto no restrigido",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "311010002",
+    "name": "Ajuste de capital",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "311010003",
+    "name": "Aportes por capitalizar",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "311010004",
+    "name": "Ajuste reservas de patrimonio",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "312010001",
+    "name": "Resultados acumulados",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "312010002",
+    "name": "Resultados del ejercicio",
+    "kind": "EQUITY",
+    "currency": "BOB"
+  },
+  {
+    "code": "411010001",
+    "name": "Ofrenda peregrino nacional",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411010002",
+    "name": "Ofrenda peregrino internacional",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411020001",
+    "name": "Donaciones general para el encuentro",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411020002",
+    "name": "Donaciones para predicadores",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411020004",
+    "name": "Donacion para transportes",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411030001",
+    "name": "Donaciones comis. intercesion y don de lenguas",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411030002",
+    "name": "Donaciones comis. sanación",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411030003",
+    "name": "Donaciones comis. presentaci{on de talleres",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411030004",
+    "name": "Donaciones comis. noche de adoración",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411030005",
+    "name": "Donaciones comis. jornada de sanación",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040001",
+    "name": "Donaciones comis. acogida",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040002",
+    "name": "Donaciones comis. inscripción peregrino",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040003",
+    "name": "Donaciones comis. material peregrino",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040004",
+    "name": "Donaciones comis. hospedaje",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040005",
+    "name": "Donaciones comis. transporte",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040006",
+    "name": "Donaciones comis. asistencia de viajes",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040007",
+    "name": "Donaciones comis. cambio de monedas",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411040008",
+    "name": "Donaciones comis. servicios medicos",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050001",
+    "name": "Donaciones comis. ministro de comunion",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050002",
+    "name": "Donaciones comis. liturgia",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050003",
+    "name": "Donaciones comis. lectores en misa",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050004",
+    "name": "Donaciones comis. ornamiento y altar",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050005",
+    "name": "Donaciones coms. decoracion de altar",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050006",
+    "name": "Donaciones comis. confesiones",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050007",
+    "name": "Donaciones comis. arreglo floral de altar",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411050008",
+    "name": "Donaciones comis. ministerios de musica",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060001",
+    "name": "Donaciones comis. administracion de alimentos",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060002",
+    "name": "Donaciones comis. desayuno",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060003",
+    "name": "Donaciones comis. comida peregrino",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060004",
+    "name": "Donaciones comis. refrescos",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060005",
+    "name": "Donaciones comis. infusiones y postres",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060006",
+    "name": "Donaciones comis. preparacion comida servidores",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411060007",
+    "name": "Donaciones comis. entrega comida servidores",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070001",
+    "name": "Donaciones comis. radio",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070002",
+    "name": "Donaciones comis. diseños",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070003",
+    "name": "Donaciones comis.informaciones",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070004",
+    "name": "Donaciones comis. web y redes sociales",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070005",
+    "name": "Donaciones comis. videos",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070006",
+    "name": "Donaciones comis. venta de libros y souvenirs",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411070007",
+    "name": "Donaciones comis. venta de poleras",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411080001",
+    "name": "Donaciones comis. orden y seguridad",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411080002",
+    "name": "Donaciones comis. limpieza",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411080003",
+    "name": "Donaciones comis. jardineria",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411080004",
+    "name": "Donaciones comis. logistica de areas",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411090001",
+    "name": "Donaciones comis. adoracion al santisimo",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411090002",
+    "name": "Donaciones comis. desayuno padres",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411090003",
+    "name": "Donaciones comis. comidas padres",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411100001",
+    "name": "Venta de poleras encuentro",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411100002",
+    "name": "Venta de productos souvenirs encuentro",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411100003",
+    "name": "Venta de otros items",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411100004",
+    "name": "Ingresos por venta de bebidas",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "411100005",
+    "name": "Ingreso por ventas articulos predicadores",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "421010001",
+    "name": "Diferencia de cambio",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "421010002",
+    "name": "Diferencia por redondeo",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "421020001",
+    "name": "Mantenimiento de valor",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "421030001",
+    "name": "Sobrantes",
+    "kind": "INCOME",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010001",
+    "name": "Ofrenda a personal de apoyo en la organización",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010002",
+    "name": "Gastos de transporte",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010003",
+    "name": "Material de escritorio",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010004",
+    "name": "Material de limpieza",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010005",
+    "name": "Alimentacion y refrigerios",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010006",
+    "name": "Courrier",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010007",
+    "name": "Fotocopias y anillados",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010008",
+    "name": "Gastos generales",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010009",
+    "name": "Gastos legales",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010010",
+    "name": "Honorarios profesionales",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010011",
+    "name": "Servicios telefonicos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010012",
+    "name": "Energia electrica",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010013",
+    "name": "Agua potable",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010014",
+    "name": "Servicio internet",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010015",
+    "name": "Seguridad y vigilancia",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010016",
+    "name": "Servicio de sistema",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010017",
+    "name": "Sueldos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611010018",
+    "name": "Uniformes oficina",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020001",
+    "name": "Mantenimiento de equipo de computacion",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020002",
+    "name": "Mantenimiento de oficina",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020003",
+    "name": "Mantenimiento equipo e instalaciones",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020004",
+    "name": "Mantenimiento muebles y eneseres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020005",
+    "name": "Mantenimiento y pintado de paredes",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020006",
+    "name": "Limpieza de edificio y pahuichi",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020007",
+    "name": "Insumos de hospedaje",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020008",
+    "name": "Insumos de cocina",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020009",
+    "name": "Insumos de computacion",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611020010",
+    "name": "Gastos logísticos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611030001",
+    "name": "Otros gastos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611030002",
+    "name": "Publicidad y propaganda",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611030003",
+    "name": "Gastos de imprenta",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611030004",
+    "name": "Gastos de eventos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611040001",
+    "name": "Gastos bancarios y comisiones",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611040002",
+    "name": "Gastos i.t.f.",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611040003",
+    "name": "Diferencia de cambio por redondeo",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611050001",
+    "name": "Boletos de predicadores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611050002",
+    "name": "Hospedaje",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611050003",
+    "name": "Ofrenda para predicadores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060001",
+    "name": "Credencial peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060002",
+    "name": "Manilla peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060003",
+    "name": "Cuaderno peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060004",
+    "name": "Hospedaje",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060005",
+    "name": "Alimentacion peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060006",
+    "name": "Becas peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611060007",
+    "name": "Gastos material peregrinos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070001",
+    "name": "Retiros y talleres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070002",
+    "name": "Credencial servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070003",
+    "name": "Transporte servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070004",
+    "name": "Alimentacion servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070005",
+    "name": "Otros gastos servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611070006",
+    "name": "Gastos evaluacion encuentro",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611080001",
+    "name": "Fondos comis. intercesion y don de lenguas",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611080002",
+    "name": "Fondos comis. sanación",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611080003",
+    "name": "Fondos comis. presentaci{on de talleres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611080004",
+    "name": "Fondos comis. noche de adoración",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611080005",
+    "name": "Fondos comis. jornada de sanación",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090001",
+    "name": "Fondos comis. acogida",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090002",
+    "name": "Fondos comis. inscripción peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090003",
+    "name": "Fondos comis. material peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090004",
+    "name": "Fondos comis. hospedaje",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090005",
+    "name": "Fondos comis. transporte",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090006",
+    "name": "Fondos comis. asistencia de viajes",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090007",
+    "name": "Fondos comis. cambio de monedas",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611090008",
+    "name": "Fondos comis. servicios medicos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100001",
+    "name": "Fondos comis. ministro de comunion",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100002",
+    "name": "Fondos comis. liturgia",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100003",
+    "name": "Fondos comis. lectores en misa",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100004",
+    "name": "Fondos comis. ornamiento y altar",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100005",
+    "name": "Fondos comis. decoracion de altar",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100006",
+    "name": "Fondos comis. confesiones",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100007",
+    "name": "Fondos comis. arreglo floral de altar",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611100008",
+    "name": "Fondos comis. ministerios de musica",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110001",
+    "name": "Fondos comis. administracion de alimentos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110002",
+    "name": "Fondos comis. desayuno",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110003",
+    "name": "Fondos comis. comida peregrino",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110004",
+    "name": "Fondos comis. refrescos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110005",
+    "name": "Fondos comis. infusiones y postres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110006",
+    "name": "Fondos comis. preparacion comida servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611110007",
+    "name": "Fondos comis. entrega comida servidores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120001",
+    "name": "Fondos comis. radio",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120002",
+    "name": "Fondos comis. diseños",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120003",
+    "name": "Fondos comis.informaciones",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120004",
+    "name": "Fondos comis. web y redes sociales",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120005",
+    "name": "Fondos comis. videos",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120006",
+    "name": "Fondos comis. venta de libros y souvenirs",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120007",
+    "name": "Fondos comis. venta de poleras",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611120008",
+    "name": "Gastos venta de articulos predicadores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611130001",
+    "name": "Fondos comis. orden y seguridad",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611130002",
+    "name": "Fondos comis. limpieza",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611130003",
+    "name": "Fondos comis. jardineria",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611130004",
+    "name": "Fondos comis. logistica de areas",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611140001",
+    "name": "Fondos comis. adoracion al santisimo",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611140002",
+    "name": "Fondos comis. desayuno padres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611140003",
+    "name": "Fondos comis. comidas padres",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "611140004",
+    "name": "Gastos comisione venta de bebida",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010001",
+    "name": "Mantenimiento de valor",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010002",
+    "name": "Diferencia de cambio",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010003",
+    "name": "Diferencia por redondeo",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010004",
+    "name": "Diferencia de inventarios",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010005",
+    "name": "Ajuste de gestiones anteriores",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010006",
+    "name": "Faltantes",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  },
+  {
+    "code": "621010007",
+    "name": "Impto. a las transacciones financieras ITF",
+    "kind": "EXPENSE",
+    "currency": "BOB"
+  }
+]

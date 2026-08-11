@@ -1,29 +1,37 @@
+import importadas from './plan-de-cuentas.json';
+
 /**
  * Plan de cuentas de la organización — DEC-018.
  *
- * La decisión fija veintiún **roles** contables; qué cuenta representa cada rol
- * es «configuración de la organización», y así lo dice el propio contrato en
- * sus subdecisiones abiertas. Esto la cierra: los códigos y nombres salen del
- * plan que la organización usa hoy en su sistema contable, no de una
- * numeración inventada.
+ * Son las **226 cuentas imputables** del sistema contable que la organización
+ * usa hoy, más seis que hacen falta y todavía no existen allá. Los códigos y
+ * nombres salen de su plan; ninguno está inventado.
+ *
+ * `plan-de-cuentas.json` lo genera `scripts/importar_plan_contable.py` desde la
+ * hoja que exporta su sistema. Se regenera cuando el plan cambie; no se edita a
+ * mano, o la próxima importación se llevará el cambio por delante.
+ *
+ * POR QUÉ TODAS Y NO SOLO LAS QUE EL SISTEMA IMPUTA
+ *
+ * Más de la mitad —124 de 226— llevan la comisión dentro del nombre: «fondos
+ * comis. hospedaje», «gastos comis. transporte». Es lo que se hace cuando el
+ * sistema contable no tiene una dimensión de comisión: se abre una subcuenta
+ * por cada una.
+ *
+ * `journal_entries` y `journal_lines` **tampoco la tienen**. Así que hoy la
+ * cuenta es el único sitio donde esa dimensión puede vivir, y sin las 226 el
+ * mayor del sistema no se podría cuadrar contra los libros reales. ACC-014 pide
+ * que la comisión sea un eje propio; mientras no lo sea, esto es lo que hay.
  *
  * LA MONEDA FUNCIONAL ES EL BOLIVIANO
  *
- * Los libros se llevan en bolivianos. Solo **caja y bancos** aparecen por
- * duplicado, una cuenta por divisa, porque son los únicos que guardan dinero
- * real en cada una — es lo que hace su plan con «caja moneda nacional» y «caja
- * moneda extranjera». Ingresos, gastos y pasivos viven en bolivianos: un cobro
- * en dólares se convierte a la tasa congelada (DEC-009) y la diferencia va a
- * `421010001` o `621010002`.
+ * Solo tres cuentas están en dólares, y las tres son cajas: son las únicas que
+ * guardan dinero real en otra divisa. Ingresos, gastos y pasivos viven en
+ * bolivianos; un cobro en dólares se convierte a la tasa congelada (DEC-009) y
+ * la diferencia va a las cuentas de diferencia de cambio, que el plan ya tiene.
  *
- * Confundir los dos ejes es fácil y caro: «ofrenda peregrino nacional» e
- * «internacional» distinguen el **origen del peregrino**, no la moneda. Un
- * peregrino nacional puede pagar en dólares. La primera versión de este fichero
- * las mapeó a BOB y USD, y estaba mal.
- *
- * El disparador `journal_line_must_match_entry` exige que la línea, su asiento
- * y su cuenta compartan moneda: es lo que impide imputar un cobro en dólares
- * contra la caja en bolivianos.
+ * No confundir con el origen del peregrino: «ofrenda peregrino nacional» e
+ * «internacional» distinguen de dónde viene, no en qué moneda paga.
  */
 
 export type Moneda = 'BOB' | 'USD';
@@ -35,33 +43,19 @@ export interface CuentaContable {
   readonly kind: 'ASSET' | 'LIABILITY' | 'EQUITY' | 'INCOME' | 'EXPENSE';
   readonly currency: Moneda;
   readonly role: string | null;
-  /** Cuenta que no existe en el plan actual y hay que abrir. */
+  /** Cuenta que no existe en el plan de la organización y hay que abrir allá. */
   readonly nueva?: true;
 }
 
-export const PLAN_DE_CUENTAS = [
-  // --- Disponible -----------------------------------------------------------
-  {
-    code: '111010004',
-    name: 'Caja inscripciones moneda nacional',
-    kind: 'ASSET',
-    currency: 'BOB',
-    role: 'CASH_ON_HAND',
-  },
-  {
-    code: '111010005',
-    name: 'Caja inscripciones moneda extranjera',
-    kind: 'ASSET',
-    currency: 'USD',
-    role: 'CASH_ON_HAND',
-  },
-  {
-    code: '111020001',
-    name: 'BMSC 4011072765 M/N',
-    kind: 'ASSET',
-    currency: 'BOB',
-    role: 'BANK_ACCOUNT',
-  },
+/**
+ * Cuentas que hacen falta y el plan actual no tiene.
+ *
+ * Numeradas siguiendo su esquema y colgando de cabeceras que ya existen vacías
+ * —«fondos a rendir», «cuentas por pagar», «anticipos»—. **Están en el sistema
+ * y todavía no en el plan contable**: hay que abrirlas allá para que los dos
+ * coincidan.
+ */
+const NUEVAS: readonly CuentaContable[] = [
   {
     /*
      * En Bolivia no se maneja cuenta bancaria en dólares, así que los cobros en
@@ -74,8 +68,6 @@ export const PLAN_DE_CUENTAS = [
     role: 'BANK_ACCOUNT',
     nueva: true,
   },
-
-  // --- Otros activos --------------------------------------------------------
   {
     code: '112020001',
     name: 'Fondos a rendir servidores',
@@ -85,32 +77,11 @@ export const PLAN_DE_CUENTAS = [
     nueva: true,
   },
   {
-    code: '113010003',
-    name: 'Productos del encuentro',
-    kind: 'ASSET',
-    currency: 'BOB',
-    role: 'INVENTORY',
-  },
-  {
-    /*
-     * El rol es genérico y el plan tiene cinco subcuentas de activo fijo. Se
-     * elige «equipos e instalaciones» por ser la más amplia; si la organización
-     * prefiere otra, es cambiar esta línea.
-     */
-    code: '122010004',
-    name: 'Equipos e instalaciones',
-    kind: 'ASSET',
-    currency: 'BOB',
-    role: 'FIXED_ASSETS',
-  },
-
-  // --- Pasivo ---------------------------------------------------------------
-  {
-    code: '211110001',
-    name: 'Anticipos de peregrinos',
+    code: '211090002',
+    name: 'Reembolsos a servidores por pagar',
     kind: 'LIABILITY',
     currency: 'BOB',
-    role: 'PARTICIPANT_ADVANCES',
+    role: 'STAFF_REIMBURSEMENTS_PAYABLE',
     nueva: true,
   },
   {
@@ -122,53 +93,12 @@ export const PLAN_DE_CUENTAS = [
     nueva: true,
   },
   {
-    code: '211090002',
-    name: 'Reembolsos a servidores por pagar',
+    code: '211110001',
+    name: 'Anticipos de peregrinos',
     kind: 'LIABILITY',
     currency: 'BOB',
-    role: 'STAFF_REIMBURSEMENTS_PAYABLE',
+    role: 'PARTICIPANT_ADVANCES',
     nueva: true,
-  },
-
-  // --- Ingresos -------------------------------------------------------------
-  /*
-   * LAS DOS OFRENDAS ESTÁN SEMBRADAS Y SIN ROL, A PROPÓSITO.
-   *
-   * La organización imputa la ofrenda a una cuenta o a otra **según la
-   * nacionalidad del peregrino**. Hospedaje y transporte no son ingresos
-   * aparte: forman parte de la inscripción y no se separan en el libro.
-   *
-   * Eso deja el contrato de DEC-018 desalineado en dos sentidos. Tiene tres
-   * roles de ingreso donde hacen falta dos, y los suyos discriminan por
-   * concepto donde aquí se discrimina por origen. Mientras no se resuelva,
-   * `REGISTRATION_REVENUE` se queda **sin cuenta**: asignárselo a la nacional
-   * mandaría en silencio las ofrendas internacionales a la cuenta equivocada, y
-   * un motor que falla es preferible a un mayor que miente.
-   *
-   * La corrección propuesta —partir el rol en dos y retirar los de hospedaje y
-   * transporte— toca `contracts/accounting-rules.json`, que es fuente de verdad
-   * de una decisión aprobada. Espera autorización explícita.
-   */
-  {
-    code: '411010001',
-    name: 'Ofrenda peregrino nacional',
-    kind: 'INCOME',
-    currency: 'BOB',
-    role: null,
-  },
-  {
-    code: '411010002',
-    name: 'Ofrenda peregrino internacional',
-    kind: 'INCOME',
-    currency: 'BOB',
-    role: null,
-  },
-  {
-    code: '411020001',
-    name: 'Donaciones general para el encuentro',
-    kind: 'INCOME',
-    currency: 'BOB',
-    role: 'MONETARY_DONATION_REVENUE',
   },
   {
     code: '411020005',
@@ -178,90 +108,53 @@ export const PLAN_DE_CUENTAS = [
     role: 'IN_KIND_DONATION_REVENUE',
     nueva: true,
   },
-  {
-    code: '421030001',
-    name: 'Sobrantes',
-    kind: 'INCOME',
-    currency: 'BOB',
-    role: 'INVENTORY_SURPLUS',
-  },
+];
 
-  // --- Egresos --------------------------------------------------------------
-  {
-    code: '611010008',
-    name: 'Gastos generales',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: 'OPERATING_EXPENSE',
-  },
-  {
-    code: '611060005',
-    name: 'Alimentación peregrino',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: 'FOOD_AND_MATERIALS_EXPENSE',
-  },
-  {
-    code: '621010006',
-    name: 'Faltantes',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: 'LOSS_AND_WASTE_EXPENSE',
-  },
-  {
-    code: '611040001',
-    name: 'Gastos bancarios y comisiones',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: 'PAYMENT_PROCESSING_FEES',
-  },
-  {
-    /*
-     * El plan parte la diferencia en dos —`421010002` cuando es a favor y
-     * `621010003` cuando es en contra— y eso es más correcto que una sola
-     * cuenta: un abono a una cuenta de gasto se lee mal en un mayor. El rol
-     * apunta al gasto, que es el caso que el sistema produce al conciliar caja.
-     */
-    code: '621010003',
-    name: 'Diferencia por redondeo',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: 'RECONCILIATION_DIFFERENCES',
-  },
+/**
+ * Qué cuenta del plan representa cada rol de DEC-018.
+ *
+ * Es la asignación que el contrato deja explícitamente a la organización. Una
+ * cuenta sin rol es una cuenta normal del plan: existe, admite movimiento y
+ * ningún asiento automático la elige.
+ */
+const ROL_POR_CODIGO: Readonly<Record<string, string>> = {
+  '111010004': 'CASH_ON_HAND', // caja inscripciones M/N
+  '111010005': 'CASH_ON_HAND', // caja inscripciones M/E
+  '111020001': 'BANK_ACCOUNT', // BMSC — también recibe los cobros por QR
+  '113010003': 'INVENTORY',
+  '122010004': 'FIXED_ASSETS',
+  '411020001': 'MONETARY_DONATION_REVENUE',
+  '421030001': 'INVENTORY_SURPLUS',
+  '611010008': 'OPERATING_EXPENSE',
+  '611040001': 'PAYMENT_PROCESSING_FEES',
+  '611060005': 'FOOD_AND_MATERIALS_EXPENSE',
+  '621010003': 'RECONCILIATION_DIFFERENCES',
+  '621010006': 'LOSS_AND_WASTE_EXPENSE',
+};
 
-  // --- Diferencia de cambio -------------------------------------------------
-  /*
-   * No son roles de DEC-018 y hacen falta igual: cobrar en dólares una gestión
-   * cuyos libros son en bolivianos produce diferencia de cambio en cuanto la
-   * tasa se mueve entre la carga de la evidencia y su liquidación. Se siembran
-   * sin rol para que existan cuando el motor de la fase 11 las necesite.
-   */
-  {
-    code: '421010001',
-    name: 'Diferencia de cambio (ingreso)',
-    kind: 'INCOME',
-    currency: 'BOB',
-    role: null,
-  },
-  {
-    code: '621010002',
-    name: 'Diferencia de cambio (gasto)',
-    kind: 'EXPENSE',
-    currency: 'BOB',
-    role: null,
-  },
-] as const satisfies readonly CuentaContable[];
+export const PLAN_DE_CUENTAS: readonly CuentaContable[] = [
+  ...importadas.map((cuenta): CuentaContable => ({
+    code: cuenta.code,
+    name: cuenta.name,
+    kind: cuenta.kind as CuentaContable['kind'],
+    currency: cuenta.currency as Moneda,
+    role: ROL_POR_CODIGO[cuenta.code] ?? null,
+  })),
+  ...NUEVAS,
+];
 
 /** Roles de DEC-018 que quedan sin cuenta, con su motivo. */
 export const ROLES_SIN_CUENTA: Readonly<Record<string, string>> = {
   QR_CLEARING:
-    'Los cobros por QR se imputan directamente a la cuenta del BMSC. El resolutor de canales ' +
-    'debe llevar el canal QR a BANK_ACCOUNT en vez de a una cuenta puente que nadie concilia.',
+    'Los cobros por QR se imputan directamente a la cuenta del BMSC, que ya tiene el rol ' +
+    'BANK_ACCOUNT. No hay cuenta puente, y crear una que nadie concilia sería inventar ' +
+    'movimiento. El resolutor de canales debe llevar el canal QR a BANK_ACCOUNT.',
   PAYMENT_GATEWAY_CLEARING: 'No hay pasarela de pago en v1 (DEC-015).',
   REGISTRATION_REVENUE:
-    'La organización imputa la ofrenda según la nacionalidad del peregrino, y el contrato tiene ' +
-    'un solo rol. Asignárselo a la cuenta nacional mandaría las ofrendas internacionales a la ' +
-    'cuenta equivocada sin que nada lo dijera. Espera partir el rol en dos.',
+    'La organización imputa la ofrenda según la nacionalidad del peregrino —411010001 nacional, ' +
+    '411010002 internacional— y el contrato tiene un solo rol. Asignárselo a una de las dos ' +
+    'mandaría la mitad de las ofrendas a la cuenta equivocada sin que nada lo dijera. Espera ' +
+    'partir el rol en dos.',
   LODGING_REVENUE:
     'El hospedaje no es un ingreso aparte: forma parte de la inscripción y no se separa en el ' +
     'libro. El rol sobra en este plan.',
