@@ -1,8 +1,11 @@
 import 'server-only';
 
-import { createAuth } from '@encuentro/infrastructure';
+import { createAuth, enqueueNotification } from '@encuentro/infrastructure';
 
 import { prisma } from './container';
+
+/** Plantilla del correo de verificación (DEC-013). La siembra el seed. */
+const PLANTILLA_VERIFICACION = 'AUTH_EMAIL_VERIFICATION';
 
 /**
  * Instancia de autenticación del proceso web.
@@ -20,17 +23,33 @@ export function auth() {
     prisma: prisma(),
     secret: requireEnv('SESSION_SECRET'),
     baseURL: requireEnv('APP_URL'),
-    sendVerificationEmail: ({ email, url }) => {
+    sendVerificationEmail: async ({ email, url }) => {
       /*
-       * DEC-013 y GOV-008: el envío real pertenece al worker (P13), vía outbox.
-       * Hasta entonces el enlace se registra en el log del servidor para poder
-       * completar el flujo en desarrollo.
+       * DEC-013 y GOV-008: el correo se **encola**, no se envía desde aquí. Una
+       * caída de SMTP no puede revertir una cuenta recién creada, y el worker
+       * reintenta con espera creciente hasta abandonar a los cinco intentos.
        *
-       * No se envía correo desde la petición a propósito: una caída de SMTP no
-       * puede revertir la creación de la cuenta.
+       * El precio, y conviene saberlo: sin worker corriendo no sale ningún
+       * correo. Las filas se quedan en `PENDING` y se ven en la tabla.
        */
-      console.info(`[verificación de correo] ${email}: ${url}`);
-      return Promise.resolve();
+      try {
+        await enqueueNotification(prisma(), {
+          templateCode: PLANTILLA_VERIFICACION,
+          toEmail: email,
+          variables: { url },
+        });
+      } catch (error) {
+        /*
+         * Si encolar falla —falta la plantilla, la base tropieza— la cuenta ya
+         * está creada y no se deshace. Queda el enlace en el registro para no
+         * dejar a nadie encerrado fuera, que es exactamente lo que hacía este
+         * bloque cuando el envío todavía no existía.
+         */
+        console.error(
+          `[verificación de correo] no se pudo encolar para ${email}: ${String(error)}`,
+        );
+        console.info(`[verificación de correo] enlace de respaldo: ${url}`);
+      }
     },
   });
 

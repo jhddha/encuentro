@@ -21,6 +21,11 @@ export {
 } from './registration-confirmation-repository.js';
 export { createReservationRepository } from './reservation-repository.js';
 export { createNotificationRepository } from './notification-repository.js';
+export {
+  enqueueNotification,
+  NotificationTemplateMissing,
+  type EnqueueNotificationInput,
+} from './notification-outbox.js';
 export { createEmailSender, findSmtpSettings, type SmtpCredentials } from './email-sender.js';
 export {
   createReceiptToken,

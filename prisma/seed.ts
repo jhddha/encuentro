@@ -5,6 +5,31 @@ import { createPrismaClient } from '@encuentro/infrastructure';
 import { ROLES } from './roles';
 
 /**
+ * Plantillas de correo del sistema.
+ *
+ * Texto plano: `createEmailSender` envía `text`, no HTML. Los marcadores son
+ * `{{variable}}` y `renderTemplate` **falla** si falta alguna, en vez de dejar
+ * un hueco — un correo que dice «Su pago de  ha sido aprobado» es peor que no
+ * enviarlo.
+ */
+const TEMPLATES = [
+  {
+    code: 'AUTH_EMAIL_VERIFICATION',
+    version: 1,
+    subject: 'Verifique su correo — Encuentro',
+    body: [
+      'Le damos la bienvenida a Encuentro.',
+      '',
+      'Para activar su cuenta, abra este enlace:',
+      '{{url}}',
+      '',
+      'El enlace caduca y solo puede usarse una vez. Si no fue usted quien creó',
+      'la cuenta, ignore este mensaje: sin abrirlo, no se activa nada.',
+    ].join('\n'),
+  },
+] as const;
+
+/**
  * Datos mínimos de desarrollo.
  *
  * Crea una gestión de referencia y los roles con sus permisos, para poder
@@ -73,7 +98,30 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log(`Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, 1 usuario.`);
+  /*
+   * Plantillas de correo del sistema.
+   *
+   * Son datos del producto, no configuración de la organización: el texto de la
+   * verificación de correo no lo decide cada instalación. Por eso viven aquí y
+   * no en la pantalla de administración, donde sí vive el servidor SMTP
+   * (GOV-007).
+   *
+   * `@@unique([code, version])`: publicar un texto nuevo es una fila nueva con
+   * versión siguiente, no un UPDATE. Los envíos ya despachados siguen
+   * apuntando al texto con el que salieron.
+   */
+  for (const template of TEMPLATES) {
+    await prisma.notificationTemplate.upsert({
+      where: { code_version: { code: template.code, version: template.version } },
+      update: {},
+      create: template,
+    });
+  }
+
+  console.log(
+    `Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, 1 usuario, ` +
+      `${String(TEMPLATES.length)} plantillas de correo.`,
+  );
 }
 
 main()

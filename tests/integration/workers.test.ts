@@ -3,6 +3,8 @@ import { HELD_DURATION_MS, MAX_DELIVERY_ATTEMPTS, STALE_SENDING_MS } from '@encu
 import {
   createNotificationRepository,
   createReservationRepository,
+  enqueueNotification,
+  NotificationTemplateMissing,
   type PrismaClient,
 } from '@encuentro/infrastructure';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
@@ -521,5 +523,91 @@ describe('cola de notificaciones contra la base', () => {
 
       expect(await notifications.claimDue(NOW, 10)).toHaveLength(0);
     });
+  });
+});
+
+/**
+ * Encolado de correo — GOV-008.
+ *
+ * La verificación de correo (DEC-013) dejó de escribirse en la consola y pasa
+ * por aquí. Es el punto donde un fallo se paga caro: si encolar no funciona,
+ * nadie puede activar su cuenta y el sistema no lo dice en ninguna parte.
+ */
+describe('bandeja de salida de correo', () => {
+  beforeEach(async () => {
+    await resetDatabase(prisma);
+  });
+
+  async function plantilla(code: string, active = true): Promise<void> {
+    await prisma.notificationTemplate.create({
+      data: { code, subject: 'Verifique su correo', body: 'Abra {{url}}', active },
+    });
+  }
+
+  it('deja el envío listo con sus variables ya resueltas', async () => {
+    await plantilla('AUTH_EMAIL_VERIFICATION');
+
+    const id = await enqueueNotification(prisma, {
+      templateCode: 'AUTH_EMAIL_VERIFICATION',
+      toEmail: 'peregrino@ejemplo.test',
+      variables: { url: 'https://encuentro.test/verificar?token=abc' },
+    });
+
+    const fila = await prisma.notification.findUniqueOrThrow({ where: { id } });
+
+    expect(fila.status).toBe('PENDING');
+    expect(fila.toEmail).toBe('peregrino@ejemplo.test');
+    expect(fila.variables).toEqual({ url: 'https://encuentro.test/verificar?token=abc' });
+
+    // Verificar un correo es cosa de la cuenta, no de una gestión.
+    expect(fila.eventId).toBeNull();
+  });
+
+  it('elige la versión más alta cuando la plantilla se ha republicado', async () => {
+    await plantilla('AUTH_EMAIL_VERIFICATION');
+    const nueva = await prisma.notificationTemplate.create({
+      data: {
+        code: 'AUTH_EMAIL_VERIFICATION',
+        version: 2,
+        subject: 'Verifique su correo (v2)',
+        body: 'Abra {{url}}',
+      },
+    });
+
+    const id = await enqueueNotification(prisma, {
+      templateCode: 'AUTH_EMAIL_VERIFICATION',
+      toEmail: 'peregrino@ejemplo.test',
+      variables: { url: 'https://encuentro.test/x' },
+    });
+
+    const fila = await prisma.notification.findUniqueOrThrow({ where: { id } });
+    expect(fila.templateId).toBe(nueva.id);
+  });
+
+  it('no encola contra una plantilla desactivada', async () => {
+    await plantilla('AUTH_EMAIL_VERIFICATION', false);
+
+    await expect(
+      enqueueNotification(prisma, {
+        templateCode: 'AUTH_EMAIL_VERIFICATION',
+        toEmail: 'peregrino@ejemplo.test',
+        variables: { url: 'https://encuentro.test/x' },
+      }),
+    ).rejects.toThrow(NotificationTemplateMissing);
+  });
+
+  /*
+   * El caso que de verdad importa: sin plantilla sembrada, encolar falla. La
+   * llamada de `auth.ts` lo captura y deja el enlace en el registro, porque la
+   * cuenta ya está creada y dejar a alguien encerrado fuera es peor que un log.
+   */
+  it('falla con un error que nombra la plantilla que falta', async () => {
+    await expect(
+      enqueueNotification(prisma, {
+        templateCode: 'AUTH_EMAIL_VERIFICATION',
+        toEmail: 'peregrino@ejemplo.test',
+        variables: { url: 'https://encuentro.test/x' },
+      }),
+    ).rejects.toThrow(/AUTH_EMAIL_VERIFICATION/);
   });
 });

@@ -28,7 +28,8 @@
     "test:load": "tsx scripts/load-test.mts",
     "db:fixture": "tsx prisma/dev-fixture.ts",
     "db:e2e": "tsx scripts/preparar-base-desechable.mts e2e",
-    "db:test": "tsx scripts/preparar-base-desechable.mts test"
+    "db:test": "tsx scripts/preparar-base-desechable.mts test",
+    "smtp:set": "tsx scripts/configurar-smtp.mts"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
