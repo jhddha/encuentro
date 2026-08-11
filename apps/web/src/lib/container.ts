@@ -6,6 +6,7 @@ import {
   createActorResolver,
   createCatalogRepository,
   createEventRepository,
+  createExchangeRateRepository,
   createObjectStorage,
   createPaymentProofRepository,
   createPrismaClient,
@@ -52,6 +53,10 @@ export function eventRepository() {
 
 export function actorResolver() {
   return createActorResolver(prismaClient());
+}
+
+export function exchangeRateRepository() {
+  return createExchangeRateRepository(prismaClient());
 }
 
 export function catalogRepository() {

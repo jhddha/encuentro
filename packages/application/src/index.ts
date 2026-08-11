@@ -85,3 +85,10 @@ export {
   type ReviewPaymentProofDeps,
   type TakeForReviewCommand,
 } from './review-payment-proof.js';
+
+export {
+  registerExchangeRate,
+  type ExchangeRateRecord,
+  type ExchangeRateRepository,
+  type RegisterExchangeRateInput,
+} from './register-exchange-rate.js';

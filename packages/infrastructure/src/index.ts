@@ -20,6 +20,7 @@ export {
   type RegistrationRow,
 } from './registration-confirmation-repository.js';
 export { createReservationRepository } from './reservation-repository.js';
+export { createExchangeRateRepository } from './exchange-rate-repository.js';
 export { createNotificationRepository } from './notification-repository.js';
 export {
   enqueueNotification,

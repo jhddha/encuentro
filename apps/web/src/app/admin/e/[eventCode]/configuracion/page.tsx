@@ -1,8 +1,16 @@
-import { totalDays } from '@encuentro/domain';
-import { Card, EmptyState, PageHeader, ReadonlyState, StatusBadge } from '@encuentro/ui';
+import { civilDayIn, formatRate, totalDays } from '@encuentro/domain';
+import {
+  Card,
+  EmptyState,
+  PageHeader,
+  ReadonlyState,
+  ScrollableTable,
+  StatusBadge,
+} from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { eventRepository } from '@/lib/container';
+import { ExchangeRateForm } from './ExchangeRateForm';
+import { eventRepository, exchangeRateRepository, prisma } from '@/lib/container';
 import { requirePermission } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Configuración de la gestión' };
@@ -45,6 +53,28 @@ export default async function EventConfigurationPage({
   await requirePermission('event.read', { type: 'EVENT', eventId: event.id });
 
   const days = totalDays(event.startAt, event.endAt);
+
+  /*
+   * Las monedas extranjeras salen de los canales de cobro activos, no de una
+   * lista fija: si la gestión no cobra en dólares, no hay tasa que registrar y
+   * el formulario lo dice en vez de ofrecer una moneda que nadie usa.
+   */
+  const canales = await prisma().paymentChannel.findMany({
+    where: { eventId: event.id, active: true },
+    select: { currency: true },
+    distinct: ['currency'],
+  });
+
+  const monedasExtranjeras = canales
+    .map((canal) => canal.currency)
+    .filter((moneda) => moneda !== event.currency)
+    .sort();
+
+  const tasas = await exchangeRateRepository().listRecent(event.id, 10);
+
+  // El día que se propone es el civil de la gestión, no el de quien mira: la
+  // tasa es del día de allá (NFR-013).
+  const hoy = civilDayIn(event.timezone, new Date());
 
   const fields = [
     { label: 'Código', value: event.code, note: 'Único, junto con el año (EVT-001).' },
@@ -91,6 +121,64 @@ export default async function EventConfigurationPage({
             </div>
           ))}
         </dl>
+      </Card>
+
+      <Card className="flex flex-col gap-5">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-lg font-semibold">Tasa de cambio del día</h2>
+          <p className="text-sm">
+            Cierra TBD-001: sin una tasa registrada, un cobro en moneda extranjera se rechaza porque
+            congelarla exigiría inventar el número.
+          </p>
+        </div>
+
+        <ExchangeRateForm
+          eventCode={event.code}
+          eventId={event.id}
+          functionalCurrency={event.currency}
+          monedasExtranjeras={monedasExtranjeras}
+          hoy={hoy}
+        />
+
+        {tasas.length > 0 && (
+          <div className="flex flex-col gap-2">
+            <h3 className="text-sm font-medium">Últimas registradas</h3>
+            <ScrollableTable label="Tasas de cambio registradas">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-[var(--color-ink)]/15 text-left">
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      Día
+                    </th>
+                    <th scope="col" className="py-2 pr-4 font-medium">
+                      Tasa
+                    </th>
+                    <th scope="col" className="py-2 font-medium">
+                      La registró
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasas.map((tasa) => (
+                    <tr
+                      key={`${tasa.effectiveOn}-${tasa.currency}`}
+                      className="border-b border-[var(--color-ink)]/10"
+                    >
+                      <td className="py-2 pr-4 font-mono tabular-nums">{tasa.effectiveOn}</td>
+                      <td className="py-2 pr-4 tabular-nums">
+                        {formatRate(
+                          { currency: tasa.currency, rateMicros: tasa.rateMicros },
+                          event.currency,
+                        )}
+                      </td>
+                      <td className="py-2">{tasa.registeredBy}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </ScrollableTable>
+          </div>
+        )}
       </Card>
 
       {/*

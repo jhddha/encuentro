@@ -235,15 +235,53 @@ async function main(): Promise<void> {
    * canal en otra moneda haría que la pantalla del peregrino rechazara toda
    * declaración con un mensaje que parecería un fallo del código.
    */
-  const channel = await prisma.paymentChannel.upsert({
-    where: { eventId_code: { eventId: event.id, code: 'US_ACCOUNT_MANUAL' } },
-    update: { active: true },
-    create: {
-      eventId: event.id,
-      code: 'US_ACCOUNT_MANUAL',
+  /*
+   * El canal de la cuenta de Estados Unidos cobra en **dólares**, no en la
+   * moneda de la gestión: es una cuenta en dólares y esa es su moneda. Al pasar
+   * los libros a bolivianos lo puse en `event.currency` y era un error — el
+   * canal no cambia de divisa porque cambien los libros.
+   *
+   * Deja el fixture en el caso que de verdad interesa probar: cobro en moneda
+   * extranjera contra una gestión en la funcional, que es lo que exige tasa.
+   *
+   * `update` fija también la moneda: sin eso, una fila creada antes conserva la
+   * suya y el fixture informa de una cosa mientras la base tiene otra. Pasó.
+   */
+  const canales = [
+    {
+      code: 'BOLIVIA_QR_MANUAL',
       currency: event.currency,
+      instructions: 'QR de desarrollo. Datos ficticios, no transfiera nada.',
+    },
+    {
+      code: 'US_ACCOUNT_MANUAL',
+      currency: 'USD',
       instructions: 'Cuenta de desarrollo 0000-0000. Datos ficticios, no transfiera nada.',
     },
+  ];
+
+  for (const definicion of canales) {
+    await prisma.paymentChannel.upsert({
+      where: { eventId_code: { eventId: event.id, code: definicion.code } },
+      // `update` fija también la moneda: sin eso, una fila creada antes conserva
+      // la suya y el fixture informa de una cosa mientras la base tiene otra.
+      update: { active: true, currency: definicion.currency },
+      create: { eventId: event.id, ...definicion },
+    });
+  }
+
+  /*
+   * La evidencia sembrada va por el canal en la **moneda de la gestión**. El de
+   * la cuenta de Estados Unidos cobra en dólares —es una cuenta en dólares, y
+   * no cambia de divisa porque cambien los libros— y `assertDeclarableEvidence`
+   * exige que importe y canal coincidan. Sembrar contra él dejaría una fila que
+   * el dominio habría rechazado.
+   *
+   * Los dos quedan activos a propósito: el de dólares es el que hace falta para
+   * probar la tasa de cambio.
+   */
+  const channel = await prisma.paymentChannel.findUniqueOrThrow({
+    where: { eventId_code: { eventId: event.id, code: 'BOLIVIA_QR_MANUAL' } },
   });
 
   const proof = await prisma.paymentProof.create({
@@ -290,7 +328,7 @@ Escenario listo.
   Gestión        ${event.code}
   Inscripción    ${registration.code} — saldo pendiente ${IMPORTE} ${event.currency}
   Evidencia      ${proof.reference} — ${IMPORTE} ${event.currency}, con archivo adjunto
-  Canal          ${channel.code} (${event.currency}), activo y con instrucciones
+  Canal          ${channel.code} (${channel.currency}), activo y con instrucciones
   Permiso        TESORERIA sobre ${event.code}, concedido a ${email}
 ${ladoPeregrino}
 
