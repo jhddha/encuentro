@@ -29,10 +29,11 @@ jobs:
     env:
       DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro
 
-      # El recorrido autenticado usa una base propia. La siembra deja catálogo
-      # que la limpieza no retira, y para borrar los cargos apaga un disparador
-      # de solo anexado: ninguna de las dos cosas sobre la base que acaban de
-      # usar las pruebas de integración.
+      # Las dos suites destructivas usan base propia. Las de integración hacen
+      # TRUNCATE de todo el esquema; el recorrido siembra catálogo que su
+      # limpieza no retira y apaga un disparador de solo anexado. Ninguna toca
+      # la base que la variable de arriba nombra.
+      TEST_DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro_test
       E2E_DATABASE_URL: postgresql://encuentro:encuentro@localhost:5432/encuentro_e2e
 
       # El servidor del recorrido se levanta en 127.0.0.1:3100 y Better Auth
@@ -86,6 +87,16 @@ jobs:
       - name: Aplicar migraciones
         run: pnpm exec prisma migrate deploy
 
+      - name: Preparar las bases desechables
+        # `pnpm db:test` y `pnpm db:e2e` las crean en local a través de
+        # `docker compose`, que aquí no existe: Postgres es un servicio del job.
+        # El cliente `psql` viene con la imagen de ubuntu-latest.
+        run: |
+          psql "$DATABASE_URL" -c 'CREATE DATABASE encuentro_test'
+          psql "$DATABASE_URL" -c 'CREATE DATABASE encuentro_e2e'
+          DATABASE_URL="$TEST_DATABASE_URL" pnpm exec prisma migrate deploy
+          DATABASE_URL="$E2E_DATABASE_URL" pnpm exec prisma migrate deploy
+
       - name: Pruebas de integración
         # Gate de P03: transiciones, concurrencia y aislamiento contra Postgres.
         run: pnpm test:integration
@@ -95,14 +106,6 @@ jobs:
 
       - name: Instalar navegador para E2E
         run: pnpm exec playwright install chromium --with-deps
-
-      - name: Preparar la base del recorrido
-        # `pnpm db:e2e` crea esta base en local, pero lo hace a través de
-        # `docker compose`, que aquí no existe: Postgres es un servicio del job.
-        # El cliente `psql` viene con la imagen de ubuntu-latest.
-        run: |
-          psql "$DATABASE_URL" -c 'CREATE DATABASE encuentro_e2e'
-          DATABASE_URL="$E2E_DATABASE_URL" pnpm exec prisma migrate deploy
 
       - name: Recorrido de extremo a extremo
         # Accesibilidad WCAG 2.2 AA sobre los cinco viewports (P02) y el

@@ -27,7 +27,8 @@
     "db:studio": "prisma studio",
     "test:load": "tsx scripts/load-test.mts",
     "db:fixture": "tsx prisma/dev-fixture.ts",
-    "db:e2e": "tsx scripts/preparar-base-e2e.mts"
+    "db:e2e": "tsx scripts/preparar-base-desechable.mts e2e",
+    "db:test": "tsx scripts/preparar-base-desechable.mts test"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",

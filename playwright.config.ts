@@ -61,10 +61,17 @@ export default defineConfig({
 
     /*
      * Accesibilidad: cinco viewports, sin sesión. Es la única prueba de que lo
-     * público se ve sin cuenta, así que se deja intacta y anónima.
+     * público se ve sin cuenta, así que se deja anónima.
+     *
+     * Pero **sí depende de la siembra**. Dos de sus rutas —la gestión y el
+     * comparador de modalidad— necesitan que ENC2026 exista; sin ella, treinta
+     * de estas pruebas auditaban la pantalla «no existe la gestión» y pasaban
+     * igual. Verde sobre un vacío: exactamente la clase de prueba que ocupa el
+     * sitio de la que sí demostraría algo.
      */
     ...VIEWPORTS.map((viewport) => ({
       name: viewport.name,
+      dependencies: ['preparacion'],
       testMatch: /accessibility\.spec\.ts/,
       use: {
         ...devices['Desktop Chrome'],
