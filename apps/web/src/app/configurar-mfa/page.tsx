@@ -1,6 +1,7 @@
 import { Card, PageHeader, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
+import { MfaEnrollment } from '@/components/mfa-enrollment';
 import { Shell } from '@/components/shell';
 
 export const metadata: Metadata = {
@@ -30,14 +31,23 @@ export default function ConfigureMfaPage() {
             operar.
           </p>
           <p className="text-sm">
-            Usa cualquier aplicación autenticadora estándar. Al activarlo recibirás códigos de
-            recuperación de un solo uso: guárdalos en un lugar seguro, porque son la única vía si
-            pierdes el dispositivo.
+            Usa cualquier aplicación autenticadora estándar.{' '}
+            <strong>No se envía ningún correo:</strong> el segundo factor es un código que genera tu
+            aplicación.
           </p>
           <p className="text-sm">
-            Si lo pierdes sin códigos, el restablecimiento es presencial y lo autoriza un
-            administrador; no existe recuperación automática por correo.
+            Si pierdes el dispositivo sin tus códigos de recuperación, el restablecimiento es
+            presencial y lo autoriza un administrador; no existe recuperación automática por correo.
           </p>
+        </Card>
+
+        {/*
+          Hasta el 8-ago-2026 esta página terminaba aquí: explicaba el trámite y
+          no ofrecía forma de hacerlo. Como `requireActor` redirige aquí a toda
+          cuenta con algún rol, era un callejón sin salida.
+        */}
+        <Card>
+          <MfaEnrollment />
         </Card>
       </div>
     </Shell>
