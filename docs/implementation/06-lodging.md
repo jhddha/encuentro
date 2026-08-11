@@ -1,7 +1,7 @@
 # P06 — Hospedaje
 
 **Fecha:** 5 de agosto de 2026
-**Alcance:** HOS-011..008 y DEC-005.
+**Alcance:** HOS-011, HOS-013, HOS-012, HOS-003, HOS-016, HOS-017, HOS-001, HOS-002 y DEC-005.
 
 ## 1. Gate ejecutado
 

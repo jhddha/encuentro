@@ -3,7 +3,7 @@ import { DomainError } from './errors.js';
 /**
  * Entrega de beneficios: alimentos y materiales.
  *
- * Requisitos reales: FOD-001..004 y MAT-005..003. Las reglas de este módulo
+ * Requisitos reales: FOD-001, FOD-006, FOD-002, FOD-003; MAT-005, MAT-004, MAT-003. Las reglas de este módulo
  * están en el contrato, no inferidas.
  *
  * Dos de ellas van contra la intuición y conviene tenerlas presentes:

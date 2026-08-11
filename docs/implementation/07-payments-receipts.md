@@ -1,7 +1,7 @@
 # P07 — Pagos manuales, cajas y comprobantes
 
 **Fecha:** 5 de agosto de 2026
-**Alcance:** PAY-022..015, PAY-011..002, y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
+**Alcance:** PAY-002, PAY-014, PAY-018, PAY-022, PAY-023, PAY-024, PAY-025, PAY-026, PAY-027, PAY-028, PAY-029, PAY-030, PAY-031, PAY-032, PAY-033, PAY-011, PAY-012, y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
 
 ## 1. Gate ejecutado
 

@@ -10,8 +10,8 @@ Esta es la primera entrega que mezcla reglas del contrato con reglas inferidas. 
 
 | Requisito | Qué gobierna |
 |---|---|
-| FOD-001..004 | Servicios por fecha, tipo, horario y cantidad; entrega única; movimientos separados |
-| MAT-005..003 | Elegibilidad, llegada tardía y stock por movimientos |
+| FOD-001, FOD-006, FOD-002, FOD-003 | Servicios por fecha, tipo, horario y cantidad; entrega única; movimientos separados |
+| MAT-005, MAT-004, MAT-003 | Elegibilidad, llegada tardía y stock por movimientos |
 | ADR-008 | Idempotencia por estación y `operation_uuid` |
 | requirements.md §10 | Tokens de QR por hash y sin PII |
 

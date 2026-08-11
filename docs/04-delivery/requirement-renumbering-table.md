@@ -1,10 +1,12 @@
 # Tabla de equivalencias para la renumeración
 
-**Estado:** PROPUESTA — no aplicada
+**Estado:** **APLICADA** en `61a2551`, el 7 de agosto de 2026
 **Origen:** [`requirement-migration-v2.6-to-current.md`](requirement-migration-v2.6-to-current.md)
-**Alcance de la operación:** 65 identificadores vigentes y **808 citas** en 96 archivos
+**Alcance ejecutado:** 573 sustituciones en 96 archivos, partiendo de 65 identificadores vigentes
 
-> **Nada de esto se ha aplicado.** Es la tabla que debe revisarse antes de tocar un solo archivo, porque una vez propagada a 808 citas revertirla a mano no es viable.
+> Esta cabecera decía «PROPUESTA — no aplicada» y «nada de esto se ha aplicado» **en el mismo commit que lo aplicó**. Es el único documento que registra qué identificador se movió a dónde, así que quien lo abriera para desambiguar una cita concluiría que el repositorio sigue en la numeración de v2.7 y leería al revés las ocho familias que colisionan. Corregido el 8 de agosto de 2026.
+
+> El «808 citas» de la estimación tampoco cuadra con las 573 que reportó la ejecución. Se conserva la cifra real y se deja constancia de la diferencia en vez de reescribirla en silencio: la estimación contaba apariciones y la ejecución contó sustituciones efectivas.
 
 ## Por qué esta tabla es peligrosa
 
@@ -126,15 +128,23 @@ No hay error de compilación, no hay prueba que falle. La trazabilidad simplemen
 
 ---
 
-## Procedimiento propuesto
+## Procedimiento ejecutado
 
-1. **Congelar el trabajo sobre requisitos** mientras dure la operación: cada archivo nuevo añade citas al mapa viejo.
-2. Aplicar la tabla a `docs/01-product/requirements.md` y `contracts/requirements.json`.
-3. Propagar a las 808 citas **en una sola pasada con marcadores intermedios**, por el solapamiento de `HOS` y `PAY`.
-4. Añadir al validador la comprobación de que **todo identificador citado existe en el contrato**. Sin esto no hay forma de saber si la propagación acertó.
-5. Ejecutar el gate completo: validador, lint, typecheck, 289 unitarias, 115 de integración, build.
-6. Corregir el «185» de `SOURCE_GAPS.md`, `PACKAGE_STATUS.md` y `README.md`.
-7. Archivar `requirements-candidates-v26.md`.
+Los siete pasos se completaron el 7 de agosto de 2026, salvo lo que se indica.
+
+1. ✅ **Congelado el trabajo sobre requisitos** mientras duró la operación.
+2. ✅ Tabla aplicada a `docs/01-product/requirements.md` y `contracts/requirements.json`.
+3. ⚠️ Propagación a las citas. **No salió en una sola pasada.** La primera usó `git ls-files`, que solo lista archivos versionados, y dejó fuera diez ficheros sin versionar; al reejecutar, los versionados ya correctos se renumeraron **por segunda vez**, y los ocho identificadores que son a la vez origen y destino se movieron dos veces. Se regeneraron 33 archivos desde `HEAD` aplicando el mapa una sola vez. El relato completo está en `handoff.md` §4.
+4. ✅ Validador ampliado. Hoy comprueba cuatro cosas, no una: que `requirements.md` y `requirements.json` declaren el mismo conjunto, que no haya huérfanos en los mapas de fase y prompt, que todo requisito tenga ambos, y que ninguna cita apunte a un requisito inexistente. El 8 de agosto se añadió la quinta —ningún rango abreviado— por lo que se explica abajo.
+5. ✅ Gate completo ejecutado.
+6. ✅ Corregido el «185».
+7. ✅ `requirements-candidates-v26.md` archivado.
+
+## Lo que la operación rompió y no se vio hasta el 8 de agosto
+
+**Los rangos abreviados quedaron partidos por la mitad.** El script sustituía identificadores completos, y en un rango como `HOS-001..008` el número de la derecha no lleva prefijo: no se tocó. El resultado fue `HOS-011..008`, un rango descendente, y una veintena de casos parecidos que citaban requisitos inexistentes (`FOD-004`, `PKG-005`, `PAY-015`, `HOS-008`…). La comprobación 4 del validador no los veía, porque un número huérfano no es una cita.
+
+Y la renumeración **rompió la contiguidad**, así que ya no existe ningún rango de requisitos válido: `REG-001..005` es hoy REG-019, PAY-001, REG-020, REG-021 y REG-022, cinco identificadores de tres familias. Los veinte sitios se expandieron a listas explícitas y el validador rechaza desde entonces la sintaxis de rango para familias de requisitos.
 
 ## Pendiente de decisión antes de empezar
 

@@ -203,7 +203,7 @@ model RoleAssignment {
 }
 
 // ---------------------------------------------------------------------------
-// Gestiones — EVT-001..010
+// Gestiones — EVT-001 … EVT-006, EVT-016, EVT-009, EVT-010
 // ---------------------------------------------------------------------------
 
 /// Edición anual del Encuentro.
@@ -300,7 +300,7 @@ model AuditLog {
 // ---------------------------------------------------------------------------
 // Catálogo e inscripción — P05
 //
-// PKG-001..005 y REG-019..008. Los importes son `Decimal`, nunca `Float`
+// PKG-001, PKG-009, PKG-010, PKG-012, PKG-013 y REG-019, PAY-001, REG-020, REG-021, REG-022, REG-023, PKG-011, HOS-015. Los importes son `Decimal`, nunca `Float`
 // (requirements.md §10); el dominio los maneja como enteros de centavos.
 // ---------------------------------------------------------------------------
 
@@ -475,7 +475,7 @@ model Charge {
 // ---------------------------------------------------------------------------
 // Hospedaje — P06
 //
-// HOS-011..008 y DEC-005. La cantidad de noches es configuración, no cálculo;
+// HOS-011, HOS-013, HOS-012, HOS-003, HOS-016, HOS-017, HOS-001, HOS-002 y DEC-005. La cantidad de noches es configuración, no cálculo;
 // la llegada tardía no reescribe nada; y el último cupo lo resuelve la base.
 // ---------------------------------------------------------------------------
 
@@ -588,7 +588,7 @@ model Reservation {
 // ---------------------------------------------------------------------------
 // Facturación — P07
 //
-// PAY-022..015, PAY-011..002 y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
+// PAY-002, PAY-014, PAY-018, PAY-022, PAY-023, PAY-024, PAY-025, PAY-026, PAY-027, PAY-028, PAY-029, PAY-030, PAY-031, PAY-032, PAY-033, PAY-011, PAY-012 y DEC-003, DEC-007, DEC-008, DEC-009, DEC-015.
 //
 // v1 no tiene checkout automático: nada confirma un pago salvo una persona
 // revisando una evidencia. No hay tabla de proveedores ni de webhooks porque no
@@ -617,7 +617,7 @@ model PaymentChannel {
   @@map("payment_channels")
 }
 
-/// Evidencia de pago cargada por el peregrino — PAY-018..007.
+/// Evidencia de pago cargada por el peregrino — PAY-018, PAY-025, PAY-026, PAY-027.
 ///
 /// PAY-025: subirla **no confirma nada**. Solo la aprobación crea un pago.
 /// PAY-018: el archivo es privado y se guarda su checksum.
@@ -752,7 +752,7 @@ model PaymentAllocation {
   @@map("payment_allocations")
 }
 
-/// Comprobante de pago — PAY-028..015, DEC-003.
+/// Comprobante de pago — PAY-028, PAY-014, PAY-029, PAY-030, PAY-031, PAY-032, PAY-033, DEC-003.
 ///
 /// PAY-028: cada pago aprobado genera el suyo, incluido un pago parcial.
 /// PAY-014: secuencia `REC-{EVENT_CODE}-{NNNNNN}` única por gestión.
@@ -790,7 +790,7 @@ model Receipt {
 // ---------------------------------------------------------------------------
 // Credenciales, alimentos, materiales y transporte — P08 a P11
 //
-// **Advertencia de procedencia.** Solo FOD-001..004 y MAT-005..003 tienen
+// **Advertencia de procedencia.** Solo FOD-001, FOD-006, FOD-002, FOD-003 y MAT-005, MAT-004, MAT-003 tienen
 // requisitos en `contracts/requirements.json`. Credenciales, escaneo offline y
 // transporte se construyen por inferencia desde `system-architecture.md` §5 y
 // los prompts P08–P10, por decisión explícita del responsable del proyecto.

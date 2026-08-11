@@ -59,6 +59,9 @@ CANON=set(ids)
 NO_REQUISITO={'DEC','ADR','TBD','RFC','ISO','UTC','SHA','API','SQL','MFA','SMTP','WCAG','OWASP','ASVS','REF'}
 ID_RE=re.compile(r'\b([A-Z]{2,4})-\d{3}\b')
 
+# Rango abreviado: `X-NNN..NNN` o `X-NNN/NNN`. Ver la comprobacion 4.
+RANGO_RE=re.compile(r'\b([A-Z]{2,4})-\d{3}\s*(?:\.\.|/)\s*\d{3}\b')
+
 def es_cita_de_requisito(m):
     return m.group(1) not in NO_REQUISITO
 
@@ -109,6 +112,25 @@ for p in root.rglob('*'):
     citados={m.group(0) for m in ID_RE.finditer(t) if es_cita_de_requisito(m)}
     for i in sorted(citados-CANON):
         errors.append(f'UNKNOWN_REQUIREMENT_ID {i} en {rel}')
+
+    # 4. Nadie escribe rangos abreviados de requisitos.
+    #
+    # La renumeracion los partio por la mitad: sustituia identificadores
+    # completos, y el numero de la derecha no lleva prefijo. `FOOD-001..004`
+    # quedo como `FOD-001..004`, que hoy incluye un FOD-004 inexistente; y
+    # `HOS-001..008` quedo como `HOS-011..008`, un rango descendente. Veinte
+    # sitios asi, y la comprobacion 3 no los veia porque el numero huerfano no
+    # es una cita.
+    #
+    # Ademas la renumeracion rompio la contiguidad, de modo que ya no existe
+    # ningun rango de requisitos valido: `REG-001..005` es hoy REG-019, PAY-001,
+    # REG-020, REG-021 y REG-022. Se exigen identificadores explicitos.
+    #
+    # `DEC-001..017` y demas quedan fuera: no son requisitos y su numeracion si
+    # es contigua.
+    for m in RANGO_RE.finditer(t):
+        if m.group(1) in NO_REQUISITO: continue
+        errors.append(f'REQUIREMENT_RANGE_NOT_ALLOWED {m.group(0)} en {rel}')
 if errors:
     print('\n'.join(errors))
     sys.exit(1)

@@ -9,7 +9,7 @@ export default function Page() {
     <PendingScreen
       title="Materiales"
       phase="P11"
-      scope="Inventario, kits y entregas (MAT-005..003)."
+      scope="Inventario, kits y entregas (MAT-005, MAT-004, MAT-003)."
     />
   );
 }

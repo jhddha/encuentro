@@ -1,7 +1,7 @@
 # P05 — Catálogo, inscripción, modalidades y cargos
 
 **Fecha:** 5 de agosto de 2026
-**Alcance:** PKG-001..005, REG-019..008 y DEC-006.
+**Alcance:** PKG-001, PKG-009, PKG-010, PKG-012, PKG-013, REG-019, PAY-001, REG-020, REG-021, REG-022, REG-023, PKG-011, HOS-015 y DEC-006.
 
 ## 1. Gate ejecutado
 
