@@ -1,0 +1,29 @@
+# Finales de línea: LF en el repositorio y LF en el disco.
+#
+# Sin este fichero, en Windows `core.autocrlf=true` escribe CRLF al hacer
+# checkout y Prettier —configurado con `endOfLine: lf`— marca esos mismos
+# ficheros como mal formateados. El resultado es un bucle: `git checkout` los
+# ensucia, `prettier --write` los limpia, `git status` los vuelve a listar como
+# modificados aunque su contenido sea idéntico al de HEAD.
+#
+# Costó media sesión de ruido antes de encontrarlo, con ficheros apareciendo en
+# `git status` sin una sola línea de diferencia real.
+#
+# `eol=lf` desactiva la conversión de salida: el disco recibe lo que hay en el
+# índice. Los ficheros ya están en LF dentro del repositorio, así que esto no
+# cambia ni un commit.
+* text=auto eol=lf
+
+# Binarios: sin conversión ni intento de diferencia por líneas.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.woff binary
+*.woff2 binary
+
+# El lockfile se genera; una diferencia línea a línea no aporta nada al revisar.
+pnpm-lock.yaml -diff linguist-generated
