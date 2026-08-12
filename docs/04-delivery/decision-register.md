@@ -29,9 +29,13 @@
 
 Una decisión aprobada puede seguir sin poder aplicarse si le falta un dato. Estos no son decisiones abiertas —nadie tiene que elegir entre alternativas— sino datos que la organización todavía no ha dado. Se registran aquí y **detienen solo el alcance que dependen de ellos** (regla 01-no-guessing).
 
-| ID | Depende de | Qué falta | Alcance detenido |
+_No queda ninguno abierto._
+
+### Resueltos
+
+| ID | Depende de | Qué faltaba | Cómo se resolvió |
 |---|---|---|---|
-| TBD-001 | DEC-009 | **La tasa de cambio no tiene fuente.** La decisión dice congelarla al cargar la evidencia, y `payment_proofs.exchange_rate_micros` existe para guardarla, pero no hay ninguna tasa configurada por gestión en el esquema ni en la interfaz. Sin fuente, congelar significaría inventar un número que acabaría impreso en un comprobante. | Cobrar en una moneda distinta a la de la gestión. `assertDeclarableEvidence` rechaza esa combinación con `MONEY_CURRENCY_MISMATCH` y un mensaje que lo explica. Mientras siga abierto, **el canal `BOLIVIA_QR_MANUAL` solo sirve si cobra en la moneda de la gestión**. Detectado el 8 de agosto de 2026 al implementar la carga de evidencias. |
+| TBD-001 | DEC-009 | **La tasa de cambio no tenía fuente.** La decisión dice congelarla al cargar la evidencia y `payment_proofs.exchange_rate_micros` existía para guardarla, pero no había ninguna tasa configurada por gestión. Sin fuente, congelar significaba inventar un número que acabaría impreso en un comprobante. Detectado el 8 de agosto de 2026. | **Registro diario en la configuración de la gestión**, cerrado el 11 de agosto de 2026. La organización eligió que la tasa la registre una persona con `event.update` y no una fuente web: el número sostiene una conciliación y acaba en papel, así que tiene que haber alguien que responda por él — y funciona sin internet, que en un encuentro presencial cuenta. Tabla `exchange_rates`, una por gestión, moneda y día. `assertDeclarableEvidence` deja de rechazar la rama multimoneda y exige que **haya tasa del día del pago**, con `EXCHANGE_RATE_MISSING` cuando falta. La tasa se congela en la evidencia al cargarla; cambiar la registrada después no altera lo ya cobrado. |
 
 ## Riesgos registrados junto a una decisión aprobada
 

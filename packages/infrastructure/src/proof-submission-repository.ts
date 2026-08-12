@@ -167,6 +167,14 @@ export function createProofSubmissionRepository(prisma: PrismaClient): ProofSubm
               fileId: input.file.fileId,
               fileChecksum: input.file.checksum,
               /*
+               * DEC-009: la tasa queda congelada aquí. Nula cuando el canal
+               * cobra en la moneda de la gestión — guardar un 1 000 000
+               * fingiría una conversión que no ocurrió, y el comprobante la
+               * imprimiría.
+               */
+              exchangeRateMicros:
+                input.exchangeRateMicros === null ? null : BigInt(input.exchangeRateMicros),
+              /*
                * PAY-025: nace `SUBMITTED`, no `PENDING_UPLOAD`. El archivo ya
                * está guardado cuando se escribe esta fila, así que no existe el
                * momento intermedio que ese estado describiría.
@@ -233,6 +241,10 @@ export function createProofSubmissionRepository(prisma: PrismaClient): ProofSubm
               payerName: input.payerName,
               fileId: input.file.fileId,
               fileChecksum: input.file.checksum,
+              // Se vuelve a congelar: corregir puede cambiar la fecha del pago,
+              // y entonces la tasa que corresponde es la de la fecha nueva.
+              exchangeRateMicros:
+                input.exchangeRateMicros === null ? null : BigInt(input.exchangeRateMicros),
               submittedAt: new Date(),
               /*
                * La revisión anterior se limpia. Dejar el motivo del rechazo

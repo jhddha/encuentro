@@ -1,6 +1,8 @@
-import { todayAnchorIn } from './civil-date.js';
+import { civilDayIn, todayAnchorIn } from './civil-date.js';
 import { DomainError } from './errors.js';
+import { requireRate, type ExchangeRate } from './exchange-rate.js';
 import {
+  RATE_SCALE,
   add,
   compare,
   isNegative,
@@ -123,6 +125,16 @@ export interface DeclaredEvidence {
   /** Zona horaria de la gestión, para resolver qué día es «hoy» (NFR-013). */
   readonly timezone: string;
 
+  /**
+   * Tasa del día del pago, cuando el canal cobra en otra moneda — DEC-009.
+   *
+   * `null` significa «no hay tasa registrada», no «no hace falta»: si las
+   * monedas coinciden nadie la mira, y si difieren su ausencia es el motivo del
+   * rechazo. Quien llama la busca por el **día del pago**, no por hoy: la
+   * decisión congela la tasa del momento en que el dinero se movió.
+   */
+  readonly rate?: ExchangeRate | null;
+
   /** Instante actual. El día civil que le corresponde sale de `timezone`. */
   readonly now: Date;
 }
@@ -201,26 +213,33 @@ export function assertDeclarableEvidence(evidence: DeclaredEvidence): void {
   }
 
   /*
-   * Aquí es donde DEC-009 se queda sin suelo.
+   * Cobro en otra moneda — DEC-009, y aquí se cierra TBD-001.
    *
-   * La decisión dice que la tasa se congela al cargar la evidencia, y
-   * `payment_proofs.exchange_rate_micros` existe para guardarla. Lo que **no**
-   * existe es de dónde sacarla: no hay tasa configurada por gestión en ningún
-   * sitio del esquema. Sin fuente, congelar significaría inventar un número, y
-   * ese número acabaría en un comprobante emitido.
+   * Hasta el 11 de agosto de 2026 esta rama se rechazaba entera: la decisión
+   * dice congelar la tasa al cargar la evidencia y no había de dónde sacarla,
+   * así que congelar habría significado inventar un número que acaba impreso en
+   * un comprobante.
    *
-   * Así que la rama multimoneda se detiene aquí, en voz alta, en vez de
-   * atravesar el sistema y morir más tarde: el circuito de aprobación ya
-   * lanzaría `MONEY_CURRENCY_MISMATCH` al repartir contra cargos en otra
-   * moneda, pero lo haría después de que el peregrino creyera haber pagado.
+   * Ahora existe el registro diario, y lo que se exige es que **haya tasa de
+   * ese día**. Se rechaza igual de pronto cuando falta, en vez de dejar que el
+   * peregrino crea que pagó y que la aprobación falle después.
    *
-   * Registrado como TBD-001 en `docs/04-delivery/decision-register.md`.
+   * La tasa no se aplica aquí: esto valida. Convertir es `convert`, y quien
+   * llama congela el número en la evidencia.
    */
   if (evidence.channelCurrency !== evidence.eventCurrency) {
-    throw new DomainError(
-      'MONEY_CURRENCY_MISMATCH',
-      `Este canal cobra en ${evidence.channelCurrency} y la gestión factura en ${evidence.eventCurrency}. No hay tasa de cambio configurada para convertir (DEC-009), así que el pago debe hacerse por un canal en ${evidence.eventCurrency}.`,
+    const tasa = requireRate(
+      evidence.rate ?? null,
+      evidence.channelCurrency,
+      civilDayIn(evidence.timezone, evidence.paidAt),
     );
+
+    if (tasa.currency !== evidence.channelCurrency) {
+      throw new DomainError(
+        'MONEY_CURRENCY_MISMATCH',
+        `La tasa disponible es de ${tasa.currency} y el canal cobra en ${evidence.channelCurrency}.`,
+      );
+    }
   }
 }
 
@@ -439,7 +458,6 @@ export function assertAllocationsWithinCharges(
  * flotante justo donde se convierte dinero es la clase de error que aparece
  * como un céntimo de descuadre en el cierre de caja.
  */
-export const RATE_SCALE = 1_000_000;
 
 export function convert(amount: Money, targetCurrency: string, rateMicros: number): Money {
   if (!Number.isInteger(rateMicros) || rateMicros <= 0) {

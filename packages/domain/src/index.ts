@@ -81,7 +81,6 @@ export {
   ARRIVAL_CHANNELS,
   EVIDENCE_CONTENT_TYPES,
   EVIDENCE_MAX_BYTES,
-  RATE_SCALE,
   assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
   assertDeclarableEvidence,
@@ -117,6 +116,7 @@ export {
 } from './lodging.js';
 
 export {
+  RATE_SCALE,
   add,
   compare,
   isNegative,

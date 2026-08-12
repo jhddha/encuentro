@@ -528,21 +528,54 @@ describe('evidencia declarada — PAY-018', () => {
    * DEC-009 dice congelar la tasa al cargar la evidencia, pero no existe tasa
    * configurada en ninguna parte del esquema. Sin fuente, convertir sería
    * inventar un número que acabaría en un comprobante emitido. La rama se
-   * detiene aquí, no más adelante. Ver TBD-001.
+   * detiene aquí, no más adelante. Antes por falta de tasa (TBD-001, ya
+   * resuelto); ahora porque la del día del pago no está registrada.
    */
-  it('detiene la rama multimoneda mientras no haya tasa configurada (DEC-009)', () => {
+  /*
+   * DEC-009 y TBD-001. Hasta el 11 de agosto de 2026 esta rama se rechazaba
+   * entera porque no había de dónde sacar la tasa. Ahora existe el registro
+   * diario y lo que se exige es que haya tasa **de ese día**.
+   */
+  it('rechaza el cobro en otra moneda cuando no hay tasa del día', () => {
     let thrown: unknown;
     try {
       assertDeclarableEvidence(
-        evidencia({ amount: money('2900.00', 'BOB'), channelCurrency: 'BOB' }),
+        evidencia({ amount: money('2900.00', 'BOB'), channelCurrency: 'BOB', rate: null }),
       );
     } catch (error) {
       thrown = error;
     }
 
     expect(thrown).toBeInstanceOf(DomainError);
-    expect((thrown as DomainError).code).toBe('MONEY_CURRENCY_MISMATCH');
-    expect((thrown as DomainError).message).toMatch(/tasa de cambio/i);
+    expect((thrown as DomainError).code).toBe('EXCHANGE_RATE_MISSING');
+    // El mensaje nombra la moneda y el día: quien lo lee puede resolverlo.
+    expect((thrown as DomainError).message).toMatch(/BOB/);
+  });
+
+  it('acepta el cobro en otra moneda cuando la tasa del día existe', () => {
+    expect(() => {
+      assertDeclarableEvidence(
+        evidencia({
+          amount: money('2900.00', 'BOB'),
+          channelCurrency: 'BOB',
+          rate: { currency: 'BOB', rateMicros: 145_000 },
+        }),
+      );
+    }).not.toThrow();
+  });
+
+  it('rechaza una tasa que no es la del canal', () => {
+    // Pasar la tasa del euro para un cobro en bolivianos convertiría con el
+    // número equivocado y el asiento cuadraría igual.
+    expect(() => {
+      assertDeclarableEvidence(
+        evidencia({
+          amount: money('2900.00', 'BOB'),
+          channelCurrency: 'BOB',
+          rate: { currency: 'EUR', rateMicros: 145_000 },
+        }),
+      );
+    }).toThrow(/EUR/);
   });
 });
 

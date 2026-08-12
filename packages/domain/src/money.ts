@@ -106,3 +106,16 @@ export function meetsMinimumPercent(paid: Money, total: Money, percent: number):
 
   return paid.amount * 100 >= total.amount * percent;
 }
+
+/**
+ * Escala de las tasas de cambio: millonésimas por unidad.
+ *
+ * Vive con el dinero y no con la facturación porque la usan los dos —`convert`
+ * en `billing.ts` y la lectura de tasas en `exchange-rate.ts`—, y tenerla en
+ * uno de ellos creaba un ciclo de importación entre ambos. Un ciclo que
+ * TypeScript acepta y que se rompe en ejecución según quién cargue primero.
+ *
+ * Seis decimales: caben las cotizaciones reales sin arrastrar el error de coma
+ * flotante que NFR-014 prohíbe para dinero.
+ */
+export const RATE_SCALE = 1_000_000;

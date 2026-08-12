@@ -5,14 +5,47 @@ import {
   assertDeclarableEvidence,
   authorizeOwnership,
   canTransitionProof,
+  civilDayIn,
   type Actor,
   type EventState,
+  type ExchangeRate,
   type Money,
   type PaymentProofState,
   type RegistrationState,
 } from '@encuentro/domain';
 
+import type { ExchangeRateRepository } from './register-exchange-rate.js';
 import type { Clock } from './ports.js';
+
+/**
+ * Tasa del día **del pago**, no de hoy — DEC-009.
+ *
+ * La decisión congela la tasa del momento en que el dinero se movió. Una
+ * evidencia cargada el jueves de una transferencia del lunes tiene que
+ * convertirse con la del lunes, o el peregrino paga lo que diga la cotización
+ * del día en que se acordó de subir el comprobante.
+ *
+ * Devuelve `null` cuando las monedas coinciden: no hay nada que convertir y
+ * buscar una tasa sería pedirle a la organización que registre lo que no usa.
+ */
+async function tasaDelPago(
+  rates: ExchangeRateRepository,
+  input: {
+    readonly eventId: string;
+    readonly channelCurrency: string;
+    readonly eventCurrency: string;
+    readonly timezone: string;
+    readonly paidAt: Date;
+  },
+): Promise<ExchangeRate | null> {
+  if (input.channelCurrency === input.eventCurrency) return null;
+
+  return await rates.findForDay(
+    input.eventId,
+    input.channelCurrency,
+    civilDayIn(input.timezone, input.paidAt),
+  );
+}
 
 /**
  * Carga de una evidencia de pago por el propio peregrino — PAY-018, PAY-025.
@@ -96,6 +129,13 @@ export interface SubmitProofInput {
   readonly payerName: string | null;
   readonly file: EvidenceFile;
   readonly actorId: string;
+  /**
+   * Tasa congelada, en millonésimas — DEC-009.
+   *
+   * `null` cuando el canal cobra en la moneda de la gestión: no hay conversión
+   * y guardar un 1 000 000 fingiría una que no ocurrió.
+   */
+  readonly exchangeRateMicros: number | null;
 }
 
 export interface ResubmitProofInput {
@@ -108,6 +148,13 @@ export interface ResubmitProofInput {
   readonly payerName: string | null;
   readonly file: EvidenceFile;
   readonly actorId: string;
+  /**
+   * Tasa congelada, en millonésimas — DEC-009.
+   *
+   * `null` cuando el canal cobra en la moneda de la gestión: no hay conversión
+   * y guardar un 1 000 000 fingiría una que no ocurrió.
+   */
+  readonly exchangeRateMicros: number | null;
 }
 
 /**
@@ -155,6 +202,7 @@ export interface ProofSubmissionRepository {
 export interface SubmitPaymentProofDeps {
   readonly proofs: ProofSubmissionRepository;
   readonly evidence: EvidenceStore;
+  readonly rates: ExchangeRateRepository;
   readonly clock: Clock;
 }
 
@@ -205,6 +253,14 @@ export async function submitPaymentProof(
 
   const channel = await resolveChannel(deps, command.channelId, registration.eventId);
 
+  const rate = await tasaDelPago(deps.rates, {
+    eventId: registration.eventId,
+    channelCurrency: channel.currency,
+    eventCurrency: registration.eventCurrency,
+    timezone: registration.eventTimezone,
+    paidAt: command.paidAt,
+  });
+
   assertDeclarableEvidence({
     amount: command.amount,
     paidAt: command.paidAt,
@@ -215,6 +271,7 @@ export async function submitPaymentProof(
     eventCurrency: registration.eventCurrency,
     timezone: registration.eventTimezone,
     now: deps.clock.now(),
+    rate,
   });
 
   const file = await deps.evidence.store({
@@ -233,6 +290,9 @@ export async function submitPaymentProof(
     payerName: normalizeOptional(command.payerName),
     file,
     actorId: actor.userId,
+    // DEC-009: se congela aquí. Cambiar la tasa registrada después no altera lo
+    // que este comprobante dice que se cobró.
+    exchangeRateMicros: rate?.rateMicros ?? null,
   });
 
   return assertWritten(result);
@@ -271,6 +331,19 @@ export async function resubmitPaymentProof(
     );
   }
 
+  /*
+   * La tasa se vuelve a buscar por el día del pago corregido, no se hereda.
+   * Corregir una evidencia puede cambiar la fecha —el peregrino se equivocó al
+   * teclearla— y entonces la tasa que corresponde es la de la fecha nueva.
+   */
+  const rate = await tasaDelPago(deps.rates, {
+    eventId: proof.eventId,
+    channelCurrency: proof.channelCurrency,
+    eventCurrency: proof.eventCurrency,
+    timezone: proof.eventTimezone,
+    paidAt: command.paidAt,
+  });
+
   assertDeclarableEvidence({
     amount: command.amount,
     paidAt: command.paidAt,
@@ -283,6 +356,7 @@ export async function resubmitPaymentProof(
     eventCurrency: proof.eventCurrency,
     timezone: proof.eventTimezone,
     now: deps.clock.now(),
+    rate,
   });
 
   const file = await deps.evidence.store({
@@ -307,6 +381,7 @@ export async function resubmitPaymentProof(
     payerName: normalizeOptional(command.payerName),
     file,
     actorId: actor.userId,
+    exchangeRateMicros: rate?.rateMicros ?? null,
   });
 
   assertWritten(result);

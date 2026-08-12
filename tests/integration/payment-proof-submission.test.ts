@@ -8,6 +8,7 @@ import {
 import { money, type Actor } from '@encuentro/domain';
 import {
   createPaymentProofRepository,
+  createExchangeRateRepository,
   createProofSubmissionRepository,
   findAccountStatement,
   listAdvanceChannels,
@@ -46,7 +47,9 @@ const evidence: EvidenceStore = {
     Promise.resolve({ fileId: `evidencias/x/${crypto.randomUUID()}`, checksum: 'a'.repeat(64) }),
 };
 
-const deps = { proofs, evidence, clock: systemClock };
+const rates = createExchangeRateRepository(prisma);
+
+const deps = { proofs, evidence, rates, clock: systemClock };
 
 const ARCHIVO = { body: new Uint8Array([1, 2, 3, 4]), contentType: 'image/png' } as const;
 
@@ -579,5 +582,100 @@ describe('canales ofrecidos al peregrino — PAY-023, PAY-024', () => {
     ]);
 
     expect(canales.map((c) => c.code)).toEqual(['US_ACCOUNT_MANUAL']);
+  });
+});
+
+/**
+ * Cobro en moneda distinta a la de la gestión — DEC-009, cierra TBD-001.
+ *
+ * Hasta el 11 de agosto de 2026 esta rama se rechazaba entera porque no había
+ * de dónde sacar la tasa. Ahora existe el registro diario, y lo que se
+ * comprueba aquí es que **sin tasa se rechaza y con tasa se congela**.
+ */
+describe('cobro multimoneda', () => {
+  async function conCanalExtranjero(): Promise<Escenario & { readonly channelId: string }> {
+    const e = await sembrar();
+
+    // La gestión factura en USD; este canal cobra en bolivianos.
+    const canal = await prisma.paymentChannel.create({
+      data: { eventId: e.eventId, code: 'BOLIVIA_QR_MANUAL', currency: 'BOB' },
+    });
+
+    return { ...e, channelId: canal.id };
+  }
+
+  it('se rechaza cuando no hay tasa del día, y el error dice cuál falta', async () => {
+    const e = await conCanalExtranjero();
+
+    await expect(
+      submitPaymentProof(deps, e.peregrino, {
+        ...declaracion(e),
+        channelId: e.channelId,
+        amount: { amount: 290_000, currency: 'BOB' },
+      }),
+    ).rejects.toThrow(/BOB/);
+  });
+
+  it('con tasa del día se acepta y queda congelada en la evidencia', async () => {
+    const e = await conCanalExtranjero();
+    const pagado = declaracion(e).paidAt;
+
+    await rates.save({
+      eventId: e.eventId,
+      currency: 'BOB',
+      rateMicros: 145_000, // 1 BOB = 0,145 USD
+      effectiveOn: pagado.toISOString().slice(0, 10),
+      actorId: e.revisor.userId,
+    });
+
+    const proofId = await submitPaymentProof(deps, e.peregrino, {
+      ...declaracion(e),
+      channelId: e.channelId,
+      amount: { amount: 290_000, currency: 'BOB' },
+    });
+
+    const fila = await prisma.paymentProof.findUniqueOrThrow({ where: { id: proofId } });
+
+    expect(fila.currency).toBe('BOB');
+    expect(fila.exchangeRateMicros).toBe(145_000n);
+  });
+
+  /*
+   * DEC-009 congela la tasa del día **del pago**, no la de hoy. Una evidencia
+   * cargada el jueves de una transferencia del lunes se convierte con la del
+   * lunes, o el peregrino paga lo que diga la cotización del día en que se
+   * acordó de subir el comprobante.
+   */
+  it('usa la tasa del día del pago, no la de otro día', async () => {
+    const e = await conCanalExtranjero();
+    const pagado = declaracion(e).paidAt;
+    const otroDia = new Date(pagado.getTime() - 3 * 24 * 60 * 60 * 1000);
+
+    await rates.save({
+      eventId: e.eventId,
+      currency: 'BOB',
+      rateMicros: 999_999,
+      effectiveOn: otroDia.toISOString().slice(0, 10),
+      actorId: e.revisor.userId,
+    });
+
+    // Hay tasa en la gestión, pero no la del día del pago.
+    await expect(
+      submitPaymentProof(deps, e.peregrino, {
+        ...declaracion(e),
+        channelId: e.channelId,
+        amount: { amount: 290_000, currency: 'BOB' },
+      }),
+    ).rejects.toThrow(/BOB/);
+  });
+
+  it('un cobro en la moneda de la gestión no necesita tasa', async () => {
+    const e = await sembrar();
+
+    const proofId = await submitPaymentProof(deps, e.peregrino, declaracion(e));
+    const fila = await prisma.paymentProof.findUniqueOrThrow({ where: { id: proofId } });
+
+    // Nula y no 1 000 000: guardar una tasa fingiría una conversión que no hubo.
+    expect(fila.exchangeRateMicros).toBeNull();
   });
 });

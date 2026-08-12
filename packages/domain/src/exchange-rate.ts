@@ -1,5 +1,5 @@
-import { RATE_SCALE } from './billing.js';
 import { DomainError } from './errors.js';
+import { RATE_SCALE } from './money.js';
 
 /**
  * Tasa de cambio del día — DEC-009, cierra TBD-001.

@@ -10,6 +10,7 @@ import {
   clock,
   eventRepository,
   evidenceStore,
+  exchangeRateRepository,
   proofSubmissionRepository,
 } from '@/lib/container';
 import { requireActor } from '@/lib/session';
@@ -130,6 +131,7 @@ function dependencias() {
   return {
     proofs: proofSubmissionRepository(),
     evidence: evidenceStore(),
+    rates: exchangeRateRepository(),
     clock: clock(),
   };
 }
