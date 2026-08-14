@@ -48,14 +48,26 @@ if (correo?.includes('@') !== true || codigoRol === undefined) {
   );
 }
 
-const definicion = ROLES.find((rol) => rol.code === codigoRol);
+/**
+ * Resuelve el rol o aborta.
+ *
+ * Va en una función y no en un `if` suelto porque el estrechamiento de un
+ * `abortar()` en el ámbito del módulo no viaja dentro de `main()`: fuera de
+ * aquí, `definicion` seguiría siendo `Rol | undefined` en cada uso.
+ */
+function exigirRol(codigo: string): (typeof ROLES)[number] {
+  const encontrado = ROLES.find((rol) => rol.code === codigo);
 
-if (definicion === undefined) {
-  abortar(
-    `No existe el rol «${codigoRol}».\n` +
-      `Disponibles: ${ROLES.map((rol) => rol.code).join(', ')}`,
-  );
+  if (encontrado === undefined) {
+    abortar(
+      `No existe el rol «${codigo}».\n` + `Disponibles: ${ROLES.map((rol) => rol.code).join(', ')}`,
+    );
+  }
+
+  return encontrado;
 }
+
+const definicion = exigirRol(codigoRol);
 
 /*
  * El ámbito lo fija el rol, no quien ejecuta.

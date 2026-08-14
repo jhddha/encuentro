@@ -1,7 +1,7 @@
 'use server';
 
 import { resubmitPaymentProof, submitPaymentProof } from '@encuentro/application';
-import { DomainError, civilDayAnchor, money } from '@encuentro/domain';
+import { DomainError, civilDayAnchor } from '@encuentro/domain';
 import { revalidatePath } from 'next/cache';
 
 import { runAction, type ActionResult } from '@/lib/actions';
@@ -31,6 +31,14 @@ import { requireActor } from '@/lib/session';
 
 interface Declaracion {
   readonly channelId: string;
+  /**
+   * Texto decimal sin moneda.
+   *
+   * La moneda **no viaja** desde aquí: la pone el canal, dentro del caso de
+   * uso, que es el único sitio donde el canal está resuelto contra la base.
+   * Esta pantalla enviaba la de la gestión, y con ella un pago por la cuenta de
+   * Estados Unidos llegaba en bolivianos contra un canal en dólares.
+   */
   readonly amount: string;
   readonly paidAt: string;
   readonly reference: string;
@@ -145,7 +153,7 @@ export async function submitProofAction(eventCode: string, form: FormData): Prom
       eventId: event.id,
       registrationId: statement.registrationId,
       channelId: declaracion.channelId,
-      amount: money(declaracion.amount, statement.currency),
+      declaredAmount: declaracion.amount,
       paidAt: fechaDeclarada(declaracion.paidAt),
       reference: declaracion.reference,
       payerName: declaracion.payerName,
@@ -182,7 +190,7 @@ export async function resubmitProofAction(
       eventId: event.id,
       proofId,
       expectedVersion,
-      amount: money(declaracion.amount, statement.currency),
+      declaredAmount: declaracion.amount,
       paidAt: fechaDeclarada(declaracion.paidAt),
       reference: declaracion.reference,
       payerName: declaracion.payerName,

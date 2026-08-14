@@ -214,8 +214,25 @@ async function sembrarNegocio(prisma: PrismaClient): Promise<{
    */
   await prisma.paymentChannel.upsert({
     where: { eventId_code: { eventId: event.id, code: 'US_ACCOUNT_MANUAL' } },
-    update: { active: true },
+    update: { active: true, currency: 'USD' },
     create: { eventId: event.id, code: 'US_ACCOUNT_MANUAL', currency: 'USD', active: true },
+  });
+
+  /*
+   * Un segundo canal **en otra moneda que la gestión**, que aquí factura en
+   * dólares. No es adorno: la moneda del importe la fija el canal elegido, y
+   * con un solo canal en la moneda de la gestión esa regla no se ejercita
+   * nunca. Es exactamente el hueco por el que pasó el defecto del 14 de agosto
+   * de 2026 —el rótulo se quedaba en la moneda de la gestión y la declaración
+   * salía con la moneda equivocada— con toda la suite en verde.
+   *
+   * El `update` incluye la moneda a propósito: un `upsert` que no actualiza
+   * deja la base contando una historia distinta de la del archivo.
+   */
+  await prisma.paymentChannel.upsert({
+    where: { eventId_code: { eventId: event.id, code: 'BOLIVIA_QR_MANUAL' } },
+    update: { active: true, currency: 'BOB' },
+    create: { eventId: event.id, code: 'BOLIVIA_QR_MANUAL', currency: 'BOB', active: true },
   });
 
   /*
@@ -231,6 +248,17 @@ async function sembrarNegocio(prisma: PrismaClient): Promise<{
       where: { code: definicion.code },
       update: {},
       create: { code: definicion.code, name: definicion.name },
+    });
+
+    /*
+     * Se reconcilian, no se acumulan. La base del recorrido sobrevive entre
+     * ejecuciones, así que un permiso retirado de `ROLES` seguiría concedido
+     * aquí: las pruebas de frontera pasarían afirmando un alcance que el
+     * contrato ya no concede, que es justo lo que este bloque existe para
+     * impedir.
+     */
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: rol.id, permission: { notIn: [...definicion.permissions] } },
     });
 
     await prisma.rolePermission.createMany({

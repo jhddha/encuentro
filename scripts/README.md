@@ -13,13 +13,15 @@
 pnpm rol:conceder <correo> <ROL> [CODIGO_GESTION] [--retirar]
 ```
 
-Existe porque faltaba: **no había forma de que una persona real fuera administradora.** El seed crea `admin@encuentro.local` con `ADMIN_MASTER` global y a propósito **sin credencial** —una contraseña por defecto es una cuenta con acceso conocido en cualquier entorno donde el seed corra— y `dev-fixture.ts` solo concede `TESORERIA`. Entre las dos cosas, todo lo que vive detrás de `event.*` o `catalog.manage` quedaba fuera del alcance de cualquiera capaz de iniciar sesión: configuración de la gestión, catálogo, alta de gestiones y el registro de la tasa de cambio.
+Existe porque faltaba: **no había forma de que una persona real fuera administradora.** El seed creaba `admin@encuentro.local` con `ADMIN_MASTER` global y a propósito **sin credencial** —una contraseña por defecto es una cuenta con acceso conocido en cualquier entorno donde el seed corra— y `dev-fixture.ts` solo concede `TESORERIA`. Entre las dos cosas, todo lo que vive detrás de `event.*` o `catalog.manage` quedaba fuera del alcance de cualquiera capaz de iniciar sesión: configuración de la gestión, catálogo, alta de gestiones y el registro de la tasa de cambio.
+
+El seed ya no crea esa cuenta ni concede nada: al terminar avisa si no hay ningún administrador y dice cómo conceder el primero.
 
 El ámbito lo fija el rol y no quien ejecuta: `ADMIN_MASTER` es global, `TESORERIA` e `INSCRIPCIONES` viven dentro de una gestión. Dejar elegir el ámbito permitiría conceder un rol global con forma de gestión, y `scopeCovers` decide a partir de esa columna.
 
 No crea cuentas ni toca credenciales: la cuenta tiene que haber pasado por el registro real (DEC-013). Conceder y retirar están en la misma herramienta a propósito, porque el error aquí es dar de más y una herramienta que solo concede lo deja sin deshacer. Ambas operaciones dejan rastro en `audit_logs`.
 
-**Queda una cuenta que nadie controla.** `admin@encuentro.local` conserva su asignación global de `ADMIN_MASTER` sin credencial con la que iniciar sesión. En desarrollo es inofensivo y sirve de marcador; antes de que el seed se ejecute en un entorno real conviene decidir si esa fila debe existir, porque es una asignación de administrador global colgando de una dirección que nadie ha reclamado.
+**Sobre `admin@encuentro.local`.** En una base sembrada antes del 14 de agosto de 2026 esa cuenta existe con `ADMIN_MASTER` global. Retire la asignación con `--retirar`; la fila del usuario sobrevive porque el propio registro de auditoría de la retirada la referencia, y `audit_logs` es de solo inserción. Eso es correcto: el rastro dice qué pasó, y sin permisos ni credencial la cuenta no puede hacer nada.
 
 ## Sobre `rebuild_package_v2_7.py`
 

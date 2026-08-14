@@ -11,8 +11,9 @@ import { requireActor } from '@/lib/session';
  * Registro de la tasa de cambio del día — DEC-009.
  *
  * La autorización no se comprueba aquí: la exige el caso de uso con
- * `event.update`, que es donde vive la regla. Esta capa resuelve el actor y
- * traduce el fallo del dominio a algo que la pantalla pueda decir.
+ * `accounting.exchange_rate.manage`, que es donde vive la regla. Esta capa
+ * resuelve el actor y traduce el fallo del dominio a algo que la pantalla pueda
+ * decir.
  */
 function texto(valor: FormDataEntryValue | null): string {
   return typeof valor === 'string' ? valor : '';

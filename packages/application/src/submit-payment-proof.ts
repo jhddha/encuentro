@@ -6,6 +6,7 @@ import {
   authorizeOwnership,
   canTransitionProof,
   civilDayIn,
+  money,
   type Actor,
   type EventState,
   type ExchangeRate,
@@ -206,11 +207,28 @@ export interface SubmitPaymentProofDeps {
   readonly clock: Clock;
 }
 
+/**
+ * El importe llega como **texto decimal**, sin moneda.
+ *
+ * En qué moneda está no lo decide quien teclea el número: lo decide el canal
+ * por el que transfirió. La pantalla enviaba la moneda de la gestión, así que
+ * declarar por la cuenta de Estados Unidos producía un importe en bolivianos
+ * contra un canal en dólares y `assertDeclarableEvidence` lo rechazaba. El
+ * cobro internacional no era declarable en absoluto.
+ *
+ * Podría haberse arreglado haciendo que la pantalla buscara la moneda del canal
+ * y la mandara. Sería el mismo error otra vez: un dato que el llamador puede
+ * equivocarse al calcular, y que además viaja por un endpoint invocable
+ * directamente. Aquí el canal ya se resuelve contra la base —hay que hacerlo de
+ * todos modos para comprobar que existe, que está activo y que es de esta
+ * gestión— así que la moneda sale de ahí y de ningún otro sitio.
+ */
 export interface SubmitPaymentProofCommand {
   readonly eventId: string;
   readonly registrationId: string;
   readonly channelId: string;
-  readonly amount: Money;
+  /** Texto decimal tal como se teclea. La moneda la pone el canal. */
+  readonly declaredAmount: string;
   readonly paidAt: Date;
   readonly reference: string;
   readonly payerName?: string;
@@ -221,7 +239,8 @@ export interface ResubmitPaymentProofCommand {
   readonly eventId: string;
   readonly proofId: string;
   readonly expectedVersion: number;
-  readonly amount: Money;
+  /** Texto decimal. El canal no cambia al corregir, y su moneda tampoco. */
+  readonly declaredAmount: string;
   readonly paidAt: Date;
   readonly reference: string;
   readonly payerName?: string;
@@ -253,6 +272,10 @@ export async function submitPaymentProof(
 
   const channel = await resolveChannel(deps, command.channelId, registration.eventId);
 
+  // La moneda sale del canal resuelto, no del llamador. Ver el comentario de
+  // `SubmitPaymentProofCommand`.
+  const amount = money(command.declaredAmount, channel.currency);
+
   const rate = await tasaDelPago(deps.rates, {
     eventId: registration.eventId,
     channelCurrency: channel.currency,
@@ -262,7 +285,7 @@ export async function submitPaymentProof(
   });
 
   assertDeclarableEvidence({
-    amount: command.amount,
+    amount,
     paidAt: command.paidAt,
     reference: command.reference,
     contentType: command.upload.contentType,
@@ -284,7 +307,7 @@ export async function submitPaymentProof(
     eventId: registration.eventId,
     registrationId: registration.id,
     channelId: channel.id,
-    amount: command.amount,
+    amount,
     paidAt: command.paidAt,
     reference: command.reference.trim(),
     payerName: normalizeOptional(command.payerName),
@@ -336,6 +359,13 @@ export async function resubmitPaymentProof(
    * Corregir una evidencia puede cambiar la fecha —el peregrino se equivocó al
    * teclearla— y entonces la tasa que corresponde es la de la fecha nueva.
    */
+  /*
+   * Misma moneda que la carga original, y por el mismo motivo: la pone el
+   * canal. Corregir no cambia de canal —si pagó por otra vía eso es otro pago y
+   * otra evidencia— así que la moneda viene de la evidencia que se corrige.
+   */
+  const amount = money(command.declaredAmount, proof.channelCurrency);
+
   const rate = await tasaDelPago(deps.rates, {
     eventId: proof.eventId,
     channelCurrency: proof.channelCurrency,
@@ -345,7 +375,7 @@ export async function resubmitPaymentProof(
   });
 
   assertDeclarableEvidence({
-    amount: command.amount,
+    amount,
     paidAt: command.paidAt,
     reference: command.reference,
     contentType: command.upload.contentType,
@@ -375,7 +405,7 @@ export async function resubmitPaymentProof(
     eventId: proof.eventId,
     proofId: proof.id,
     expectedVersion: command.expectedVersion,
-    amount: command.amount,
+    amount,
     paidAt: command.paidAt,
     reference: command.reference.trim(),
     payerName: normalizeOptional(command.payerName),

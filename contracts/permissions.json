@@ -2,6 +2,7 @@
   "version": "2.7",
   "permissions": [
     "accounting.close",
+    "accounting.exchange_rate.manage",
     "accounting.manage",
     "accounting.read",
     "accounting.reconcile",

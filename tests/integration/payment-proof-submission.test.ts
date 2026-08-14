@@ -167,7 +167,8 @@ function declaracion(e: Escenario, overrides: { reference?: string; amount?: str
     eventId: e.eventId,
     registrationId: e.registrationId,
     channelId: e.channelId,
-    amount: money(overrides.amount ?? '420.00', USD),
+    // Texto sin moneda: la pone el canal, dentro del caso de uso.
+    declaredAmount: overrides.amount ?? '420.00',
     paidAt: new Date('2026-08-01T10:00:00Z'),
     reference: overrides.reference ?? `TRF-${e.eventCode}`,
     upload: ARCHIVO,
@@ -341,7 +342,7 @@ describe('corrección de una evidencia devuelta — PAY-026', () => {
       eventId: e.eventId,
       proofId,
       expectedVersion: version,
-      amount: money('420.00', USD),
+      declaredAmount: '420.00',
       paidAt: new Date('2026-08-02T10:00:00Z'),
       reference: 'TRF-CORREGIDA',
       upload: ARCHIVO,
@@ -367,7 +368,7 @@ describe('corrección de una evidencia devuelta — PAY-026', () => {
       eventId: e.eventId,
       proofId,
       expectedVersion: version,
-      amount: money('420.00', USD),
+      declaredAmount: '420.00',
       paidAt: new Date('2026-08-02T10:00:00Z'),
       reference: 'TRF-CORREGIDA-2',
       upload: ARCHIVO,
@@ -392,7 +393,7 @@ describe('corrección de una evidencia devuelta — PAY-026', () => {
       eventId: e.eventId,
       proofId,
       expectedVersion: version,
-      amount: money('420.00', USD),
+      declaredAmount: '420.00',
       paidAt: new Date('2026-08-02T10:00:00Z'),
       reference,
       upload: ARCHIVO,
@@ -611,7 +612,7 @@ describe('cobro multimoneda', () => {
       submitPaymentProof(deps, e.peregrino, {
         ...declaracion(e),
         channelId: e.channelId,
-        amount: { amount: 290_000, currency: 'BOB' },
+        declaredAmount: '2900.00',
       }),
     ).rejects.toThrow(/BOB/);
   });
@@ -631,7 +632,7 @@ describe('cobro multimoneda', () => {
     const proofId = await submitPaymentProof(deps, e.peregrino, {
       ...declaracion(e),
       channelId: e.channelId,
-      amount: { amount: 290_000, currency: 'BOB' },
+      declaredAmount: '2900.00',
     });
 
     const fila = await prisma.paymentProof.findUniqueOrThrow({ where: { id: proofId } });
@@ -664,7 +665,7 @@ describe('cobro multimoneda', () => {
       submitPaymentProof(deps, e.peregrino, {
         ...declaracion(e),
         channelId: e.channelId,
-        amount: { amount: 290_000, currency: 'BOB' },
+        declaredAmount: '2900.00',
       }),
     ).rejects.toThrow(/BOB/);
   });

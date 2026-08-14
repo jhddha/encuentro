@@ -26,6 +26,13 @@ export const ROLES = [
       'catalog.manage',
       'registration.read',
       'payment.read',
+      /*
+       * La tasa de cambio la registra tesorería, y también quien administra:
+       * la organización lo pidió así el 14 de agosto de 2026. Es un permiso
+       * propio y no `event.update` porque ese autoriza además renombrar la
+       * gestión y cambiar su moneda funcional.
+       */
+      'accounting.exchange_rate.manage',
     ],
   },
   {
@@ -58,6 +65,12 @@ export const ROLES = [
       'payment.proof.review',
       'receipt.issue',
       'receipt.read',
+      /*
+       * Registrar la tasa del día. Es trabajo de tesorería: sin ella no se
+       * puede aceptar un cobro en moneda extranjera, y quien revisa esos
+       * comprobantes es quien sabe a cuánto se cotizó.
+       */
+      'accounting.exchange_rate.manage',
     ],
   },
 ] as const;

@@ -65,11 +65,23 @@ export async function registerExchangeRate(
   input: RegisterExchangeRateInput,
 ): Promise<ExchangeRate> {
   /*
-   * `event.update` y no `event.read`: leer la configuración y cambiarla son
-   * permisos distintos, y esto último mueve dinero — la tasa decide cuánto vale
-   * cada cobro en moneda extranjera.
+   * Un permiso propio, y no `event.update`.
+   *
+   * Nació con `event.update` y era demasiado ancho: ese permiso también
+   * autoriza renombrar la gestión, mover sus fechas y cambiar su moneda
+   * funcional. Quien conoce la cotización del día es tesorería, y darle
+   * `event.update` para que pueda teclearla le daría de paso el resto.
+   *
+   * Tampoco `accounting.manage`, que es lo contrario: gobernará el motor de
+   * asientos cuando exista, y concederlo hoy para una cotización entregaría
+   * mañana la contabilización entera.
+   *
+   * Sigue la forma de `event.timezone.update`, que existe por la misma razón.
    */
-  authorize(deps.actor, 'event.update', { type: 'EVENT', eventId: input.eventId });
+  authorize(deps.actor, 'accounting.exchange_rate.manage', {
+    type: 'EVENT',
+    eventId: input.eventId,
+  });
 
   const tasa = parseRate(input.rate, input.currency);
 

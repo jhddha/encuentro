@@ -1,4 +1,4 @@
-import { ADVANCE_CHANNELS, DomainError, money, type Actor } from '@encuentro/domain';
+import { ADVANCE_CHANNELS, DomainError, type Actor } from '@encuentro/domain';
 import { describe, expect, it } from 'vitest';
 
 import type { Clock } from './ports.js';
@@ -129,7 +129,8 @@ const comando = {
   eventId: EVENTO,
   registrationId: INSCRIPCION,
   channelId: CANAL,
-  amount: money('420.00', USD),
+  // Texto sin moneda: la pone el canal, dentro del caso de uso.
+  declaredAmount: '420.00',
   paidAt: new Date('2026-08-07T15:00:00.000Z'),
   reference: 'TRF-88213',
   upload: ARCHIVO,
@@ -443,7 +444,7 @@ describe('resubmitPaymentProof', () => {
     eventId: EVENTO,
     proofId: EVIDENCIA,
     expectedVersion: 3,
-    amount: money('420.00', USD),
+    declaredAmount: '420.00',
     paidAt: new Date('2026-08-07T15:00:00.000Z'),
     reference: 'TRF-88214',
     upload: ARCHIVO,

@@ -38,6 +38,10 @@ const TEMPLATES = [
  * recorrer las pantallas de administración en local. No inventa inscripciones,
  * pagos ni catálogo: esos datos pertenecen a fases que aún no existen.
  *
+ * **Tampoco crea cuentas ni concede permisos.** El primer administrador se
+ * concede con `pnpm rol:conceder <correo> ADMIN_MASTER` a una cuenta que ya
+ * haya pasado por el registro real (DEC-013).
+ *
  * Los roles y sus permisos viven en `roles.ts`, compartidos con la siembra del
  * recorrido automatizado: dos copias de la matriz de permisos se separan en
  * silencio y la vieja hace pasar pruebas que no demuestran nada.
@@ -64,42 +68,42 @@ async function main(): Promise<void> {
   });
 
   /*
-   * Cuenta administrativa inicial.
+   * Roles y permisos. **Ninguna cuenta administrativa.**
    *
-   * Se crea **sin credencial**: darle una contraseña por defecto dejaría una
-   * cuenta con acceso conocido en cualquier entorno donde corriera el seed.
-   * El alta real de la credencial se hace por el flujo de registro, que exige
-   * verificación de correo (DEC-013) y segundo factor (DEC-014).
+   * Aquí se creaba `admin@encuentro.local` con `ADMIN_MASTER` global y sin
+   * credencial. Lo segundo era deliberado y correcto —una contraseña por
+   * defecto es una cuenta con acceso conocido en cualquier entorno donde el
+   * seed corra— pero dejaba dos consecuencias que nadie había juntado: nadie
+   * capaz de iniciar sesión podía ser administrador, y quedaba una asignación
+   * de administrador global colgando de una dirección que nadie reclama.
+   *
+   * El primer administrador se concede a una cuenta real, ya registrada, con
+   * `pnpm rol:conceder <correo> ADMIN_MASTER`. Exige acceso a la base, que es
+   * exactamente el listón que corresponde a arrancar un administrador.
    */
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@encuentro.local' },
-    update: {},
-    create: { email: 'admin@encuentro.local', displayName: 'Administrador de desarrollo' },
-  });
-
   for (const definition of ROLES) {
     const role = await prisma.role.upsert({
       where: { code: definition.code },
-      update: {},
+      update: { name: definition.name },
       create: { code: definition.code, name: definition.name },
+    });
+
+    /*
+     * Los permisos se **reconcilian**, no se acumulan.
+     *
+     * Antes solo se insertaban los que faltaban, así que un permiso retirado
+     * del código seguía concedido en la base para siempre. En una matriz de
+     * autorización eso no es datos obsoletos: es un permiso que alguien decidió
+     * quitar y que sigue vigente sin que nada lo diga.
+     */
+    await prisma.rolePermission.deleteMany({
+      where: { roleId: role.id, permission: { notIn: [...definition.permissions] } },
     });
 
     await prisma.rolePermission.createMany({
       data: definition.permissions.map((permission) => ({ roleId: role.id, permission })),
       skipDuplicates: true,
     });
-
-    if (definition.scopeType === 'GLOBAL') {
-      const existing = await prisma.roleAssignment.findFirst({
-        where: { userId: admin.id, roleId: role.id, scopeType: 'GLOBAL' },
-      });
-
-      if (existing === null) {
-        await prisma.roleAssignment.create({
-          data: { userId: admin.id, roleId: role.id, scopeType: 'GLOBAL' },
-        });
-      }
-    }
   }
 
   /*
@@ -213,7 +217,7 @@ async function main(): Promise<void> {
   const nuevas = PLAN_DE_CUENTAS.filter((cuenta) => 'nueva' in cuenta).length;
 
   console.log(
-    `Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, 1 usuario, ` +
+    `Seed listo: gestión ${event.code}, ${String(ROLES.length)} roles, ` +
       `${String(TEMPLATES.length)} plantillas de correo, ` +
       `${String(PLAN_DE_CUENTAS.length)} cuentas contables (${String(nuevas)} por abrir en el plan real), ` +
       `${String(COMISIONES.length)} comisiones.`,
@@ -221,6 +225,22 @@ async function main(): Promise<void> {
 
   const sinCuenta = Object.keys(ROLES_SIN_CUENTA);
   console.log(`Roles de DEC-018 sin cuenta, a propósito: ${sinCuenta.join(', ')}.`);
+
+  /*
+   * El seed no crea ninguna cuenta ni concede ningún permiso. Sin este aviso,
+   * un entorno recién sembrado parece completo y no lo está: nadie puede
+   * administrarlo hasta que alguien se registre y reciba el rol.
+   */
+  const administradores = await prisma.roleAssignment.count({
+    where: { scopeType: 'GLOBAL', role: { code: 'ADMIN_MASTER' } },
+  });
+
+  if (administradores === 0) {
+    console.log(
+      '\nNo hay ningún administrador. Regístrese en /ingresar y después:\n' +
+        '  pnpm rol:conceder <su-correo> ADMIN_MASTER',
+    );
+  }
 }
 
 main()

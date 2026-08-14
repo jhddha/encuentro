@@ -11,9 +11,16 @@ import { resubmitProofAction, submitProofAction } from './actions';
  *
  * Los siete datos que pide son exactamente los que el requisito enumera: monto,
  * moneda, fecha, banco o plataforma, referencia, pagador y archivo. La moneda no
- * es un campo editable sino la de la gestión, y el banco no es texto libre sino
- * el canal (PAY-023): dejarlos escribir produciría evidencias que el revisor no
- * puede cuadrar contra ninguna cuenta.
+ * es un campo editable, y el banco no es texto libre sino el canal (PAY-023):
+ * dejarlos escribir produciría evidencias que el revisor no puede cuadrar contra
+ * ninguna cuenta.
+ *
+ * **La moneda es la del canal elegido, no la de la gestión.** Estaba fija en la
+ * de la gestión, así que al elegir la cuenta de Estados Unidos el rótulo seguía
+ * diciendo bolivianos sobre un campo en el que se teclean dólares. No era solo
+ * el rótulo: la acción construía el importe con esa misma moneda y el dominio lo
+ * rechazaba por no casar con el canal. El cobro internacional no se podía
+ * declarar.
  *
  * El envío pasa por una acción de servidor con `FormData` en vez de subir el
  * archivo aparte. Así el archivo solo se guarda si el resto de la declaración es
@@ -51,6 +58,7 @@ export function ProofUploadForm({
   correction,
 }: {
   readonly eventCode: string;
+  /** Moneda de la gestión: la de los cargos, no necesariamente la del canal. */
   readonly currency: string;
   readonly channels: readonly ChannelOption[];
   /** Fecha de hoy en la zona de la gestión, `YYYY-MM-DD`, para el tope del campo. */
@@ -61,9 +69,19 @@ export function ProofUploadForm({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [canalId, setCanalId] = useState(channels[0]?.id ?? '');
   const formRef = useRef<HTMLFormElement>(null);
 
   const corrigiendo = correction !== undefined;
+
+  /*
+   * El canal elegido manda sobre la moneda del importe. Si el identificador no
+   * casa con ninguno —no debería—, se cae a la de la gestión antes que enseñar
+   * un campo sin moneda.
+   */
+  const canal = channels.find((opcion) => opcion.id === canalId);
+  const monedaDelCanal = canal?.currency ?? currency;
+  const convertido = monedaDelCanal !== currency;
 
   function onSubmit(formEvent: SyntheticEvent<HTMLFormElement, SubmitEvent>) {
     formEvent.preventDefault();
@@ -140,38 +158,41 @@ export function ProofUploadForm({
           <label htmlFor="canal" className="text-sm font-medium">
             Banco o plataforma
           </label>
+          {/*
+            Controlado, y no `defaultValue`: la moneda del importe depende de
+            esta elección, así que el componente tiene que enterarse de que
+            cambió. Sin estado, el rótulo se quedaba en la moneda de la gestión
+            para siempre.
+          */}
           <select
             id="canal"
             name="canal"
             required
-            defaultValue={channels[0]?.id}
+            value={canalId}
+            onChange={(event) => {
+              setCanalId(event.target.value);
+            }}
             className="min-h-[var(--size-touch-target)] border border-[var(--color-ink)]/40 p-2 text-sm"
           >
             {channels.map((channel) => (
               <option key={channel.id} value={channel.id}>
-                {CHANNEL_LABEL[channel.code] ?? channel.code}
+                {CHANNEL_LABEL[channel.code] ?? channel.code} · {channel.currency}
               </option>
             ))}
           </select>
         </div>
 
-        {channels.some((channel) => channel.instructions !== null) && (
-          <ul className="flex flex-col gap-1 text-xs opacity-80">
-            {channels
-              .filter((channel) => channel.instructions !== null)
-              .map((channel) => (
-                <li key={channel.id}>
-                  <strong>{CHANNEL_LABEL[channel.code] ?? channel.code}:</strong>{' '}
-                  {channel.instructions}
-                </li>
-              ))}
-          </ul>
-        )}
+        {/*
+          Las instrucciones del canal elegido, no las de todos. Enseñar las tres
+          a la vez obliga a buscar la propia entre datos de cuentas ajenas, y una
+          transferencia enviada a la cuenta equivocada no se deshace.
+        */}
+        {canal?.instructions != null && <p className="text-xs opacity-80">{canal.instructions}</p>}
 
         <div className="grid gap-4 md:grid-cols-2">
           <div className="flex flex-col gap-1">
             <label htmlFor="importe" className="text-sm font-medium">
-              Importe transferido ({currency})
+              Importe transferido ({monedaDelCanal})
             </label>
             <input
               id="importe"
@@ -185,6 +206,19 @@ export function ProofUploadForm({
             />
             <p id="importe-ayuda" className="text-xs opacity-70">
               Escriba el importe exacto que salió de su cuenta, con dos decimales.
+              {/*
+                Sus cargos están en la moneda de la gestión. Sin decirlo, el
+                peregrino que transfiere dólares no sabe cuánto tiene que enviar
+                para saldar una deuda expresada en bolivianos, y la aritmética
+                la acabará haciendo mal alguien.
+              */}
+              {convertido && (
+                <>
+                  {' '}
+                  Sus cargos están en {currency}: al revisarlo se convertirá con la tasa del día del
+                  pago.
+                </>
+              )}
             </p>
           </div>
 

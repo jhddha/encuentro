@@ -151,13 +151,17 @@ Los dos anteriores se añadieron el 7 de agosto de 2026 al implementar `REG-017`
 | Materiales | `materials.read`, `materials.manage`, `benefit.deliver` |
 | Auditoría | `audit.read` |
 | Transporte | `transport.read`, `transport.manage`, `transport.assign` |
-| Contabilidad | `accounting.read`, `accounting.manage`, `accounting.reconcile`, `accounting.close` |
+| Contabilidad | `accounting.read`, `accounting.manage`, `accounting.reconcile`, `accounting.close`, `accounting.exchange_rate.manage` |
 | Reportes | `report.read`, `report.export` |
 | Notificaciones | `notification.read`, `notification.manage`, `notification.send` |
 | Credenciales | `credential.read`, `credential.issue`, `credential.revoke`, `credential.scan` |
 | Servidores | `server.read`, `server.manage`, `server.shift.assign` |
 
 Los permisos de Eventos incluyen además `event.timezone.update`, que gobierna el cambio de zona horaria de una gestión ya publicada.
+
+`accounting.exchange_rate.manage` gobierna el registro de la tasa de cambio diaria (DEC-009) y se añadió el 14 de agosto de 2026. La pantalla nació exigiendo `event.update`, que era demasiado ancho: ese permiso también autoriza renombrar la gestión, mover sus fechas y cambiar su moneda funcional, y quien conoce la cotización del día es tesorería, no quien administra la gestión. Sigue la misma forma que `event.timezone.update`, que existe por la misma razón: un atributo concreto no debería exigir el permiso de cambiarlo todo.
+
+Es más estrecho que `accounting.manage` a propósito. Ese permiso gobernará el motor de asientos cuando exista, y darlo hoy a tesorería para que pueda teclear una cotización le entregaría mañana la contabilización. Lo llevan `TESORERIA` y `ADMIN_MASTER`.
 
 Los siete últimos dominios se incorporaron el 5 de agosto de 2026 para cerrar el hallazgo H-06 de la auditoría P00: sus módulos tenían rutas administrativas sin ningún permiso que las protegiera. Siguen la convención `<dominio-singular>.<acción>` del resto.
 

@@ -61,6 +61,31 @@ test.describe('el peregrino inscrito', () => {
     await expect(page.getByRole('button', { name: 'Enviar comprobante' })).toBeVisible();
   });
 
+  /*
+   * La moneda del importe es la del canal, no la de la gestión.
+   *
+   * El rótulo estaba fijo en la moneda de la gestión, así que al elegir un
+   * canal extranjero seguía diciendo la otra. No era solo el rótulo: la
+   * declaración se construía con esa misma moneda y el dominio la rechazaba por
+   * no casar con el canal, de modo que el cobro en otra divisa no se podía
+   * declarar en absoluto. Toda la suite estaba en verde.
+   */
+  test('el importe cambia de moneda con el canal elegido', async ({ page }) => {
+    await page.goto(`/e/${EVENTO}/mi-cuenta/pagos`);
+
+    const canal = page.getByLabel('Banco o plataforma');
+
+    // `selectOption` exige la etiqueta literal: no admite expresión regular.
+    await canal.selectOption({ label: 'Transferencia a cuenta — Estados Unidos · USD' });
+    await expect(page.getByLabel(/^Importe transferido \(USD\)$/)).toBeVisible();
+
+    await canal.selectOption({ label: 'QR Simple — Bolivia · BOB' });
+    await expect(page.getByLabel(/^Importe transferido \(BOB\)$/)).toBeVisible();
+
+    // Y se dice en qué moneda están sus cargos, que es la pregunta siguiente.
+    await expect(page.getByText(/Sus cargos están en USD/)).toBeVisible();
+  });
+
   test('ve sus cargos y su saldo', async ({ page }) => {
     await page.goto(`/e/${EVENTO}/mi-cuenta`);
 
