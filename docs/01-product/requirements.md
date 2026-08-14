@@ -251,6 +251,47 @@ El hueco en la numeración es deliberado: el requisito de v2.6 sobre segundo fac
 | SRV-003 | Un servidor sin asignación no opera una estación restringida. | La API deniega. |
 | SRV-004 | La credencial de servidor es independiente de la de peregrino. | Una persona puede tener ambas sin colisión. |
 
+### Jerarquía y cuentas
+
+Los cuatro niveles vienen del documento de administración del 14 de agosto de 2026 ([`_incoming/modulo-servidores`](../_incoming/modulo-servidores/documento-administracion-2026-08-14.md)) y su forma técnica la fija [DEC-020](../04-delivery/decisions/DEC-020.md).
+
+| ID | Requisito | Criterio |
+|---|---|---|
+| SRV-005 | El acceso tiene cuatro niveles: administrador master, encargado de área, coordinador de comisión y servidor. | Prueba negativa por nivel: ninguno alcanza lo del nivel superior. |
+| SRV-006 | El encargado de área es coordinador de todas las comisiones de su área; su alcance es la unión de ellas. | No existe ámbito `AREA`; el alcance se comprueba comisión por comisión (DEC-020). |
+| SRV-007 | Encargados y coordinadores reciben acceso directo, sin pasar por solicitud. | La solicitud es solo para el servidor base. |
+| SRV-008 | Una comisión admite de uno a tres coordinadores. | El cuarto se rechaza. |
+| SRV-009 | Quien coordina varias comisiones lo hace con una sola cuenta. | No se crean cuentas duplicadas por comisión. |
+| SRV-010 | La credencial de acceso de encargados y coordinadores exige cambio en el primer uso y caduca si no se usa. | Caducada, no da acceso; el administrador puede regenerarla. |
+| SRV-011 | El encargado de área puede crear la credencial de los coordinadores de su área. | Sin pasar por el administrador master. |
+
+### Solicitud y aprobación del servidor
+
+| ID | Requisito | Criterio |
+|---|---|---|
+| SRV-012 | El servidor se autorregistra y solicita a una comisión concreta. | Verificación de correo obligatoria (DEC-013), sin segundo factor (DEC-019). |
+| SRV-013 | El coordinador acepta o rechaza la solicitud; el rechazo exige motivo y se notifica. | Sin motivo no se rechaza; el motivo llega a quien solicitó. |
+| SRV-014 | La solicitud recorre los estados: pendiente, rechazada, aceptada pendiente de pago, activo, suspendido, de baja y finalizado. | La máquina de estados los declara y no admite saltos. |
+| SRV-015 | El formulario de solicitud es el base más los campos que su comisión exija. | Una comisión sin campos propios no pide ninguno. |
+| SRV-016 | El coordinador solo ve y resuelve las solicitudes de su comisión. | Prueba negativa contra la solicitud de otra comisión. |
+
+### Pago de inscripción del servidor
+
+| ID | Requisito | Criterio |
+|---|---|---|
+| SRV-017 | La gestión decide si la inscripción de servidor es gratuita o de pago, con un único interruptor global. | No se configura por comisión. |
+| SRV-018 | Si es de pago, el monto y la moneda son únicos para todos los servidores de la gestión. | Un solo importe configurado por el administrador master. |
+| SRV-019 | El pago se solicita solo después de que el coordinador acepta la solicitud. | Nunca antes: no se cobra a quien no encaja en la comisión. |
+| SRV-020 | El pago de servidor usa el mismo circuito manual que el del peregrino, sin checkout automático. | Canal, evidencia, revisión y comprobante (DEC-002, DEC-015, DEC-020). |
+| SRV-021 | El ingreso por inscripción de servidor se reconoce en su propia cuenta, separado del ingreso por peregrinos. | Rol contable `SERVER_REGISTRATION_REVENUE` (DEC-020). |
+
+### Auditoría del módulo
+
+| ID | Requisito | Criterio |
+|---|---|---|
+| SRV-022 | Toda acción de encargados, coordinadores y servidores queda auditada con actor, acción, entidad e instante. | Incluye cambios de estado, resolución de solicitudes, turnos y escaneos. |
+| SRV-023 | El administrador master ve la auditoría completa; el encargado de área, solo la de sus comisiones. | Prueba negativa contra la auditoría de otra área. |
+
 ## 15. Notificaciones
 
 | ID | Requisito | Criterio |

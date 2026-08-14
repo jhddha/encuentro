@@ -2,7 +2,7 @@
 
 **Estado:** **APLICADA.** La clasificación de los 198 se completó y la renumeración se ejecutó en `61a2551` el 7 de agosto de 2026.
 **Fuente:** `Encuentro_Requisitos_y_Reglas_v2.6.docx` (185 requisitos) + `Actualizacion_Canonica_DEC004.docx` (13 requisitos)
-**Referencia actual:** **163 requisitos** en `contracts/requirements.json`
+**Referencia actual:** **182 requisitos** en `contracts/requirements.json` (eran 163 hasta que DEC-020 incorporó el módulo de servidores el 14 de agosto de 2026)
 
 > **Las cifras de este documento son las del momento en que se escribió, y hay que leerlas así.** Decía «EN PROCESO» y «65 requisitos» mucho después de que el contrato pasara a 163, y su regla de clasificación define `PENDIENTE_DE_MIGRACION` como «existe en la base y no está representado». Con esa definición, ochenta identificadores que hoy **sí** son `CANONICAL` —REG-017, las trece de `QR`, las once de `IAM`, las dieciséis de `ACC`— siguen apareciendo aquí como no representados. No lo están: el contrato los incluye y el validador exige que cada uno tenga fase y prompt.
 >
@@ -23,7 +23,7 @@
 | Métrica | Cantidad |
 |---|---:|
 | Línea base (v2.6 + parche DEC-004) | **198** |
-| Requisitos vigentes en el contrato | **163** (eran 65 cuando se escribió esta tabla) |
+| Requisitos vigentes en el contrato | **182** (eran 65 cuando se escribió esta tabla y 163 hasta el 14-ago-2026) |
 | Con el mismo ID en ambas versiones | 59 |
 | …de los cuales el ID designa **requisitos distintos** | ~42 |
 | **Clasificados** | **198 de 198** — verificado por script, ningún ID sin estado |
@@ -402,7 +402,7 @@ Los **198** requisitos de la línea base están clasificados. Ninguno quedó sin
 
 | | |
 |---|---:|
-| Requisitos en el contrato | **163** |
+| Requisitos en el contrato | **182** |
 | Base sin entrada propia | 70 |
 
 De esos 70: quince son `REEMPLAZADO` o `ELIMINADO_POR_DECISION_APROBADA` y no deben tener entrada; el resto son `CONSERVADO` cuyo contenido vive bajo otro identificador, los 44 de alcance aplazado, y `EVT-007` y `EVT-008`, pendientes de decisión.
