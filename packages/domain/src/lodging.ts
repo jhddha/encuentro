@@ -127,3 +127,147 @@ export function hasAvailability(capacity: number, occupied: number): boolean {
 export function remainingCapacity(capacity: number, occupied: number): number {
   return Math.max(0, capacity - occupied);
 }
+
+/**
+ * Transiciones de una reserva.
+ *
+ * `HELD` es la elección del peregrino y `CONFIRMED` la asignación de Hospedaje
+ * (HOS-015). Lo importante no es lo que se permite sino lo que no:
+ *
+ *  - **`CONFIRMED` no vuelve a `HELD`.** Cambiar de habitación no rebaja el
+ *    estado: HOS-005 lo resuelve como una escritura sobre la misma reserva
+ *    confirmada, no como un ciclo de liberar y volver a retener;
+ *  - **`CONFIRMED` no va a `EXPIRED`.** HOS-012, y el worker ya lo respeta;
+ *    tenerlo también aquí impide que un camino futuro lo intente;
+ *  - los tres estados finales no salen de sí mismos. Volver a hospedar a
+ *    alguien cuya reserva se liberó es una reserva nueva, no la resurrección de
+ *    la vieja: la anterior es parte del histórico de por qué se liberó.
+ */
+const RESERVATION_TRANSITIONS: Readonly<Record<LodgingState, readonly LodgingState[]>> = {
+  HELD: ['CONFIRMED', 'RELEASED', 'CANCELLED', 'EXPIRED'],
+  CONFIRMED: ['RELEASED', 'CANCELLED'],
+  RELEASED: [],
+  CANCELLED: [],
+  EXPIRED: [],
+};
+
+export function canTransitionReservation(from: LodgingState, to: LodgingState): boolean {
+  return RESERVATION_TRANSITIONS[from].includes(to);
+}
+
+/**
+ * Fechas y noches de una reserva, tomadas de la política.
+ *
+ * HOS-011: la cantidad de noches es un dato configurado por gestión, **no** se
+ * deriva de cuándo llega o se va cada persona. Y HOS-014 pide una sola fuente
+ * versionada: esta función es la única forma de que una reserva obtenga sus
+ * fechas, así que no puede haber dos valores en conflicto.
+ *
+ * Se valida la política antes de copiarla. Una gestión mal configurada tiene
+ * que fallar al reservar la primera cama y no producir reservas incoherentes
+ * que alguien descubra al cerrar el evento.
+ */
+export function reservationDatesFrom(policy: LodgingPolicy): {
+  readonly checkInDate: Date;
+  readonly checkOutDate: Date;
+  readonly nightCount: number;
+} {
+  assertPolicyConsistent(policy);
+
+  return {
+    checkInDate: policy.checkInDate,
+    checkOutDate: policy.checkOutDate,
+    nightCount: policy.nightCount,
+  };
+}
+
+/**
+ * Primera plaza libre de una habitación, o `null` si está llena.
+ *
+ * Las plazas se numeran desde 1 y el disparador de la base rechaza cualquiera
+ * fuera de `[1, capacity]`. Se elige la más baja disponible en vez de la
+ * siguiente al máximo ocupado: si la plaza 2 de cuatro queda libre porque
+ * alguien canceló, la siguiente persona la ocupa en lugar de dejar un hueco
+ * permanente en una habitación que el índice único ya no deja rellenar de otra
+ * forma.
+ *
+ * Devolver `null` no es un error: significa habitación llena, y quien llama
+ * probará la siguiente.
+ */
+export function firstFreeBed(capacity: number, taken: readonly number[]): number | null {
+  if (!Number.isInteger(capacity) || capacity < 1) {
+    throw new DomainError(
+      'LODGING_POLICY_INVALID',
+      `Capacidad de habitación no válida: ${String(capacity)}.`,
+    );
+  }
+
+  const ocupadas = new Set(taken);
+
+  for (let plaza = 1; plaza <= capacity; plaza += 1) {
+    if (!ocupadas.has(plaza)) return plaza;
+  }
+
+  return null;
+}
+
+/**
+ * Ocupación de un hotel frente a su inventario.
+ *
+ * HOS-002 prohíbe el contador desincronizable, no contar: `capacity` es la suma
+ * de las capacidades de sus habitaciones y `live` el número de reservas vivas,
+ * las dos leídas en el momento. Lo que hace fiable el último cupo no es esta
+ * función sino que quien llama la ejecute dentro de un cerrojo por hotel; aquí
+ * solo se decide sobre cifras ya leídas.
+ */
+export interface HotelOccupancy {
+  readonly capacity: number;
+  readonly live: number;
+}
+
+/**
+ * Exige que quede sitio en el hotel — HOS-002, HOS-016.
+ *
+ * `LODGING_CAPACITY_EXHAUSTED` y no un genérico: la pantalla lo traduce a
+ * «elija otro hotel», que es una acción, y no a «algo falló».
+ */
+export function assertHotelHasRoom(hotelName: string, occupancy: HotelOccupancy): void {
+  if (!hasAvailability(occupancy.capacity, occupancy.live)) {
+    throw new DomainError(
+      'LODGING_CAPACITY_EXHAUSTED',
+      `${hotelName} no tiene plazas disponibles. Elija otro hotel.`,
+    );
+  }
+}
+
+/**
+ * ¿Puede esta inscripción elegir hotel? — HOS-016, HOS-017, REG-020.
+ *
+ * Se separa del cálculo del mínimo (`unlocksHotelSelection`, en `pricing.ts`)
+ * porque son dos preguntas distintas: allí se decide si el importe aprobado
+ * alcanza, y aquí si la modalidad admite siquiera la pregunta.
+ *
+ * HOS-017 es la parte que un sistema de reservas corriente haría al revés:
+ * **pagar al llegar no reserva hotel por anticipado.** Quien elige esa
+ * modalidad no se queda sin hospedaje; se le asigna entre lo que quede al
+ * llegar, y por eso el rechazo lo dice en vez de sonar a impedimento.
+ */
+export function assertMayChooseHotel(input: {
+  readonly paymentMode: 'ADVANCE' | 'ARRIVAL';
+  readonly unlockedByPayment: boolean;
+}): void {
+  if (input.paymentMode === 'ARRIVAL') {
+    throw new DomainError(
+      'LODGING_NOT_ELIGIBLE',
+      'La modalidad «pago al llegar» no reserva hotel por anticipado (HOS-017). ' +
+        'Hospedaje le asignará alojamiento entre la disponibilidad restante al llegar.',
+    );
+  }
+
+  if (!input.unlockedByPayment) {
+    throw new DomainError(
+      'LODGING_NOT_ELIGIBLE',
+      'Podrá elegir hotel cuando esté aprobado el pago mínimo de su modalidad anticipada (REG-020).',
+    );
+  }
+}

@@ -7,6 +7,7 @@ import {
   createCatalogRepository,
   createEventRepository,
   createExchangeRateRepository,
+  createLodgingRepository,
   createObjectStorage,
   createPaymentProofRepository,
   createPrismaClient,
@@ -14,6 +15,8 @@ import {
   createRegistrationConfirmationRepository,
   createRegistrationRepository,
   findAccountStatement,
+  findMyLodging,
+  listAssignments,
   findProofDetail,
   listAdvanceChannels,
   listProofsPendingReview,
@@ -168,4 +171,19 @@ export function accountStatement(eventId: string, userId: string) {
 /** PAY-023: los tres canales anticipados. Los de llegada son de caja (PAY-024). */
 export function advanceChannels(eventId: string) {
   return listAdvanceChannels(prismaClient(), eventId, ADVANCE_CHANNELS);
+}
+
+/** Hospedaje — HOS-001, HOS-002, HOS-016. */
+export function lodgingRepository() {
+  return createLodgingRepository(prismaClient());
+}
+
+/** Hospedaje de la persona de la sesión. Nunca por identificador de la URL. */
+export function myLodging(eventId: string, userId: string) {
+  return findMyLodging(prismaClient(), eventId, userId);
+}
+
+/** Bandeja de Hospedaje: reservas vivas y habitaciones donde ponerlas. */
+export function lodgingAssignments(eventId: string) {
+  return listAssignments(prismaClient(), eventId);
 }

@@ -20,6 +20,17 @@ export {
   type RegistrationRow,
 } from './registration-confirmation-repository.js';
 export { createReservationRepository } from './reservation-repository.js';
+export { createLodgingRepository } from './lodging-repository.js';
+export {
+  findMyLodging,
+  listAssignments,
+  listHotelOptions,
+  type AssignmentRow,
+  type HotelOption,
+  type MyLodging,
+  type MyReservation,
+  type RoomOption,
+} from './lodging-views.js';
 export { createExchangeRateRepository } from './exchange-rate-repository.js';
 export { createNotificationRepository } from './notification-repository.js';
 export {

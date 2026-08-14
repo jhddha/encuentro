@@ -33,6 +33,21 @@ export const ROLES = [
        * gestión y cambiar su moneda funcional.
        */
       'accounting.exchange_rate.manage',
+      /*
+       * Hospedaje, mientras no exista su comisión.
+       *
+       * `lodging.read` y `lodging.assign_room` los llevaría un rol HOSPEDAJE
+       * propio; crearlo es una decisión sobre cómo se organiza el equipo y no
+       * la toma el código. Sin esto la pantalla de hospedaje nace inalcanzable
+       * —ningún rol la abre—, que es el mismo defecto que dejó al sistema sin
+       * administrador hasta el 14 de agosto de 2026.
+       *
+       * **`lodging.override_capacity` no está aquí a propósito.** HOS-006 la
+       * trata como una excepción con motivo registrado; repartirla por omisión
+       * la convertiría en el camino normal.
+       */
+      'lodging.read',
+      'lodging.assign_room',
     ],
   },
   {

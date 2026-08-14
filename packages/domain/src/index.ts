@@ -112,12 +112,18 @@ export {
 
 export {
   HELD_DURATION_MS,
+  assertHotelHasRoom,
+  assertMayChooseHotel,
   assertPolicyConsistent,
+  canTransitionReservation,
+  firstFreeBed,
   hasAvailability,
   heldExpiresAt,
   remainingCapacity,
   reservationAfterArrival,
+  reservationDatesFrom,
   shouldRelease,
+  type HotelOccupancy,
   type LodgingPolicy,
 } from './lodging.js';
 

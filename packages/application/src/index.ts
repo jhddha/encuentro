@@ -23,6 +23,21 @@ export {
 } from './expire-held-reservations.js';
 
 export {
+  assignRoom,
+  chooseHotel,
+  type AssignRoomCommand,
+  type AssignRoomInput,
+  type ChooseHotelCommand,
+  type CreateReservationInput,
+  type HotelForSelection,
+  type LodgingRepository,
+  type RegistrationForLodging,
+  type ReservationForAssignment,
+  type ReserveLodgingDeps,
+  type RoomForAssignment,
+} from './reserve-lodging.js';
+
+export {
   dispatchNotifications,
   type DispatchNotificationsDeps,
   type DispatchNotificationsResult,

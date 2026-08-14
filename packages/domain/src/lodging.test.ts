@@ -3,11 +3,16 @@ import { describe, expect, it } from 'vitest';
 import { DomainError } from './errors.js';
 import {
   HELD_DURATION_MS,
+  assertHotelHasRoom,
+  assertMayChooseHotel,
   assertPolicyConsistent,
+  canTransitionReservation,
+  firstFreeBed,
   hasAvailability,
   heldExpiresAt,
   remainingCapacity,
   reservationAfterArrival,
+  reservationDatesFrom,
   shouldRelease,
   type LodgingPolicy,
 } from './lodging.js';
@@ -136,5 +141,121 @@ describe('disponibilidad por inventario (HOS-002)', () => {
 
   it('la capacidad restante nunca es negativa', () => {
     expect(remainingCapacity(10, 15)).toBe(0);
+  });
+});
+
+describe('transiciones de una reserva', () => {
+  it('la elección se confirma al asignar habitación (HOS-015)', () => {
+    expect(canTransitionReservation('HELD', 'CONFIRMED')).toBe(true);
+  });
+
+  /* HOS-012: el worker no la expira, y la máquina de estados tampoco lo admite. */
+  it('una reserva confirmada no expira', () => {
+    expect(canTransitionReservation('CONFIRMED', 'EXPIRED')).toBe(false);
+  });
+
+  /*
+   * Cambiar de habitación no rebaja el estado: HOS-005 lo resuelve como una
+   * escritura sobre la reserva confirmada, no como liberar y volver a retener.
+   */
+  it('una confirmada no vuelve a retención', () => {
+    expect(canTransitionReservation('CONFIRMED', 'HELD')).toBe(false);
+  });
+
+  it.each(['RELEASED', 'CANCELLED', 'EXPIRED'] as const)('%s es terminal', (estado) => {
+    for (const destino of ['HELD', 'CONFIRMED', 'RELEASED'] as const) {
+      expect(canTransitionReservation(estado, destino)).toBe(false);
+    }
+  });
+});
+
+describe('fechas de la reserva (HOS-011, HOS-014)', () => {
+  it('salen de la política, no de la persona', () => {
+    expect(reservationDatesFrom(policy)).toEqual({
+      checkInDate: policy.checkInDate,
+      checkOutDate: policy.checkOutDate,
+      nightCount: 7,
+    });
+  });
+
+  /*
+   * Una política incoherente tiene que fallar al reservar la primera cama, no
+   * producir reservas que alguien descubra al cerrar el evento.
+   */
+  it('una política que no cuadra no produce reserva', () => {
+    expect(() => reservationDatesFrom({ ...policy, nightCount: 5 })).toThrow(DomainError);
+  });
+});
+
+describe('elección de plaza (HOS-002)', () => {
+  it('toma la primera libre', () => {
+    expect(firstFreeBed(4, [])).toBe(1);
+    expect(firstFreeBed(4, [1, 2])).toBe(3);
+  });
+
+  /*
+   * El hueco que deja una cancelación se rellena. Tomar la siguiente al máximo
+   * ocupado dejaría la plaza 2 vacía para siempre: el índice único impide
+   * ocuparla por cualquier otro camino.
+   */
+  it('rellena el hueco que dejó una cancelación', () => {
+    expect(firstFreeBed(4, [1, 3, 4])).toBe(2);
+  });
+
+  it('devuelve nulo cuando la habitación está llena', () => {
+    expect(firstFreeBed(2, [1, 2])).toBeNull();
+  });
+
+  it('no se confunde con plazas repetidas o fuera de rango', () => {
+    expect(firstFreeBed(3, [1, 1, 9])).toBe(2);
+  });
+
+  it('rechaza una capacidad imposible', () => {
+    expect(() => firstFreeBed(0, [])).toThrow(DomainError);
+  });
+});
+
+describe('quién puede elegir hotel (HOS-016, HOS-017, REG-020)', () => {
+  it('el anticipado con el mínimo aprobado puede', () => {
+    expect(() => {
+      assertMayChooseHotel({ paymentMode: 'ADVANCE', unlockedByPayment: true });
+    }).not.toThrow();
+  });
+
+  /*
+   * HOS-017, la regla que un sistema de reservas corriente haría al revés.
+   * El mensaje dice que se le asignará al llegar: quien paga a la llegada no se
+   * queda sin hospedaje, solo sin elegirlo.
+   */
+  it('el que paga al llegar no reserva por anticipado', () => {
+    expect(() => {
+      assertMayChooseHotel({ paymentMode: 'ARRIVAL', unlockedByPayment: true });
+    }).toThrow(/asignará alojamiento entre la disponibilidad restante/);
+  });
+
+  it('el anticipado sin el mínimo aprobado todavía no', () => {
+    expect(() => {
+      assertMayChooseHotel({ paymentMode: 'ADVANCE', unlockedByPayment: false });
+    }).toThrow(/pago mínimo/);
+  });
+});
+
+describe('capacidad del hotel (HOS-002)', () => {
+  it('deja pasar mientras quede una plaza', () => {
+    expect(() => {
+      assertHotelHasRoom('Hotel Central', { capacity: 20, live: 19 });
+    }).not.toThrow();
+  });
+
+  it('al llenarse dice qué hacer, no que algo falló', () => {
+    expect(() => {
+      assertHotelHasRoom('Hotel Central', { capacity: 20, live: 20 });
+    }).toThrow(/Elija otro hotel/);
+  });
+
+  it('un hotel sin habitaciones activas no admite a nadie', () => {
+    expect(() => {
+      assertHotelHasRoom('Hotel Central', { capacity: 0, live: 0 });
+    }).toThrow(DomainError);
   });
 });

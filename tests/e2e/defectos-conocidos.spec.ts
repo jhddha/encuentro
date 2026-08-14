@@ -38,15 +38,21 @@ test.describe('oráculo de existencia de gestiones', () => {
 
 test.describe('pantallas pendientes del peregrino', () => {
   /*
-   * Hospedaje, credencial y notificaciones son `PendingScreen` sin guardián:
-   * responden 200 a cualquiera. Hoy no muestran nada, así que no filtran nada.
+   * Credencial y notificaciones son `PendingScreen` sin guardián: responden 200
+   * a cualquiera. Hoy no muestran nada, así que no filtran nada.
    *
    * La de la credencial es la que corre prisa: va a llevar un QR con token, y si
    * nace sin guardián el token nace público.
+   *
+   * **Hospedaje salió de esta lista el 14 de agosto de 2026.** Dejó de ser un
+   * cascarón y ahora resuelve la inscripción por el usuario de la sesión, así
+   * que exige sesión de verdad; su comprobación vive con las demás rutas
+   * guardadas en `acceso-anonimo.spec.ts`. Mantenerla aquí habría hecho fallar
+   * la suite por pasar, que es exactamente para lo que sirve `test.fail()`.
    */
   test.fail();
 
-  for (const pantalla of ['hospedaje', 'credencial', 'notificaciones']) {
+  for (const pantalla of ['credencial', 'notificaciones']) {
     test(`mi-cuenta/${pantalla} debe exigir sesión`, async ({ request }) => {
       const respuesta = await request.get(`/e/${EVENTO}/mi-cuenta/${pantalla}`, {
         maxRedirects: 0,

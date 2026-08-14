@@ -47,14 +47,18 @@ const ACCESO: Readonly<Record<string, { acceso: Acceso; actor?: ClaveActor }>> =
   '/e/[eventCode]/mi-cuenta': { acceso: 'guardada', actor: 'peregrino' },
   '/e/[eventCode]/mi-cuenta/pagos': { acceso: 'guardada', actor: 'peregrino' },
 
+  '/e/[eventCode]/mi-cuenta/hospedaje': { acceso: 'guardada', actor: 'peregrino' },
+
   /*
-   * Las tres pantallas pendientes del peregrino responden **200 a un anónimo**:
-   * son `PendingScreen` sin guardián. Se clasifican como públicas para que la
-   * comprobación diga la verdad de hoy, y `defectos-conocidos.spec.ts` afirma
-   * en `test.fail()` que deberían exigir sesión. La de la credencial es la
-   * urgente: va a llevar un token.
+   * Las dos que quedan responden **200 a un anónimo**: son `PendingScreen` sin
+   * guardián. Se clasifican como públicas para que la comprobación diga la
+   * verdad de hoy, y `defectos-conocidos.spec.ts` afirma en `test.fail()` que
+   * deberían exigir sesión. La de la credencial es la urgente: va a llevar un
+   * token.
+   *
+   * Hospedaje salió de esta lista el 14 de agosto de 2026, al dejar de ser un
+   * cascarón: ahora resuelve la inscripción por el usuario de la sesión.
    */
-  '/e/[eventCode]/mi-cuenta/hospedaje': { acceso: 'publica' },
   '/e/[eventCode]/mi-cuenta/credencial': { acceso: 'publica' },
   '/e/[eventCode]/mi-cuenta/notificaciones': { acceso: 'publica' },
 
