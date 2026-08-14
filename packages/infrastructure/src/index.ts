@@ -44,6 +44,12 @@ export {
   type ReceiptSecret,
 } from './payment-proof-repository.js';
 export { decimalText } from './decimal.js';
+export {
+  describeTarget,
+  postgresTarget,
+  sameTarget,
+  type PostgresTarget,
+} from './postgres-target.js';
 export { createProofSubmissionRepository } from './proof-submission-repository.js';
 export {
   findAccountStatement,

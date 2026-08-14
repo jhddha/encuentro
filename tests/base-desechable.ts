@@ -1,3 +1,5 @@
+import { describeTarget, postgresTarget, sameTarget } from '@encuentro/infrastructure';
+
 /**
  * Guarda común de las dos suites que destruyen datos.
  *
@@ -6,49 +8,13 @@
  * Ninguna puede correr sobre la base en la que alguien trabaja, y el 11 de
  * agosto de 2026 una de ellas lo hizo y borró un recorrido manual completo.
  *
- * La primera versión de esta guarda comparaba las dos cadenas de conexión. Una
- * revisión la burló en ocho de nueve intentos: basta escribir la misma base de
- * otra forma —`127.0.0.1` en vez de `localhost`, una barra final, un parámetro
- * de más, el puerto explícito— para que dos textos distintos apunten al mismo
- * sitio. Una comparación de cadenas no protege de nada; protege de las erratas.
- *
- * Ahora se comparan **servidor, puerto y nombre de base**, que es lo que decide
- * a qué datos se llega.
+ * La comparación de destinos vivía aquí y ahora está en
+ * `packages/infrastructure/src/postgres-target.ts`, con pruebas. Se movió
+ * cuando la restauración de respaldos necesitó exactamente la misma garantía:
+ * una segunda copia habría vuelto a ser la versión que compara cadenas, escrita
+ * por quien no leyó la revisión que la tumbó. Al escribirle las primeras
+ * pruebas apareció además un hueco que llevaba ahí desde el principio.
  */
-
-interface Destino {
-  readonly host: string;
-  readonly puerto: string;
-  readonly base: string;
-}
-
-function destinoDe(url: string, variable: string): Destino {
-  let analizada: URL;
-
-  try {
-    analizada = new URL(url);
-  } catch {
-    throw new Error(`${variable} no es una URL de conexión válida.`);
-  }
-
-  const base = decodeURIComponent(analizada.pathname).replace(/^\/+/, '').replace(/\/+$/, '');
-
-  if (base === '') {
-    throw new Error(`${variable} no nombra ninguna base de datos.`);
-  }
-
-  return {
-    // `localhost` y `127.0.0.1` son el mismo servidor en la práctica y no se
-    // distinguen aquí: lo que importa es no acertarle a la base de trabajo.
-    host: analizada.hostname === 'localhost' ? '127.0.0.1' : analizada.hostname.toLowerCase(),
-    puerto: analizada.port === '' ? '5432' : analizada.port,
-    base,
-  };
-}
-
-function mismoDestino(a: Destino, b: Destino): boolean {
-  return a.host === b.host && a.puerto === b.puerto && a.base === b.base;
-}
 
 /**
  * Devuelve la URL de la base desechable, o lanza explicando por qué hace falta.
@@ -71,11 +37,11 @@ export function baseDesechable(variable: string, comoCrearla: string, porQue: st
   const desarrollo = process.env.DATABASE_URL;
 
   if (desarrollo !== undefined && desarrollo !== '') {
-    const destino = destinoDe(url, variable);
+    const destino = postgresTarget(url, variable);
 
-    if (mismoDestino(destino, destinoDe(desarrollo, 'DATABASE_URL'))) {
+    if (sameTarget(destino, postgresTarget(desarrollo, 'DATABASE_URL'))) {
       throw new Error(
-        `${variable} apunta a la misma base que DATABASE_URL (${destino.host}:${destino.puerto}/${destino.base}). ` +
+        `${variable} apunta a la misma base que DATABASE_URL (${describeTarget(destino)}). ` +
           `${porQue}\nUse una distinta: \`${comoCrearla}\`.`,
       );
     }

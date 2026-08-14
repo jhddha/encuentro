@@ -74,6 +74,36 @@ docker compose -f deploy/docker-compose.prod.yml exec backup \
 
 El ensayo contra la copia local sigue disponible pasando la ruta del fichero, y avisa de que no satisface DEC-012.
 
+### Ensayarlo en la máquina de desarrollo, sin VPS
+
+Los dos scripts se pueden correr contra el Postgres de `docker-compose.yml`. No sustituye al ensayo remoto —no prueba que la copia salga del servidor— pero sí prueba lo demás: que el volcado, el cifrado, el descifrado, la restauración y las comprobaciones de integridad funcionan. Es lo que se hizo por primera vez el 14 de agosto de 2026.
+
+```bash
+docker build -f deploy/Dockerfile.backup -t encuentro-backup:ensayo deploy/
+```
+
+`code_default` es la red que `docker-compose.yml` crea; compruébelo con `docker network ls`. `BACKUP_REMOTE_ENABLED=false` hace que el script avise, correctamente, de que DEC-012 no está cumplida.
+
+```bash
+docker run --rm --network code_default \
+  -e PGHOST=postgres -e PGDATABASE=encuentro -e PGUSER=encuentro -e PGPASSWORD=encuentro \
+  -e BACKUP_PASSPHRASE=<frase-de-ensayo> -e BACKUP_REMOTE_ENABLED=false \
+  -v encuentro-ensayo-backups:/backups \
+  encuentro-backup:ensayo --once
+```
+
+```bash
+docker run --rm --network code_default \
+  -e PGHOST=postgres -e PGDATABASE=encuentro -e PGUSER=encuentro -e PGPASSWORD=encuentro \
+  -e BACKUP_PASSPHRASE=<frase-de-ensayo> \
+  -v encuentro-ensayo-backups:/backups --entrypoint bash \
+  encuentro-backup:ensayo -c 'ls /backups/*.dump.gpg | tail -1 | xargs /usr/local/bin/restore-drill.sh'
+```
+
+Desde Git Bash en Windows hay que anteponer `MSYS_NO_PATHCONV=1`: si no, convierte las rutas del contenedor a rutas de Windows y `docker run` falla buscando un `bash` que no existe.
+
+Al terminar, `docker volume rm encuentro-ensayo-backups`. Ese volumen contiene un volcado cifrado del padrón completo, y una frase de ensayo no es una frase.
+
 Si el ensayo pasa, restaure de verdad:
 
 ```bash
@@ -117,7 +147,17 @@ curl -fsS https://<dominio>/api/health
 curl -fsS https://<dominio>/ | grep -q Encuentro
 ```
 
-> **Este procedimiento nunca se ha ejecutado de principio a fin.** `restore-drill.sh` ensaya el ciclo por su cuenta, pero el runbook escrito a mano llevaba dos errores que lo hacían imposible —el contenedor equivocado y el paso de permisos ausente—, y eso solo pasa si se redactó sin recorrerlo. Los dos están corregidos arriba, pero **corregidos sobre el papel**: hacerlo una vez de verdad sigue esperando al VPS, y hasta entonces la capacidad de recuperación de DEC-012 no está demostrada.
+> **Qué está probado y qué no**, a 14 de agosto de 2026.
+>
+> `backup.sh --once` y `restore-drill.sh` **se ejecutaron por primera vez** ese día, contra el Postgres de desarrollo, con la imagen de `Dockerfile.backup`. Pasaron: volcado, cifrado con GPG, descifrado, `pg_restore`, y las once comprobaciones del ensayo —las seis tablas críticas, los tres disparadores de inmutabilidad, ningún comprobante huérfano y todos los asientos cuadrados. Hasta entonces nadie los había corrido: eran código sin ejecutar.
+>
+> Lo que sigue **sin** demostrar, y no es poco:
+>
+> - **la copia no sale a ninguna parte.** `BACKUP_REMOTE_ENABLED` estuvo en `false` porque no hay credenciales del destino externo. La mitad de DEC-012 que exige guardar fuera del servidor no está probada, y el propio script lo grita en cada ejecución;
+> - **el procedimiento manual de arriba —pasos 1 a 5— sigue sin recorrerse.** Llevaba dos errores que lo hacían imposible, corregidos el 8-ago-2026 pero corregidos sobre el papel. El paso 4, la reaplicación de `db-roles.sql`, no tiene equivalente en el ensayo automático: el ensayo restaura sobre una base desechable donde nadie comprueba que `encuentro_app` pueda leer;
+> - **las evidencias de pago no se respaldan.** Son archivos en el almacén de objetos, no filas. Una restauración deja comprobantes apuntando a objetos que siguen donde estaban —o que no están—. Se resuelve al elegir proveedor, con su versionado.
+>
+> El RTO de cuatro horas tampoco está cronometrado. Lo que hay es un ciclo que funciona; lo que falta es hacerlo donde importa.
 
 **Después de restaurar, y antes de reabrir las cajas:** hasta 1 hora de operación puede haberse perdido. Los comprobantes emitidos en esa ventana existen en papel pero no en la base. Reconcilie contra los comprobantes físicos antes de seguir cobrando, o habrá cobros duplicados.
 
