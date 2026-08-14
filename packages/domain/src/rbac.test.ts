@@ -4,10 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 import { DomainError } from './errors.js';
 import {
+  MONEY_PERMISSIONS,
   authorize,
   authorizeOwnership,
   can,
   owns,
+  requiresSecondFactor,
   scopeCovers,
   type Actor,
   type Scope,
@@ -211,6 +213,94 @@ describe('permisos del contrato', () => {
     ];
     for (const permission of used) {
       expect(contractPermissions).toContain(permission);
+    }
+  });
+});
+
+describe('quién necesita segundo factor (DEC-019, acota DEC-014)', () => {
+  const enComision = (permisos: readonly string[]): Actor => ({
+    userId: 'u-1',
+    assignments: [
+      {
+        permissions: permisos,
+        scope: { type: 'COMMISSION', eventId: 'evt-1', commissionId: 'com-1' },
+      },
+    ],
+  });
+
+  it('el ámbito global siempre', () => {
+    expect(
+      requiresSecondFactor({
+        userId: 'u-admin',
+        assignments: [{ permissions: ['event.read'], scope: { type: 'GLOBAL' } }],
+      }),
+    ).toBe(true);
+  });
+
+  it.each([
+    'payment.proof.review',
+    'cash.collect',
+    'payment.adjust',
+    'receipt.void',
+    'accounting.reconcile',
+    'accounting.exchange_rate.manage',
+  ])('quien puede %s, también', (permiso) => {
+    expect(requiresSecondFactor(enComision([permiso]))).toBe(true);
+  });
+
+  /*
+   * El caso que motivó la decisión: cuarenta y dos comisiones con hasta tres
+   * coordinadores cada una. Exigirles TOTP convertía cada alta en una sesión de
+   * soporte, y un mecanismo que estorba en cada alta acaba desactivado entero.
+   */
+  it('un coordinador de comisión no', () => {
+    expect(requiresSecondFactor(enComision(['server.manage', 'server.shift.assign']))).toBe(false);
+  });
+
+  /*
+   * Ver un importe no es moverlo, y quien coordina suele necesitar saber qué
+   * pagó su gente. Si los de lectura contaran, la excepción no serviría de nada.
+   */
+  it('los permisos de solo lectura sobre dinero no cuentan', () => {
+    expect(
+      requiresSecondFactor(enComision(['payment.read', 'accounting.read', 'receipt.read'])),
+    ).toBe(false);
+  });
+
+  it('el peregrino, sin asignaciones, tampoco', () => {
+    expect(requiresSecondFactor({ userId: 'u-peregrino', assignments: [] })).toBe(false);
+  });
+
+  /*
+   * Basta **una** asignación que toque dinero. Quien coordina una comisión y
+   * además ayuda en caja entra por la segunda.
+   */
+  it('basta una asignación que toque dinero entre varias', () => {
+    expect(
+      requiresSecondFactor({
+        userId: 'u-mixto',
+        assignments: [
+          {
+            permissions: ['server.manage'],
+            scope: { type: 'COMMISSION', eventId: 'evt-1', commissionId: 'com-1' },
+          },
+          {
+            permissions: ['cash.collect'],
+            scope: { type: 'CASH', eventId: 'evt-1', cashAccountId: 'caja-1' },
+          },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  /*
+   * La lista es la frontera de la decisión, y se enumera a mano para que añadir
+   * un permiso al contrato no arrastre a nadie dentro sin que alguien lo piense.
+   * Esta prueba falla si alguien la sustituye por un prefijo.
+   */
+  it('la lista de permisos de dinero no incluye ninguno de solo lectura', () => {
+    for (const permiso of MONEY_PERMISSIONS) {
+      expect(permiso.endsWith('.read')).toBe(false);
     }
   });
 });

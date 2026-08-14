@@ -126,3 +126,64 @@ export function authorizeOwnership(actor: Actor, ownerUserId: string | null): vo
     throw new DomainError('FORBIDDEN', 'La inscripción solicitada no está disponible.');
   }
 }
+
+/**
+ * Permisos que tocan dinero.
+ *
+ * Es la lista que decide quién necesita segundo factor (DEC-019): mover,
+ * revisar, anular o conciliar dinero. No están aquí los de solo lectura
+ * —`payment.read`, `accounting.read`, `receipt.read`— porque mirar un importe
+ * no lo cambia, y quien coordina una comisión suele necesitar ver lo que su
+ * gente pagó.
+ *
+ * Se define como lista explícita y no como «todo lo que empiece por payment.»
+ * a propósito: un prefijo arrastra cada permiso nuevo del dominio sin que nadie
+ * lo haya pensado, y aquí la consecuencia de acertar de más es pedirle un
+ * segundo factor a quien no debía, y la de acertar de menos es no pedírselo a
+ * quien sí.
+ */
+export const MONEY_PERMISSIONS: readonly string[] = [
+  'payment.proof.review',
+  'payment.collect',
+  'payment.adjust',
+  'payment.refund',
+  'receipt.issue',
+  'receipt.void',
+  'receipt.read_sensitive',
+  'cash.open',
+  'cash.collect',
+  'cash.count',
+  'cash.close',
+  'accounting.manage',
+  'accounting.reconcile',
+  'accounting.close',
+  'accounting.exchange_rate.manage',
+];
+
+/**
+ * ¿Necesita esta cuenta segundo factor? — DEC-019, que acota DEC-014.
+ *
+ * DEC-014 lo exigía a **toda** cuenta con alguna asignación de rol. La
+ * organización lo redujo el 14 de agosto de 2026 a dos grupos, al abrir el
+ * módulo de servidores: ahí aparecen decenas de coordinadores de comisión que
+ * no manejan dinero, y pedirles TOTP convertía el alta de cada uno en una
+ * sesión de soporte.
+ *
+ * Quedan dentro:
+ *
+ *  - **el ámbito global**, que puede todo en todas las gestiones;
+ *  - **quien toca dinero**, según `MONEY_PERMISSIONS`.
+ *
+ * Y queda fuera, dicho sin rodeos porque es el precio: un coordinador de
+ * comisión entra solo con contraseña, y con ella aprueba o rechaza solicitudes,
+ * asigna turnos y ve los datos personales de su gente. Si esa contraseña se
+ * filtra, no hay segundo factor detrás. Es una decisión de la organización
+ * sobre su propio riesgo, tomada a cambio de que el módulo sea operable.
+ */
+export function requiresSecondFactor(actor: Actor): boolean {
+  return actor.assignments.some(
+    (assignment) =>
+      assignment.scope.type === 'GLOBAL' ||
+      assignment.permissions.some((permission) => MONEY_PERMISSIONS.includes(permission)),
+  );
+}

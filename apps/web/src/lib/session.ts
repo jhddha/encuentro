@@ -1,6 +1,12 @@
 import 'server-only';
 
-import { authorize, can as puede, type Actor, type ResourceContext } from '@encuentro/domain';
+import {
+  authorize,
+  can as puede,
+  requiresSecondFactor,
+  type Actor,
+  type ResourceContext,
+} from '@encuentro/domain';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -66,7 +72,8 @@ async function revokeCurrentSession(): Promise<void> {
  * Redirige, en este orden:
  *  1. sin sesión -> inicio de sesión;
  *  2. correo sin verificar -> aviso de verificación (DEC-013);
- *  3. personal sin MFA -> registro del segundo factor (DEC-014).
+ *  3. quien necesita MFA y no lo tiene -> registro del segundo factor
+ *     (DEC-019, que acota DEC-014).
  *
  * El orden importa: exigir MFA a quien todavía no ha verificado su correo le
  * dejaría sin forma de recuperar la cuenta.
@@ -98,9 +105,15 @@ export async function requireActor(): Promise<Actor> {
     redirect('/ingresar');
   }
 
-  // DEC-014: el segundo factor es obligatorio para toda cuenta con al menos una
-  // asignación de rol. El peregrino, sin asignaciones, queda fuera.
-  if (actor.assignments.length > 0 && !user.twoFactorEnabled) {
+  /*
+   * Segundo factor — DEC-019, que acota DEC-014.
+   *
+   * Antes lo exigía **cualquier** asignación de rol. Ahora la regla vive en el
+   * dominio (`requiresSecondFactor`) y alcanza al ámbito global y a quien toca
+   * dinero. Un coordinador de comisión entra solo con contraseña; la
+   * consecuencia está escrita donde vive la regla.
+   */
+  if (requiresSecondFactor(actor) && !user.twoFactorEnabled) {
     redirect('/configurar-mfa');
   }
 

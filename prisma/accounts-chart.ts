@@ -108,6 +108,28 @@ const NUEVAS: readonly CuentaContable[] = [
     role: 'IN_KIND_DONATION_REVENUE',
     nueva: true,
   },
+  {
+    /*
+     * Inscripción de servidor — DEC-020.
+     *
+     * Cuelga del mismo grupo que las dos ofrendas de peregrino, `4110100xx`,
+     * porque es lo mismo: ingreso por la inscripción de una persona. Y es una
+     * cuenta aparte porque el módulo de servidores lo pide de forma explícita
+     * —«para no mezclarse con los pagos de peregrinos»— y porque mezclarlos
+     * haría que el ingreso por peregrinos dejara de ser comparable entre
+     * gestiones.
+     *
+     * No se divide por origen como la ofrenda del peregrino: la organización
+     * separa nacional de internacional por la nacionalidad de quien viene al
+     * encuentro, y los servidores son de casa.
+     */
+    code: '411010003',
+    name: 'Inscripción de servidor',
+    kind: 'INCOME',
+    currency: 'BOB',
+    role: 'SERVER_REGISTRATION_REVENUE',
+    nueva: true,
+  },
 ];
 
 /**

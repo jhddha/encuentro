@@ -157,10 +157,12 @@ export {
 } from './pricing.js';
 
 export {
+  MONEY_PERMISSIONS,
   authorize,
   authorizeOwnership,
   can,
   owns,
+  requiresSecondFactor,
   scopeCovers,
   type Actor,
   type ResourceContext,

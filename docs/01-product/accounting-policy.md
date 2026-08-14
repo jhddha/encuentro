@@ -24,7 +24,7 @@ Crear un cargo, una inscripción o una reserva no genera asiento. En v1 nada con
 
 ## Roles, no cuentas
 
-La política fija **veintiún roles contables**, no números de cuenta. La organización asigna a cada rol una cuenta de su plan, por gestión.
+La política fija **veintidós roles contables**, no números de cuenta. Eran veintiuno en DEC-018; [DEC-020](../04-delivery/decisions/DEC-020.md) añadió `SERVER_REGISTRATION_REVENUE` al abrir el módulo de servidores. La organización asigna a cada rol una cuenta de su plan, por gestión.
 
 **Sin esa asignación el motor no puede resolver ningún asiento.** Es el requisito operativo previo a contabilizar, y conviene tratarlo como parte de la puesta en marcha de cada gestión, junto a paquetes, hoteles y canales de pago.
 
@@ -33,7 +33,7 @@ Ningún número de cuenta debe aparecer en el código. Un rol sin cuenta asignad
 ## Puesta en marcha de una gestión
 
 1. Crear el plan de cuentas de la gestión.
-2. Asignar una cuenta a cada uno de los veintiún roles.
+2. Asignar una cuenta a cada uno de los veintidós roles.
 3. Verificar que ningún rol quede sin cuenta antes de habilitar cobros.
 
 La clonación de una gestión copia el plan de cuentas (`EVT-008`), así que a partir de la segunda edición este paso se reduce a revisar.

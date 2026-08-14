@@ -220,6 +220,20 @@
       "status": "APPROVED",
       "date": "2026-08-07",
       "decision": "Base de efectivo modificada; 21 roles contables y 3 resolvedores; matriz de 22 reglas operacion->asiento; idempotencia por event_id + source_type + source_id + entry_kind, sin la version de la regla."
+    },
+    {
+      "id": "DEC-019",
+      "title": "Alcance del segundo factor",
+      "status": "APPROVED",
+      "date": "2026-08-14",
+      "decision": "Acota DEC-014: el segundo factor se exige al ambito global y a las cuentas con permisos que mueven dinero (MONEY_PERMISSIONS), no a toda cuenta con asignacion de rol. La verificacion de correo (DEC-013) se mantiene para todos."
+    },
+    {
+      "id": "DEC-020",
+      "title": "Modulo de servidores: pago, contabilidad y jerarquia",
+      "status": "APPROVED",
+      "date": "2026-08-14",
+      "decision": "El pago de inscripcion de servidor reutiliza el motor manual de peregrinos, sin pasarela (DEC-002, DEC-015). Cuenta 411010003 y rol contable SERVER_REGISTRATION_REVENUE, vigesimo segundo de DEC-018. El encargado de area es un coordinador de varias comisiones: no se anade un ambito AREA al RBAC."
     }
   ]
 }

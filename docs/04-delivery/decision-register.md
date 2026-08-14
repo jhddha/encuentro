@@ -24,6 +24,8 @@
 | [DEC-016](decisions/DEC-016.md) | Mecanismo de autenticación: Better Auth | 2026-08-05 | P04 |
 | [DEC-017](decisions/DEC-017.md) | Google Sheets fuera de alcance en v1 | 2026-08-05 | P13 |
 | [DEC-018](decisions/DEC-018.md) | Reconocimiento contable y matriz de asientos | 2026-08-07 | P12 |
+| [DEC-019](decisions/DEC-019.md) | Segundo factor solo para ámbito global y quien toca dinero | 2026-08-14 | P04 |
+| [DEC-020](decisions/DEC-020.md) | Módulo de servidores: pago manual, cuenta propia y jerarquía | 2026-08-14 | P11 |
 
 ## Pendientes de definición
 
