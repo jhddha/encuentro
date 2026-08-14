@@ -45,11 +45,19 @@ Estos puntos **no** los resuelve DEC-018 y deben decidirse antes de que afecten 
 | Tema | Requisito afectado | Cuándo urge |
 |---|---|---|
 | Método de valoración de donaciones en especie | `ACC-006` | Antes de aceptar la primera donación en especie |
-| Moneda funcional de los libros y diferencia de cambio | — | Antes del primer cierre financiero con dos monedas |
+| Tratamiento de la diferencia de cambio bancaria | — | Antes del primer cierre financiero con dos monedas |
 | Umbrales y responsables de aprobación de egresos | `ACC-007` | Antes del primer desembolso |
 | Depreciación de activos | `ACC-011` | Fuera de alcance en v1 |
 
-DEC-009 ya resuelve la fuente y el momento de la tasa de cambio: se congela al cargar la evidencia y el importe convertido no se recalcula. Lo que queda abierto es distinto: en qué moneda se llevan los libros.
+## Moneda funcional: resuelto
+
+**Los libros se llevan en bolivianos.** La organización lo confirmó el 11 de agosto de 2026 y el sistema ya lo aplica: `ENC2026` tiene `currency = BOB`, y solo **caja y bancos** existen por duplicado —una cuenta por divisa— porque son los únicos que guardan dinero real en cada una. Ingresos, gastos y pasivos viven en bolivianos.
+
+Un cobro en dólares entra convertido con la tasa que se congeló al cargar la evidencia (DEC-009). La conversión ocurre **en un solo punto**, al aprobar: `requireBookedAmount` en `packages/domain/src/billing.ts`. A partir de ahí, el pago, su reparto, el saldo y el comprobante están en bolivianos, y la evidencia conserva el dólar original porque es lo que dice el extracto bancario de la persona.
+
+Una evidencia multimoneda sin tasa congelada **no es aprobable**: se rechaza con `EXCHANGE_RATE_MISSING` y el mensaje explica el remedio, que no es evidente —registrar la tasa ahora no rellena una evidencia ya cargada; hay que registrarla y pedir corrección.
+
+Lo que sigue abierto es solo la otra mitad: **la diferencia de cambio bancaria**, la que aparece cuando el banco acredita a una cotización distinta de la congelada. Es un hecho posterior y de otro origen —conciliación bancaria, no revisión de comprobantes— y no tendrá asiento hasta que exista el motor contable.
 
 ## Lo que la política prohíbe
 

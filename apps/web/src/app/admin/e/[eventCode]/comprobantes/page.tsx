@@ -1,3 +1,4 @@
+import { formatRate } from '@encuentro/domain';
 import { EmptyState, PageHeader, ScrollableTable, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
@@ -117,6 +118,23 @@ export default async function ReceiptsPage({
           version={detalle.version}
           declaredAmount={detalle.declaredAmount}
           currency={detalle.currency}
+          bookCurrency={detalle.bookCurrency}
+          bookedAmount={detalle.bookedAmount}
+          bookingObstacle={detalle.bookingObstacle}
+          /*
+            La tasa se formatea en el servidor con la función del dominio, que
+            es la misma que usa la pantalla de configuración. Dividir por un
+            millón en el cliente daría «6.959999999999999» en el comprobante de
+            alguien.
+          */
+          rateLabel={
+            detalle.exchangeRateMicros === null
+              ? null
+              : formatRate(
+                  { currency: detalle.currency, rateMicros: detalle.exchangeRateMicros },
+                  detalle.bookCurrency,
+                )
+          }
           charges={detalle.charges}
           reference={detalle.reference}
           payerName={detalle.payerName}
@@ -167,9 +185,22 @@ export default async function ReceiptsPage({
                     confirmado: PAY-025 dice que subir una evidencia no confirma
                     nada. La columna lo nombra así para que nadie lo lea como
                     dinero recibido.
+
+                    Cuando el canal cobra en otra moneda se añade debajo el
+                    equivalente en la de la gestión, que es contra la que se
+                    compararán los cargos. Sin él, la bandeja pone «50.00 USD»
+                    al lado de un pendiente de «348.00» y la cuenta la tiene que
+                    hacer quien revisa.
                   */}
                   <td className="p-3 tabular-nums">
                     {item.declaredAmount} {item.currency}
+                    {item.currency !== item.bookCurrency && (
+                      <span className="block text-xs opacity-70">
+                        {item.bookedAmount === null
+                          ? 'sin tasa registrada'
+                          : `≈ ${item.bookedAmount} ${item.bookCurrency}`}
+                      </span>
+                    )}
                   </td>
                   <td className="p-3">{CHANNEL_LABEL[item.channelCode] ?? item.channelCode}</td>
                   <td className="p-3 font-mono">{item.reference}</td>

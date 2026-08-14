@@ -101,6 +101,14 @@ export async function seedEvent(
     readonly status?: string;
     readonly startAt?: Date;
     readonly endAt?: Date;
+    /**
+     * Moneda funcional de los libros.
+     *
+     * USD por omisión porque es lo que asumían las pruebas escritas antes de
+     * que existiera la conversión. La gestión real lleva los libros en
+     * bolivianos; quien pruebe el cobro en otra moneda lo dice aquí.
+     */
+    readonly currency?: string;
   },
 ): Promise<{ id: string; code: string; version: number; startAt: Date; endAt: Date }> {
   const row = await prisma.event.create({
@@ -109,7 +117,7 @@ export async function seedEvent(
       year: options.year,
       name: `Encuentro ${String(options.year)}`,
       timezone: 'America/La_Paz',
-      currency: 'USD',
+      currency: options.currency ?? 'USD',
       startAt: options.startAt ?? new Date('2026-11-01T00:00:00Z'),
       endAt: options.endAt ?? new Date('2026-11-08T23:59:59Z'),
       ...(options.status === undefined ? {} : { status: options.status }),

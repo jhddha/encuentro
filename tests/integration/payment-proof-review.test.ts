@@ -2,6 +2,8 @@ import { reviewPaymentProof, takeProofForReview } from '@encuentro/application';
 import { money, type Actor } from '@encuentro/domain';
 import {
   createPaymentProofRepository,
+  findAccountStatement,
+  findProofDetail,
   verifyReceipt,
   type PrismaClient,
 } from '@encuentro/infrastructure';
@@ -226,6 +228,10 @@ describe('circuito completo de aprobación', () => {
         registrationId: (await prisma.paymentProof.findUniqueOrThrow({ where: { id: e.proofId } }))
           .registrationId,
         amount: money('420.00', USD),
+        // Sin conversión: la gestión de este escenario lleva los libros en la
+        // misma moneda del canal, así que lo declarado ya es lo contabilizado.
+        declared: money('420.00', USD),
+        exchangeRateMicros: null,
         allocations: [
           { chargeId: '00000000-0000-4000-8000-00000000dead', amount: money('420.00', USD) },
         ],
@@ -281,6 +287,8 @@ describe('circuito completo de aprobación', () => {
         expectedVersion: e.proofVersion + 1,
         registrationId,
         amount: money('420.00', USD),
+        declared: money('420.00', USD),
+        exchangeRateMicros: null,
         allocations: [{ chargeId: e.chargeId, amount: money('420.00', USD) }],
         credit: money('0.00', USD),
         actorId: REVISOR,
@@ -290,6 +298,8 @@ describe('circuito completo de aprobación', () => {
         expectedVersion: segundaProof.version,
         registrationId,
         amount: money('100.00', USD),
+        declared: money('100.00', USD),
+        exchangeRateMicros: null,
         allocations: [],
         credit: money('100.00', USD),
         actorId: REVISOR,
@@ -304,6 +314,287 @@ describe('circuito completo de aprobación', () => {
 
     expect(comprobantes.map((r) => r.sequence)).toEqual([1, 2]);
     expect(new Set(comprobantes.map((r) => r.number)).size).toBe(2);
+  });
+});
+
+/**
+ * Cobro en dólares con los libros en bolivianos — DEC-009.
+ *
+ * La forma real del cobro internacional: la cuenta de Estados Unidos recibe
+ * dólares y los libros de la organización se llevan en bolivianos. Las
+ * unitarias ya comprueban la conversión con dobles; aquí interesa lo único que
+ * solo la base demuestra, que es **con qué moneda queda escrita la fila**.
+ *
+ * Es donde estaba el defecto: la aprobación entregaba el importe declarado sin
+ * convertir, así que `payments.currency` acababa diciendo BOB sobre una cifra
+ * en dólares. Cincuenta se quedaban en cincuenta y nadie lo veía hasta el
+ * arqueo.
+ */
+describe('cobro en otra moneda — el pago entra en los libros convertido', () => {
+  const BOB = 'BOB';
+
+  interface EscenarioBOB extends Escenario {
+    readonly registrationId: string;
+    /** La persona sí tiene cuenta: sin ella no hay estado de cuenta que mirar. */
+    readonly peregrinoUserId: string;
+  }
+
+  async function sembrarEnBolivianos(
+    options: { tasaMicros?: bigint | null } = {},
+  ): Promise<EscenarioBOB> {
+    const event = await seedEvent(prisma, {
+      code: `ENC-B${String(Math.floor(Math.random() * 100_000))}`,
+      year: 2030 + Math.floor(Math.random() * 900),
+      status: 'ACTIVE',
+      currency: BOB,
+    });
+
+    await prisma.user.upsert({
+      where: { id: REVISOR },
+      update: {},
+      create: { id: REVISOR, email: `revisor-${event.code}@encuentro.invalid`, displayName: 'R' },
+    });
+
+    const peregrino = await prisma.user.create({
+      data: { email: `peregrino-${event.code}@encuentro.invalid`, displayName: 'Peregrino' },
+    });
+    const person = await prisma.person.create({
+      data: {
+        userId: peregrino.id,
+        fullName: 'Peregrino Internacional',
+        birthDate: new Date('1990-01-01'),
+      },
+    });
+    const pkg = await prisma.package.create({
+      data: { eventId: event.id, code: 'GENERAL', name: 'General', visibility: 'PUBLIC' },
+    });
+    const price = await prisma.priceVersion.create({
+      data: { packageId: pkg.id, paymentMode: 'ARRIVAL', amount: '348.00', currency: BOB },
+    });
+    const registration = await prisma.registration.create({
+      data: {
+        eventId: event.id,
+        code: `REG-${event.code}`,
+        personId: person.id,
+        packageId: pkg.id,
+        priceVersionId: price.id,
+        paymentMode: 'ARRIVAL',
+        status: 'SUBMITTED',
+      },
+    });
+    // El cargo va en la moneda de los libros: es lo que la persona debe.
+    const charge = await prisma.charge.create({
+      data: {
+        registrationId: registration.id,
+        concept: 'PACKAGE',
+        amount: '348.00',
+        currency: BOB,
+        snapshot: { packageCode: 'GENERAL' },
+      },
+    });
+    // Y el canal cobra en dólares: es la cuenta de Estados Unidos.
+    const channel = await prisma.paymentChannel.create({
+      data: { eventId: event.id, code: 'US_ACCOUNT_MANUAL', currency: USD },
+    });
+    const proof = await prisma.paymentProof.create({
+      data: {
+        eventId: event.id,
+        registrationId: registration.id,
+        channelId: channel.id,
+        declaredAmount: '50.00',
+        currency: USD,
+        paidAt: new Date(),
+        reference: `REF-${event.code}`,
+        status: 'SUBMITTED',
+        // 6,96 BOB por dólar, congelada al cargar la evidencia.
+        exchangeRateMicros: options.tasaMicros === undefined ? 6_960_000n : options.tasaMicros,
+      },
+    });
+
+    return {
+      eventId: event.id,
+      eventCode: event.code,
+      proofId: proof.id,
+      chargeId: charge.id,
+      proofVersion: proof.version,
+      registrationId: registration.id,
+      peregrinoUserId: peregrino.id,
+    };
+  }
+
+  async function tomar(e: EscenarioBOB): Promise<number> {
+    await takeProofForReview({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: e.proofVersion,
+    });
+
+    const tomada = await prisma.paymentProof.findUniqueOrThrow({
+      where: { id: e.proofId },
+      select: { version: true },
+    });
+
+    return tomada.version;
+  }
+
+  it('el pago queda en bolivianos, no en dólares con etiqueta de boliviano', async () => {
+    const e = await sembrarEnBolivianos();
+    const version = await tomar(e);
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: version,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('348.00', BOB) }],
+    });
+
+    const pago = await prisma.payment.findFirstOrThrow({ where: { sourceProofId: e.proofId } });
+
+    // 50.00 USD × 6,96 = 348.00 BOB.
+    expect(pago.amount.toString()).toBe('348');
+    expect(pago.currency).toBe(BOB);
+
+    const asignacion = await prisma.paymentAllocation.findFirstOrThrow({
+      where: { paymentId: pago.id },
+    });
+    expect(asignacion.currency).toBe(BOB);
+
+    // La evidencia conserva lo declarado: es lo que dice el extracto bancario.
+    const evidencia = await prisma.paymentProof.findUniqueOrThrow({ where: { id: e.proofId } });
+    expect(evidencia.declaredAmount.toString()).toBe('50');
+    expect(evidencia.currency).toBe(USD);
+  });
+
+  /*
+   * PAY-030: el comprobante es inmutable, así que lo que no se guarde al
+   * emitirlo no se añade después. Las tres cifras van juntas o el número
+   * convertido no se puede reconciliar contra nada.
+   */
+  it('el comprobante guarda las dos cifras y la tasa', async () => {
+    const e = await sembrarEnBolivianos();
+    const version = await tomar(e);
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: version,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('348.00', BOB) }],
+    });
+
+    const pago = await prisma.payment.findFirstOrThrow({ where: { sourceProofId: e.proofId } });
+    const comprobante = await prisma.receipt.findUniqueOrThrow({ where: { paymentId: pago.id } });
+
+    expect(comprobante.snapshot).toMatchObject({
+      amount: '348.00',
+      currency: BOB,
+      declaredAmount: '50.00',
+      declaredCurrency: USD,
+      exchangeRateMicros: 6_960_000,
+    });
+  });
+
+  /* REG-017: el saldo queda en cero con el importe convertido, así que confirma. */
+  it('la conversión deja el saldo en cero y confirma la inscripción', async () => {
+    const e = await sembrarEnBolivianos();
+    const version = await tomar(e);
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: version,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('348.00', BOB) }],
+    });
+
+    const inscripcion = await prisma.registration.findUniqueOrThrow({
+      where: { id: e.registrationId },
+    });
+    expect(inscripcion.status).toBe('CONFIRMED');
+  });
+
+  /*
+   * Una evidencia multimoneda sin tasa congelada existe: son las cargadas antes
+   * de que hubiera registro diario. No es aprobable, y no deja nada escrito.
+   */
+  it('sin tasa congelada no aprueba ni escribe nada', async () => {
+    const e = await sembrarEnBolivianos({ tasaMicros: null });
+    const version = await tomar(e);
+
+    await expect(
+      reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+        eventId: e.eventId,
+        proofId: e.proofId,
+        expectedVersion: version,
+        outcome: 'APPROVED',
+        allocations: [{ chargeId: e.chargeId, amount: money('348.00', BOB) }],
+      }),
+    ).rejects.toMatchObject({ code: 'EXCHANGE_RATE_MISSING' });
+
+    expect(await prisma.payment.count({ where: { sourceProofId: e.proofId } })).toBe(0);
+    expect(await prisma.receipt.count({ where: { eventId: e.eventId } })).toBe(0);
+
+    // Y la evidencia sigue en revisión, no en un estado del que no se salga.
+    const evidencia = await prisma.paymentProof.findUniqueOrThrow({ where: { id: e.proofId } });
+    expect(evidencia.status).toBe('UNDER_REVIEW');
+  });
+
+  /*
+   * El estado de cuenta del peregrino: sus cargos están en bolivianos y su pago
+   * también. Es la pantalla donde el defecto se veía —cincuenta dólares
+   * presentados como cincuenta bolivianos— y la que decide si cree que ya pagó.
+   */
+  it('el estado de cuenta cuadra en la moneda de los libros', async () => {
+    const e = await sembrarEnBolivianos();
+    const version = await tomar(e);
+
+    await reviewPaymentProof({ proofs: repo }, actor(e.eventId), {
+      eventId: e.eventId,
+      proofId: e.proofId,
+      expectedVersion: version,
+      outcome: 'APPROVED',
+      allocations: [{ chargeId: e.chargeId, amount: money('348.00', BOB) }],
+    });
+
+    const cuenta = await findAccountStatement(prisma, e.eventId, e.peregrinoUserId);
+
+    expect(cuenta?.currency).toBe(BOB);
+    expect(cuenta?.charged).toBe('348.00');
+    expect(cuenta?.allocated).toBe('348.00');
+    expect(cuenta?.outstanding).toBe('0.00');
+    expect(cuenta?.balanceState).toBe('PAID');
+    // Sin saldo a favor: lo convertido cubre el cargo exactamente.
+    expect(cuenta?.credit).toBe('0.00');
+
+    // El pago se presenta en bolivianos y la evidencia conserva su dólar, con
+    // la equivalencia al lado para que el peregrino pueda cotejar las dos.
+    expect(cuenta?.payments[0]?.amount).toBe('348.00');
+    expect(cuenta?.proofs[0]?.declaredAmount).toBe('50.00');
+    expect(cuenta?.proofs[0]?.currency).toBe(USD);
+    expect(cuenta?.proofs[0]?.bookedAmount).toBe('348.00');
+  });
+
+  it('el detalle de revisión trae las dos cifras', async () => {
+    const e = await sembrarEnBolivianos();
+
+    const detalle = await findProofDetail(prisma, e.proofId);
+
+    expect(detalle?.declaredAmount).toBe('50.00');
+    expect(detalle?.currency).toBe(USD);
+    expect(detalle?.bookedAmount).toBe('348.00');
+    expect(detalle?.bookCurrency).toBe(BOB);
+    expect(detalle?.bookingObstacle).toBeNull();
+    expect(detalle?.exchangeRateMicros).toBe(6_960_000);
+  });
+
+  it('el detalle dice que falta la tasa en vez de reventar', async () => {
+    const e = await sembrarEnBolivianos({ tasaMicros: null });
+
+    const detalle = await findProofDetail(prisma, e.proofId);
+
+    expect(detalle?.bookedAmount).toBeNull();
+    expect(detalle?.bookingObstacle).toBe('RATE_MISSING');
   });
 });
 

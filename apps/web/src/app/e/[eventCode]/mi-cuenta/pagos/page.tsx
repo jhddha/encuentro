@@ -207,8 +207,19 @@ export default async function PilgrimPaymentsPage({
                     <td className="p-3">
                       {proof.paidAt.toLocaleDateString('es', { timeZone: event.timezone })}
                     </td>
+                    {/*
+                      Con la equivalencia debajo cuando transfirió en otra
+                      moneda. Sus cargos están en la de la gestión, así que sin
+                      esta línea no puede responder a la única pregunta que le
+                      trae aquí: si lo que envió alcanza.
+                    */}
                     <td className="p-3 tabular-nums">
                       {proof.declaredAmount} {proof.currency}
+                      {proof.currency !== statement.currency && proof.bookedAmount !== null && (
+                        <span className="block text-xs opacity-70">
+                          ≈ {proof.bookedAmount} {statement.currency}
+                        </span>
+                      )}
                     </td>
                     <td className="p-3">{CHANNEL_LABEL[proof.channelCode] ?? proof.channelCode}</td>
                     <td className="p-3 font-mono">{proof.reference}</td>

@@ -42,6 +42,10 @@ export function ReviewPanel({
   version,
   declaredAmount,
   currency,
+  bookCurrency,
+  bookedAmount,
+  bookingObstacle,
+  rateLabel,
   charges,
   reference,
   payerName,
@@ -60,8 +64,19 @@ export function ReviewPanel({
    */
   readonly status: string;
   readonly version: number;
+  /** Lo que el peregrino transfirió, en la moneda del canal. */
   readonly declaredAmount: string;
   readonly currency: string;
+
+  /** Moneda de la gestión: la de los cargos y la del reparto. */
+  readonly bookCurrency: string;
+  /** Lo mismo ya convertido, o `null` si no se pudo. */
+  readonly bookedAmount: string | null;
+  /** Por qué no se pudo, para poder decir qué hacer. */
+  readonly bookingObstacle: 'RATE_MISSING' | 'ROUNDS_TO_ZERO' | null;
+  /** «1 USD = 6.96 BOB», o `null` si no hubo conversión. */
+  readonly rateLabel: string | null;
+
   readonly charges: readonly Charge[];
   readonly reference: string;
   readonly payerName: string | null;
@@ -95,7 +110,7 @@ export function ReviewPanel({
   function approve() {
     setError(null);
     startTransition(async () => {
-      const result = await approveProofAction(eventCode, proofId, version, currency, allocations);
+      const result = await approveProofAction(eventCode, proofId, version, allocations);
 
       if (!result.ok) {
         setError(result.message);
@@ -111,6 +126,21 @@ export function ReviewPanel({
     .filter((allocation) => allocation.amount.trim() !== '');
 
   const revisable = status === 'UNDER_REVIEW';
+
+  /*
+   * El cobro entró en otra moneda y hay que convertirlo para llevarlo a los
+   * libros. Se distingue de «no hay conversión» y no de «la tasa es 1»: un
+   * cobro en la moneda de la gestión no tiene tasa ninguna.
+   */
+  const convertido = currency !== bookCurrency;
+
+  /*
+   * Sin importe en libros no hay nada que repartir ni que cobrar, así que el
+   * botón se desactiva en vez de dejar que el caso de uso lo rechace. El aviso
+   * de abajo dice qué hacer; un botón que falla siempre solo enseña a
+   * ignorarlo.
+   */
+  const aprobable = bookedAmount !== null;
 
   /*
    * Devolver `null` no desmonta: el componente sigue en el árbol y conserva su
@@ -187,11 +217,62 @@ export function ReviewPanel({
             <dd className="tabular-nums">
               {declaredAmount} {currency}
             </dd>
+
+            {/*
+              Las dos cifras, una debajo de la otra, y solo cuando difieren.
+              La de arriba es la que el revisor coteja contra el comprobante
+              bancario; la de abajo es la que entra en los libros y contra la
+              que se reparte. Enseñar una sola obliga a hacer la cuenta de
+              cabeza justo donde se decide cuánto ha pagado alguien.
+            */}
+            {convertido && (
+              <>
+                <dt className="font-semibold">Entra en los libros como</dt>
+                <dd className="tabular-nums">
+                  {bookedAmount === null ? (
+                    <span className="opacity-70">— sin tasa, no se puede calcular</span>
+                  ) : (
+                    <>
+                      {bookedAmount} {bookCurrency}
+                      {rateLabel !== null && (
+                        <span className="ml-2 font-normal opacity-70">
+                          ({rateLabel}, tasa congelada al cargar)
+                        </span>
+                      )}
+                    </>
+                  )}
+                </dd>
+              </>
+            )}
+
             <dt className="font-semibold">Referencia</dt>
             <dd className="font-mono">{reference}</dd>
             <dt className="font-semibold">Pagador</dt>
             <dd>{payerName ?? 'No declarado'}</dd>
           </dl>
+
+          {/*
+            El remedio, escrito, porque no es evidente: registrar la tasa ahora
+            **no** rellena una evidencia ya cargada. DEC-009 congela al cargar,
+            así que hay que registrarla y pedir corrección; al reenviarla, la
+            tasa queda congelada. Sin decirlo, el revisor la registra, vuelve, y
+            vuelve a fallar.
+          */}
+          {bookingObstacle === 'RATE_MISSING' && (
+            <p role="alert" className="text-sm text-[var(--color-danger)]">
+              <strong>No hay tasa congelada en esta evidencia.</strong> Registre la tasa de{' '}
+              {currency} del día del pago en la configuración de la gestión y pida corrección: al
+              reenviarla quedará congelada y se podrá aprobar.
+            </p>
+          )}
+
+          {bookingObstacle === 'ROUNDS_TO_ZERO' && (
+            <p role="alert" className="text-sm text-[var(--color-danger)]">
+              <strong>La conversión redondea a cero.</strong> {declaredAmount} {currency} no llegan
+              a un céntimo de {bookCurrency} con la tasa congelada. Revise la tasa registrada antes
+              de aprobar.
+            </p>
+          )}
 
           {/*
             Sin el archivo delante, aprobar es firmar a ciegas. Cuando falta, se
@@ -229,13 +310,21 @@ export function ReviewPanel({
             </p>
           ) : (
             <fieldset className="flex flex-col gap-3">
-              <legend className="text-sm font-semibold">Reparto entre cargos</legend>
+              <legend className="text-sm font-semibold">
+                Reparto entre cargos — en {bookCurrency}
+              </legend>
 
               {charges.map((charge) => (
                 <div key={charge.id} className="flex flex-col gap-1">
+                  {/*
+                    El pendiente va en la moneda de la gestión, que es la de los
+                    cargos. Antes se etiquetaba con la de la evidencia: un cargo
+                    de 348.00 bolivianos aparecía como «348.00 USD» solo porque
+                    el peregrino había transferido dólares.
+                  */}
                   <label htmlFor={`monto-${charge.id}`} className="text-sm">
                     {CONCEPT_LABEL[charge.concept] ?? charge.concept} — pendiente{' '}
-                    <span className="tabular-nums">{charge.outstanding}</span> {currency}
+                    <span className="tabular-nums">{charge.outstanding}</span> {bookCurrency}
                   </label>
                   <input
                     id={`monto-${charge.id}`}
@@ -281,7 +370,7 @@ export function ReviewPanel({
           )}
 
           <div className="flex flex-wrap gap-2">
-            <Button disabled={pending || issued !== null} onClick={approve}>
+            <Button disabled={pending || issued !== null || !aprobable} onClick={approve}>
               {pending ? 'Procesando…' : 'Aprobar y emitir comprobante'}
             </Button>
 

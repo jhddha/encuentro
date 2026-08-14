@@ -5,10 +5,12 @@ import {
   ARRIVAL_CHANNELS,
   EVIDENCE_CONTENT_TYPES,
   EVIDENCE_MAX_BYTES,
+  assertAllocationsInCurrency,
   assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
   assertDeclarableEvidence,
   assertPayableAmount,
+  bookAmount,
   canTransitionProof,
   cashDifference,
   computeBalance,
@@ -17,6 +19,7 @@ import {
   creditFromOverpayment,
   formatReceiptNumber,
   isReviewable,
+  requireBookedAmount,
   unallocatedAmount,
   type DeclaredEvidence,
 } from './billing.js';
@@ -201,6 +204,107 @@ describe('tasa de cambio congelada (DEC-009)', () => {
     expect(() => convert(USD('10.00'), 'BOB', 0)).toThrow(DomainError);
     expect(() => convert(USD('10.00'), 'BOB', -1)).toThrow(DomainError);
     expect(() => convert(USD('10.00'), 'BOB', 1.5)).toThrow(DomainError);
+  });
+});
+
+/**
+ * El importe con el que un pago entra en los libros.
+ *
+ * Los libros se llevan en una sola moneda funcional. Lo declarado es lo que la
+ * persona transfirió; lo contabilizado es lo que la organización registra haber
+ * cobrado. Confundirlos era la puerta por la que cincuenta dólares se
+ * convertían en cincuenta bolivianos sin que nada fallara.
+ */
+describe('importe contabilizado (DEC-009, libros en una sola moneda)', () => {
+  const enDolares = { declared: USD('50.00'), bookCurrency: 'BOB', rateMicros: 6_960_000 };
+
+  it('convierte cuando el canal cobra en otra moneda', () => {
+    const resultado = bookAmount(enDolares);
+
+    expect(resultado.ok).toBe(true);
+    expect(requireBookedAmount(enDolares)).toEqual(money('348.00', 'BOB'));
+  });
+
+  /*
+   * Y no convierte cuando no hay nada que convertir. La tasa se ignora a
+   * propósito: aplicar una a bolivianos sobre bolivianos daría un número
+   * distinto del declarado sin que nadie hubiera cambiado de divisa.
+   */
+  it('devuelve lo declarado cuando ya está en la moneda de los libros', () => {
+    expect(
+      requireBookedAmount({ declared: USD('420.00'), bookCurrency: 'USD', rateMicros: null }),
+    ).toEqual(USD('420.00'));
+
+    expect(
+      requireBookedAmount({ declared: USD('420.00'), bookCurrency: 'USD', rateMicros: 6_960_000 }),
+    ).toEqual(USD('420.00'));
+  });
+
+  /*
+   * Sin tasa no se inventa una. Un uno por defecto haría pasar cincuenta
+   * dólares por cincuenta bolivianos, que es exactamente el defecto que esta
+   * función existe para impedir.
+   */
+  it('sin tasa no puede llevarse a los libros', () => {
+    expect(bookAmount({ ...enDolares, rateMicros: null })).toEqual({
+      ok: false,
+      obstacle: 'RATE_MISSING',
+    });
+  });
+
+  it('el rechazo por falta de tasa trae el remedio escrito', () => {
+    // Registrar la tasa ahora no rellena una evidencia ya cargada: DEC-009
+    // congela al cargar. Hay que registrarla y pedir corrección.
+    expect(() => requireBookedAmount({ ...enDolares, rateMicros: null })).toThrow(
+      /pida corrección/,
+    );
+
+    try {
+      requireBookedAmount({ ...enDolares, rateMicros: null });
+      expect.unreachable('tenía que lanzar');
+    } catch (error) {
+      expect((error as DomainError).code).toBe('EXCHANGE_RATE_MISSING');
+    }
+  });
+
+  /*
+   * Un céntimo de una divisa débil redondea a cero en la fuerte. Sin este
+   * corte se crearía un pago de 0.00 que no mueve ningún saldo y sí emite un
+   * comprobante numerado.
+   */
+  it('un importe que redondea a cero no es contabilizable', () => {
+    const migaja = { declared: money('0.01', 'CLP'), bookCurrency: 'BOB', rateMicros: 7_200 };
+
+    expect(bookAmount(migaja)).toEqual({ ok: false, obstacle: 'ROUNDS_TO_ZERO' });
+    expect(() => requireBookedAmount(migaja)).toThrow(/redondean a cero/);
+  });
+
+  it('un céntimo que sí llega a un céntimo sí lo es', () => {
+    expect(
+      requireBookedAmount({ declared: USD('0.01'), bookCurrency: 'BOB', rateMicros: 6_960_000 }),
+    ).toEqual(money('0.07', 'BOB'));
+  });
+
+  /*
+   * El reparto se anota en la moneda de los libros. Sin esta comprobación el
+   * fallo llegaba como «no se pueden operar importes en USD y BOB», que es
+   * cierto y no dice cuál de las dos era la correcta.
+   */
+  it('el reparto tiene que venir en la moneda de los libros', () => {
+    expect(() => {
+      assertAllocationsInCurrency([money('348.00', 'BOB')], 'BOB');
+    }).not.toThrow();
+
+    expect(() => {
+      assertAllocationsInCurrency([money('348.00', 'BOB'), USD('50.00')], 'BOB');
+    }).toThrow(/El reparto se anota en BOB/);
+  });
+
+  it('una lista vacía de asignaciones no es un error', () => {
+    // DEC-008: aprobar sin repartir deja el importe entero como saldo a favor.
+    expect(() => {
+      assertAllocationsInCurrency([], 'BOB');
+    }).not.toThrow();
   });
 });
 

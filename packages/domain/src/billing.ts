@@ -471,6 +471,146 @@ export function convert(amount: Money, targetCurrency: string, rateMicros: numbe
 }
 
 /**
+ * Importe con el que un pago entra en los libros.
+ *
+ * Los libros de la organización se llevan en **una sola moneda funcional** —para
+ * ENC2026, bolivianos—, y solo caja y bancos existen por duplicado, una cuenta
+ * por divisa, porque son los únicos que guardan dinero real en cada una. Un
+ * cobro en dólares no crea un libro en dólares: se convierte con la tasa que se
+ * congeló al cargar la evidencia (DEC-009) y entra convertido.
+ *
+ * Esta función es la frontera entre las dos cifras, y conviene no confundirlas
+ * nunca más:
+ *
+ *  - el **declarado** es lo que la persona transfirió, en la moneda del canal.
+ *    Es lo que dice el comprobante bancario y no cambia jamás;
+ *  - el **contabilizado** es lo que la organización registra haber cobrado, en
+ *    la moneda de la gestión. Es lo que baja el saldo y lo que suma el arqueo.
+ *
+ * Hasta hoy la aplicación pedía el primero y lo trataba como el segundo. Con
+ * reparto, la comparación contra un cargo en bolivianos reventaba con un
+ * «no se pueden operar importes en USD y BOB» que no nombraba la causa. Sin
+ * reparto —el sobrepago de DEC-008— era peor: el pago se creaba con el número
+ * del dólar y la etiqueta del boliviano, y el estado de cuenta lo releía como
+ * bolivianos. Cincuenta dólares pasaban a valer cincuenta bolivianos sin que
+ * nada fallara.
+ */
+export interface BookingInput {
+  /** Lo transferido, en la moneda del canal. */
+  readonly declared: Money;
+  /** Moneda funcional de los libros: la de la gestión. */
+  readonly bookCurrency: string;
+  /** Tasa congelada al cargar la evidencia. `null` si no se congeló ninguna. */
+  readonly rateMicros: number | null;
+}
+
+/**
+ * Por qué un importe declarado no puede llevarse a los libros.
+ *
+ * Ninguno de los dos es un error de programación: los dos describen un dato que
+ * a una persona le falta o le salió mal, y los dos tienen remedio.
+ */
+export type BookingObstacle = 'RATE_MISSING' | 'ROUNDS_TO_ZERO';
+
+export type BookedAmount =
+  | { readonly ok: true; readonly amount: Money }
+  | { readonly ok: false; readonly obstacle: BookingObstacle };
+
+/**
+ * Calcula el importe contabilizable, o dice por qué no se puede.
+ *
+ * Devuelve un resultado en vez de lanzar porque hay dos llamadores con
+ * necesidades opuestas y **una sola regla**: la pantalla de revisión tiene que
+ * dibujarse igualmente y explicar el obstáculo, y la aprobación tiene que
+ * negarse. Con una función que lanzara, la pantalla acabaría reimplementando la
+ * conversión para no reventar, y esa copia se desviaría de esta el día que una
+ * de las dos cambie. `requireBookedAmount` es la variante que lanza.
+ */
+export function bookAmount(input: BookingInput): BookedAmount {
+  /*
+   * Mismo signo monetario: no hay nada que convertir. Una tasa congelada aquí
+   * sería contradictoria —`submitPaymentProof` guarda `null` justo por eso— y
+   * aplicarla convertiría bolivianos a bolivianos por un número distinto de
+   * uno. Se ignora a propósito: lo declarado ya está en la moneda del libro.
+   */
+  if (input.declared.currency === input.bookCurrency) {
+    return { ok: true, amount: input.declared };
+  }
+
+  if (input.rateMicros === null) {
+    return { ok: false, obstacle: 'RATE_MISSING' };
+  }
+
+  const converted = convert(input.declared, input.bookCurrency, input.rateMicros);
+
+  /*
+   * Un céntimo de una divisa débil puede redondear a cero en la fuerte. Sin
+   * esto se crearía un pago de 0.00 que no mueve ningún saldo pero sí emite un
+   * comprobante numerado, y PAY-019 ya dice que un pago de cero no es un pago.
+   * Se nombra el obstáculo en vez de dejar que salte el genérico de importe no
+   * pagable, porque quien lo lea declaró un importe que **no** era cero.
+   */
+  if (isZero(converted)) {
+    return { ok: false, obstacle: 'ROUNDS_TO_ZERO' };
+  }
+
+  return { ok: true, amount: converted };
+}
+
+/**
+ * El importe contabilizable, o el rechazo con su remedio escrito.
+ *
+ * El mensaje de `RATE_MISSING` dice qué hacer, y no es evidente: registrar la
+ * tasa ahora **no rellena** una evidencia ya cargada, porque DEC-009 congela al
+ * cargar y no al aprobar. Hay que registrar la tasa del día del pago y pedir
+ * corrección; al reenviarla, `submitPaymentProof` la busca otra vez y la
+ * congela. Sin decirlo, el revisor registra la tasa, vuelve, y falla igual.
+ */
+export function requireBookedAmount(input: BookingInput): Money {
+  const resultado = bookAmount(input);
+
+  if (resultado.ok) return resultado.amount;
+
+  const declarado = `${toDecimalString(input.declared)} ${input.declared.currency}`;
+
+  if (resultado.obstacle === 'RATE_MISSING') {
+    throw new DomainError(
+      'EXCHANGE_RATE_MISSING',
+      `Esta evidencia se cargó sin tasa de cambio congelada, así que no hay con qué llevar ${declarado} a ${input.bookCurrency}. ` +
+        'Registre la tasa del día del pago en la configuración de la gestión y pida corrección: al reenviarla, la tasa queda congelada (DEC-009).',
+    );
+  }
+
+  throw new DomainError(
+    'MONEY_INVALID',
+    `Convertidos a ${input.bookCurrency} con la tasa congelada, ${declarado} redondean a cero. Revise la tasa antes de aprobar.`,
+  );
+}
+
+/**
+ * Todas las asignaciones vienen en la moneda de los libros.
+ *
+ * `assertAllocationsWithinPayment` ya lo exige de hecho, porque suma contra el
+ * importe del pago, pero el fallo llegaba como «no se pueden operar importes en
+ * USD y BOB sin conversión explícita»: cierto y de ninguna ayuda para quien
+ * está repartiendo un cobro. Comprobarlo aparte permite decir cuál es la moneda
+ * correcta.
+ */
+export function assertAllocationsInCurrency(
+  allocations: readonly Money[],
+  bookCurrency: string,
+): void {
+  for (const allocation of allocations) {
+    if (allocation.currency !== bookCurrency) {
+      throw new DomainError(
+        'MONEY_CURRENCY_MISMATCH',
+        `El reparto se anota en ${bookCurrency}, que es la moneda de la gestión, y llegó una asignación en ${allocation.currency}.`,
+      );
+    }
+  }
+}
+
+/**
  * Total efectivamente cobrado en una sesión de caja — PAY-012.
  *
  * El cierre compara lo esperado con lo contado. La diferencia se calcula, no se

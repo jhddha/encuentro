@@ -10,6 +10,7 @@ import {
   type RegistrationState,
 } from '@encuentro/domain';
 
+import { enLibros } from './booked-amount.js';
 import { decimalText } from './decimal.js';
 import type { PrismaClient } from './prisma.js';
 
@@ -49,6 +50,16 @@ export interface StatementProof {
   readonly version: number;
   readonly declaredAmount: string;
   readonly currency: string;
+
+  /**
+   * El mismo importe en la moneda de la gestión, o `null` si no hay tasa.
+   *
+   * El peregrino que transfiere cincuenta dólares ve sus cargos en bolivianos.
+   * Sin la equivalencia al lado no puede saber si lo que envió alcanza, y esa
+   * es justamente la pregunta que trae a esta pantalla.
+   */
+  readonly bookedAmount: string | null;
+
   readonly reference: string;
   readonly paidAt: Date;
   readonly submittedAt: Date;
@@ -137,6 +148,17 @@ export async function findAccountStatement(
     select: {
       id: true,
       amount: true,
+      /*
+       * La moneda del pago se **lee**, no se da por supuesta.
+       *
+       * Antes esta consulta no la pedía y etiquetaba cada importe con la de la
+       * gestión. Mientras la aprobación entregaba el importe declarado sin
+       * convertir, eso significaba que un pago de cincuenta dólares aparecía
+       * aquí como cincuenta bolivianos, y sumaba como tal. La aprobación ya
+       * convierte, así que la coincidencia está garantizada por construcción;
+       * leerla es lo que impide que vuelva a darse por supuesta.
+       */
+      currency: true,
       approvedAt: true,
       receipt: { select: { number: true, voidedAt: true } },
     },
@@ -151,6 +173,7 @@ export async function findAccountStatement(
       version: true,
       declaredAmount: true,
       currency: true,
+      exchangeRateMicros: true,
       reference: true,
       paidAt: true,
       submittedAt: true,
@@ -166,7 +189,17 @@ export async function findAccountStatement(
     money(pagadoPorCargo.get(charge.id) ?? '0.00', currency),
   );
 
-  const importesPagos = payments.map((payment) => money(payment.amount.toString(), currency));
+  /*
+   * Los pagos entran con **su propia moneda**, no con la de la gestión.
+   *
+   * Si alguna vez difirieran, `creditBalance` lanza `MONEY_CURRENCY_MISMATCH` y
+   * esta pantalla falla. Es deliberado: un estado de cuenta que reetiqueta
+   * dólares como bolivianos miente sin avisar, y el peregrino tomaría
+   * decisiones sobre ese número. Fallar es reparable; mentir en silencio no.
+   */
+  const importesPagos = payments.map((payment) =>
+    money(payment.amount.toString(), payment.currency),
+  );
 
   const balance = computeBalance({
     charges: importesCargos,
@@ -224,7 +257,7 @@ export async function findAccountStatement(
     payments: payments.map((payment) => ({
       id: payment.id,
       // `Decimal.toString()` quita los ceros finales; ver `decimalText`.
-      amount: decimalText(payment.amount, currency),
+      amount: decimalText(payment.amount, payment.currency),
       approvedAt: payment.approvedAt,
       receiptNumber: payment.receipt?.number ?? null,
       receiptVoided: payment.receipt?.voidedAt != null,
@@ -236,6 +269,12 @@ export async function findAccountStatement(
       version: proof.version,
       declaredAmount: decimalText(proof.declaredAmount, proof.currency),
       currency: proof.currency,
+      bookedAmount: enLibros({
+        declaredText: decimalText(proof.declaredAmount, proof.currency),
+        declaredCurrency: proof.currency,
+        bookCurrency: currency,
+        rateMicros: proof.exchangeRateMicros,
+      }).booked,
       reference: proof.reference,
       paidAt: proof.paidAt,
       submittedAt: proof.submittedAt,

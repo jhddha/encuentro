@@ -58,6 +58,14 @@ La proyección pública `toPublicReceiptVerification`, escrita en P02, sigue sie
 
 La tasa se guarda en **millonésimas** y se congela al cargar la evidencia (DEC-009). Dividir en coma flotante justo donde se convierte dinero es la clase de error que reaparece como un céntimo de descuadre en el cierre de caja.
 
+**Declarado y contabilizado son dos cifras distintas, y conviene no volver a confundirlas.** El declarado es lo que la persona transfirió, en la moneda del canal: es lo que dice su extracto bancario y no cambia nunca. El contabilizado es lo que la organización registra haber cobrado, en la moneda funcional de los libros —bolivianos—, y es lo que baja el saldo, lo que se reparte entre cargos y lo que cuenta el arqueo.
+
+La conversión ocurre en **un solo punto**: `requireBookedAmount`, al aprobar. Hasta el 13 de agosto de 2026 no ocurría en ninguno. `findForReview` devolvía el importe declarado bajo el nombre `amount` y con un comentario que afirmaba que ya venía convertido; aprobar un cobro en dólares contra cargos en bolivianos o bien reventaba comparando monedas, o bien —sin reparto, que es el sobrepago de DEC-008— creaba un pago con el número del dólar y la etiqueta del boliviano. Cincuenta dólares pasaban a valer cincuenta bolivianos sin que nada fallara.
+
+Una evidencia multimoneda **sin** tasa congelada no es aprobable: `EXCHANGE_RATE_MISSING`. Existen —las cargadas antes de que hubiera registro diario de tasas— y su remedio no es evidente, así que el mensaje lo dice: registrar la tasa ahora no rellena una evidencia ya cargada, hay que registrarla y pedir corrección para que se congele al reenviar.
+
+El comprobante guarda **las dos cifras y la tasa**. PAY-030 lo hace inmutable, así que lo que no se escriba al emitirlo no se añade después; un comprobante que solo dijera «348.00 BOB» a quien envió cincuenta dólares no se parece a nada que esa persona pueda reconocer.
+
 El saldo se **deriva** de las asignaciones; no hay ninguna columna de saldo que alguien pueda escribir. Es lo que PAY-002 pide, y también lo que hace que el arqueo sea un control real y no una declaración.
 
 DEC-007 y DEC-008: no se devuelve dinero. `creditFromOverpayment` convierte el saldo negativo en saldo a favor positivo, y devuelve cero cuando no hay sobrepago — un «saldo a favor negativo» no significa nada.

@@ -557,7 +557,7 @@
   ],
   "openSubDecisions": [
     "Método de valoración de donaciones en especie (ACC-006)",
-    "Moneda funcional de los libros y diferencia de cambio",
+    "Diferencia de cambio bancaria: la que aparece cuando el banco acredita a una cotización distinta de la congelada. La moneda funcional ya no está abierta: los libros van en BOB desde el 11 de agosto de 2026",
     "Umbrales y responsables de aprobación (ACC-007)",
     "Depreciación de activos: fuera de alcance en v1",
     "Qué países cuentan como nacional para OFFERING_ROLE_BY_ORIGIN",

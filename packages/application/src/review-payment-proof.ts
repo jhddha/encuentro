@@ -1,11 +1,13 @@
 import {
   DomainError,
   acceptsRegistrationsAndPayments,
+  assertAllocationsInCurrency,
   assertAllocationsWithinCharges,
   assertAllocationsWithinPayment,
   assertPayableAmount,
   authorize,
   canTransitionProof,
+  requireBookedAmount,
   unallocatedAmount,
   type Actor,
   type EventState,
@@ -44,11 +46,29 @@ export interface ProofForReview {
   readonly status: PaymentProofState;
 
   /**
-   * Importe ya convertido con la tasa congelada al cargar la evidencia
-   * (DEC-009). No se recalcula al aprobar: la organización absorbe el
-   * movimiento cambiario entre la carga y la revisión.
+   * Lo que el peregrino declara haber transferido, **en la moneda del canal**.
+   *
+   * No es lo que entra en los libros cuando el canal cobra en otra divisa. Se
+   * llamaba `amount` y se usaba directamente como importe del pago; el nombre
+   * ocultaba que faltaba convertirlo. Ver `requireBookedAmount`.
    */
-  readonly amount: Money;
+  readonly declared: Money;
+
+  /** Moneda funcional de los libros: la de la gestión. */
+  readonly bookCurrency: string;
+
+  /**
+   * Tasa congelada al cargar la evidencia — DEC-009.
+   *
+   * `null` cuando el canal cobra en la moneda de la gestión, y también en una
+   * evidencia multimoneda que se cargó antes de que existiera el registro de
+   * tasas. El segundo caso no es aprobable: ver `requireBookedAmount`.
+   *
+   * No se recalcula al aprobar. La organización absorbe el movimiento cambiario
+   * entre la carga y la revisión, que es la consecuencia que DEC-009 aceptó
+   * explícitamente.
+   */
+  readonly exchangeRateMicros: number | null;
 
   readonly charges: readonly ChargeBalance[];
 
@@ -84,7 +104,29 @@ export interface ApproveProofInput {
   readonly proofId: string;
   readonly expectedVersion: number;
   readonly registrationId: string;
+
+  /**
+   * Importe con el que el pago entra en los libros, ya convertido.
+   *
+   * Es lo que baja el saldo, lo que cuenta el arqueo y lo que se reparte entre
+   * cargos. Siempre en la moneda de la gestión.
+   */
   readonly amount: Money;
+
+  /**
+   * Lo transferido tal cual, en la moneda del canal.
+   *
+   * Viaja junto al convertido para que el comprobante pueda decir las dos
+   * cifras. Un comprobante que solo dijera «348.00 BOB» a quien transfirió
+   * cincuenta dólares no se parece a nada que esa persona pueda reconocer, y
+   * PAY-030 lo hace inmutable: lo que no se guarde al emitirlo no se añade
+   * después.
+   */
+  readonly declared: Money;
+
+  /** Tasa con la que se convirtió, o `null` si no hubo conversión. */
+  readonly exchangeRateMicros: number | null;
+
   readonly allocations: readonly AllocationRequest[];
   /** Excedente sin asignar; queda como saldo a favor (DEC-008). */
   readonly credit: Money;
@@ -238,13 +280,36 @@ async function approve(
     );
   }
 
-  assertPayableAmount(proof.amount, 'El importe de la evidencia');
+  assertPayableAmount(proof.declared, 'El importe declarado en la evidencia');
+
+  /*
+   * Aquí es donde el dinero cambia de moneda, y es el único sitio donde ocurre.
+   *
+   * A partir de esta línea nada vuelve a mirar lo declarado: el reparto, el
+   * excedente, el pago y el saldo se calculan sobre el importe contabilizado.
+   * Mezclar los dos es lo que hacía que cincuenta dólares se convirtieran en
+   * cincuenta bolivianos sin que nada fallara.
+   *
+   * La tasa es la que se congeló al cargar (DEC-009), no la de hoy. Si la
+   * cotización se movió entre la carga y esta revisión, la diferencia la absorbe
+   * la organización: es la consecuencia que la decisión aceptó a cambio de que
+   * el peregrino sepa cuánto debe en el momento en que paga.
+   */
+  const amount = requireBookedAmount({
+    declared: proof.declared,
+    bookCurrency: proof.bookCurrency,
+    rateMicros: proof.exchangeRateMicros,
+  });
 
   const allocations = command.allocations ?? [];
   const amounts = allocations.map((allocation) => allocation.amount);
 
+  // El reparto se anota en la moneda de los libros. Comprobarlo antes que nada
+  // convierte un «no se pueden operar USD y BOB» en algo accionable.
+  assertAllocationsInCurrency(amounts, proof.bookCurrency);
+
   // PAY-020, las dos mitades: ni más de lo que entró, ni más de lo que se debe.
-  assertAllocationsWithinPayment(proof.amount, amounts);
+  assertAllocationsWithinPayment(amount, amounts);
   assertAllocationsWithinCharges(
     allocations.map((allocation) => ({
       chargeId: allocation.chargeId,
@@ -257,13 +322,15 @@ async function approve(
    * El excedente no es un error. DEC-008: lo que sobra queda como saldo a favor
    * de la persona, no se devuelve ni se fuerza contra un cargo que no lo debe.
    */
-  const credit = unallocatedAmount(proof.amount, amounts);
+  const credit = unallocatedAmount(amount, amounts);
 
   const receipt = await deps.proofs.approve({
     proofId: command.proofId,
     expectedVersion: command.expectedVersion,
     registrationId: proof.registrationId,
-    amount: proof.amount,
+    amount,
+    declared: proof.declared,
+    exchangeRateMicros: proof.exchangeRateMicros,
     allocations,
     credit,
     actorId: actor.userId,

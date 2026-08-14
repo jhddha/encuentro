@@ -2,6 +2,7 @@ import { ADVANCE_CHANNELS, DomainError, money, type Actor } from '@encuentro/dom
 import { describe, expect, it } from 'vitest';
 
 import type { Clock } from './ports.js';
+import type { ExchangeRateRepository } from './register-exchange-rate.js';
 import {
   resubmitPaymentProof,
   submitPaymentProof,
@@ -134,8 +135,30 @@ const comando = {
   upload: ARCHIVO,
 } as const;
 
+/**
+ * Registro de tasas de mentira.
+ *
+ * Las pruebas de este archivo cobran en la moneda de la gestión, así que
+ * `tasaDelPago` sale antes de consultar y nunca se llama a nada de aquí. Aun
+ * así la dependencia es obligatoria y **faltaba**: los dobles se construían sin
+ * ella y solo el orden de las comprobaciones evitaba el `undefined`. No lo vio
+ * nadie porque `tsc --build` no cubre los archivos de prueba, que es un agujero
+ * aparte del gate.
+ *
+ * `findForDay` devuelve `null` en vez de una tasa cualquiera: si alguna prueba
+ * llegara a pedirla, el resultado sería el rechazo explícito por falta de tasa
+ * y no una conversión inventada.
+ */
+function tasas(): ExchangeRateRepository {
+  return {
+    findForDay: () => Promise.resolve(null),
+    listRecent: () => Promise.resolve([]),
+    save: () => Promise.resolve(),
+  };
+}
+
 function deps(repo: ProofSubmissionRepository, store: EvidenceStore = almacen()) {
-  return { proofs: repo, evidence: store, clock: reloj };
+  return { proofs: repo, evidence: store, rates: tasas(), clock: reloj };
 }
 
 describe('submitPaymentProof', () => {
@@ -399,7 +422,12 @@ describe('submitPaymentProof', () => {
       channel: canal(),
     });
 
-    const madrugada = { proofs: repo, evidence: almacen(), clock: { now: () => MADRUGADA } };
+    const madrugada = {
+      proofs: repo,
+      evidence: almacen(),
+      rates: tasas(),
+      clock: { now: () => MADRUGADA },
+    };
 
     await expect(
       submitPaymentProof(madrugada, peregrino(), {

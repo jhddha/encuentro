@@ -20,14 +20,18 @@ import { requireActor } from '@/lib/session';
  * de otra gestión presentando el identificador correcto.
  */
 
-async function resolveEventId(eventCode: string): Promise<string> {
+async function resolveEvent(eventCode: string): Promise<{ id: string; currency: string }> {
   const event = await eventRepository().findByCode(eventCode);
 
   if (event === null) {
     throw new Error(`No existe la gestión ${eventCode}.`);
   }
 
-  return event.id;
+  return { id: event.id, currency: event.currency };
+}
+
+async function resolveEventId(eventCode: string): Promise<string> {
+  return (await resolveEvent(eventCode)).id;
 }
 
 export async function takeForReviewAction(
@@ -117,15 +121,27 @@ export interface IssuedReceiptView {
   readonly verificationUrl: string;
 }
 
+/**
+ * Aprueba y reparte.
+ *
+ * **La moneda del reparto no llega del cliente**, y antes sí. El panel enviaba
+ * la de la evidencia, que en un cobro en dólares no es la de los cargos: el
+ * reparto salía etiquetado en USD contra cargos en bolivianos. Peor que el
+ * error en sí es de dónde venía el dato, porque el endpoint que Next genera
+ * para una acción de servidor es invocable directamente y aceptaba cualquier
+ * código de tres letras.
+ *
+ * Se resuelve aquí desde la gestión, que es donde vive: los libros se llevan en
+ * una sola moneda y el reparto se anota en ella.
+ */
 export async function approveProofAction(
   eventCode: string,
   proofId: string,
   expectedVersion: number,
-  currency: string,
   allocations: readonly AllocationForm[],
 ): Promise<ActionResultWith<IssuedReceiptView | null>> {
   const actor = await requireActor();
-  const eventId = await resolveEventId(eventCode);
+  const { id: eventId, currency } = await resolveEvent(eventCode);
 
   const result = await runActionWith(async () => {
     const receipt = await reviewPaymentProof({ proofs: paymentProofRepository() }, actor, {

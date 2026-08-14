@@ -12,10 +12,12 @@ import {
   money,
   shouldConfirm,
   toDecimalString,
+  type BookingObstacle,
   type PaymentProofState,
   type RegistrationState,
 } from '@encuentro/domain';
 
+import { enLibros } from './booked-amount.js';
 import { decimalText } from './decimal.js';
 import { createReceiptToken } from './receipt-token.js';
 import type { PrismaClient } from './prisma.js';
@@ -46,9 +48,10 @@ interface ProofRow {
   registrationId: string;
   declaredAmount: { toString(): string };
   currency: string;
+  exchangeRateMicros: bigint | null;
   status: string;
   version: number;
-  event: { status: string; code: string };
+  event: { status: string; code: string; currency: string };
 }
 
 /** Fila de la bandeja de revisión. Solo lectura, para la pantalla. */
@@ -59,6 +62,16 @@ export interface ProofInboxRow {
   readonly version: number;
   readonly declaredAmount: string;
   readonly currency: string;
+  /**
+   * El mismo importe en la moneda de la gestión, o `null` si falta la tasa.
+   *
+   * La bandeja lista evidencias que se compararán contra cargos en la moneda
+   * funcional. Sin esta columna, un «50.00 USD» junto a un cargo de «348.00»
+   * obliga a quien revisa a hacer la cuenta de cabeza, y esa cuenta es la que
+   * decide si el reparto cabe.
+   */
+  readonly bookedAmount: string | null;
+  readonly bookCurrency: string;
   readonly reference: string;
   readonly paidAt: Date;
   readonly registrationCode: string;
@@ -85,25 +98,39 @@ export async function listProofsPendingReview(
       version: true,
       declaredAmount: true,
       currency: true,
+      exchangeRateMicros: true,
       reference: true,
       paidAt: true,
       registration: { select: { code: true } },
       channel: { select: { code: true } },
+      event: { select: { currency: true } },
     },
   });
 
-  return rows.map((row) => ({
-    id: row.id,
-    status: row.status as PaymentProofState,
-    version: row.version,
+  return rows.map((row) => {
     // `Decimal.toString()` quita los ceros finales; ver `decimalText`.
-    declaredAmount: decimalText(row.declaredAmount, row.currency),
-    currency: row.currency,
-    reference: row.reference,
-    paidAt: row.paidAt,
-    registrationCode: row.registration.code,
-    channelCode: row.channel.code,
-  }));
+    const declaredAmount = decimalText(row.declaredAmount, row.currency);
+    const bookCurrency = row.event.currency;
+
+    return {
+      id: row.id,
+      status: row.status as PaymentProofState,
+      version: row.version,
+      declaredAmount,
+      currency: row.currency,
+      bookedAmount: enLibros({
+        declaredText: declaredAmount,
+        declaredCurrency: row.currency,
+        bookCurrency,
+        rateMicros: row.exchangeRateMicros,
+      }).booked,
+      bookCurrency,
+      reference: row.reference,
+      paidAt: row.paidAt,
+      registrationCode: row.registration.code,
+      channelCode: row.channel.code,
+    };
+  });
 }
 
 /** Detalle de una evidencia para la pantalla de revisión. */
@@ -114,6 +141,16 @@ export interface ProofDetail {
   readonly version: number;
   readonly declaredAmount: string;
   readonly currency: string;
+
+  /** Moneda funcional: la de la gestión, en la que están los cargos. */
+  readonly bookCurrency: string;
+  /** Lo declarado ya convertido, o `null` si no se pudo. */
+  readonly bookedAmount: string | null;
+  /** Por qué no se pudo. El panel lo traduce a un aviso con remedio. */
+  readonly bookingObstacle: BookingObstacle | null;
+  /** Tasa congelada al cargar, en millonésimas — DEC-009. */
+  readonly exchangeRateMicros: number | null;
+
   readonly reference: string;
   readonly paidAt: Date;
   readonly payerName: string | null;
@@ -151,12 +188,14 @@ export async function findProofDetail(
       version: true,
       declaredAmount: true,
       currency: true,
+      exchangeRateMicros: true,
       reference: true,
       paidAt: true,
       payerName: true,
       fileId: true,
       fileChecksum: true,
       channel: { select: { code: true } },
+      event: { select: { currency: true } },
       registration: {
         select: { id: true, code: true, person: { select: { fullName: true } } },
       },
@@ -181,13 +220,26 @@ export async function findProofDetail(
     allocated.map((row) => [row.chargeId, row._sum.amount?.toString() ?? '0.00']),
   );
 
+  const declaredAmount = decimalText(proof.declaredAmount, proof.currency);
+  const bookCurrency = proof.event.currency;
+  const libros = enLibros({
+    declaredText: declaredAmount,
+    declaredCurrency: proof.currency,
+    bookCurrency,
+    rateMicros: proof.exchangeRateMicros,
+  });
+
   return {
     id: proof.id,
     eventId: proof.eventId,
     status: proof.status as PaymentProofState,
     version: proof.version,
-    declaredAmount: decimalText(proof.declaredAmount, proof.currency),
+    declaredAmount,
     currency: proof.currency,
+    bookCurrency,
+    bookedAmount: libros.booked,
+    bookingObstacle: libros.obstacle,
+    exchangeRateMicros: proof.exchangeRateMicros === null ? null : Number(proof.exchangeRateMicros),
     reference: proof.reference,
     paidAt: proof.paidAt,
     payerName: proof.payerName,
@@ -228,10 +280,11 @@ export function createPaymentProofRepository(
           registrationId: true,
           declaredAmount: true,
           currency: true,
+          exchangeRateMicros: true,
           status: true,
           version: true,
           reference: true,
-          event: { select: { status: true, code: true } },
+          event: { select: { status: true, code: true, currency: true } },
         },
       })) as (ProofRow & { reference: string }) | null;
 
@@ -273,7 +326,19 @@ export function createPaymentProofRepository(
         eventStatus: proof.event.status as ProofForReview['eventStatus'],
         registrationId: proof.registrationId,
         status: proof.status as PaymentProofState,
-        amount: money(proof.declaredAmount.toString(), proof.currency),
+        /*
+         * Lo **declarado**, sin convertir, y así se llama ahora.
+         *
+         * Antes este campo se llamaba `amount` y su comentario decía «ya
+         * convertido con la tasa congelada». No lo estaba: era el número tal
+         * cual, con la moneda del canal. La conversión la hace el caso de uso,
+         * que es quien puede negarse a aprobar cuando falta la tasa; aquí solo
+         * se entrega el dato y de qué moneda son los libros.
+         */
+        declared: money(proof.declaredAmount.toString(), proof.currency),
+        bookCurrency: proof.event.currency,
+        exchangeRateMicros:
+          proof.exchangeRateMicros === null ? null : Number(proof.exchangeRateMicros),
         charges: charges.map((charge) => ({
           chargeId: charge.id,
           outstanding: subtractDecimals(
@@ -454,6 +519,24 @@ export function createPaymentProofRepository(
             snapshot: {
               amount: toDecimalString(input.amount),
               currency: input.amount.currency,
+              /*
+               * Y **lo que la persona transfirió de verdad**, cuando no es lo
+               * mismo. Un comprobante que solo dijera «348.00 BOB» a quien envió
+               * cincuenta dólares no se parece a nada que pueda reconocer en su
+               * extracto bancario, y con la tasa impresa al lado la cifra deja
+               * de ser un número que hay que creerse.
+               *
+               * Los tres campos van juntos o no va ninguno: sin la tasa, las
+               * otras dos cifras no se pueden reconciliar; sin el declarado, la
+               * tasa no dice sobre qué se aplicó.
+               */
+              ...(input.exchangeRateMicros === null
+                ? {}
+                : {
+                    declaredAmount: toDecimalString(input.declared),
+                    declaredCurrency: input.declared.currency,
+                    exchangeRateMicros: input.exchangeRateMicros,
+                  }),
               allocations: input.allocations.map((allocation) => ({
                 chargeId: allocation.chargeId,
                 amount: toDecimalString(allocation.amount),
@@ -473,6 +556,21 @@ export function createPaymentProofRepository(
             status: 'APPROVED',
             paymentId: payment.id,
             receiptSequence: sequence,
+            /*
+             * El importe contabilizado y, si hubo conversión, con qué. Ante un
+             * descuadre, la pregunta es «a qué tasa se aprobó esto», y sin
+             * dejarla escrita la única respuesta estaría en la evidencia, que
+             * es precisamente lo que se estaría poniendo en duda.
+             */
+            amount: toDecimalString(input.amount),
+            currency: input.amount.currency,
+            ...(input.exchangeRateMicros === null
+              ? {}
+              : {
+                  declaredAmount: toDecimalString(input.declared),
+                  declaredCurrency: input.declared.currency,
+                  exchangeRateMicros: input.exchangeRateMicros,
+                }),
             credit: toDecimalString(input.credit),
           },
         });
