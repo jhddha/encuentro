@@ -29,6 +29,7 @@
     "db:fixture": "tsx prisma/dev-fixture.ts",
     "db:e2e": "tsx scripts/preparar-base-desechable.mts e2e",
     "db:test": "tsx scripts/preparar-base-desechable.mts test",
+    "rol:conceder": "tsx scripts/conceder-rol.mts",
     "smtp:set": "tsx scripts/configurar-smtp.mts"
   },
   "devDependencies": {
