@@ -1,6 +1,6 @@
 import 'server-only';
 
-import { authorize, type Actor, type ResourceContext } from '@encuentro/domain';
+import { authorize, can as puede, type Actor, type ResourceContext } from '@encuentro/domain';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
@@ -141,4 +141,20 @@ export async function requirePermission(
   const actor = await requireActor();
   authorize(actor, permission, resource);
   return actor;
+}
+
+/**
+ * ¿Tiene el actor este permiso? Sin lanzar.
+ *
+ * Para decidir **qué se dibuja**, no si se deja pasar. La pantalla de
+ * hospedaje la abre quien tiene `lodging.read`, y dentro solo ve el inventario
+ * quien además tiene `lodging.manage`: esconder un formulario que su acción va
+ * a rechazar es más honesto que enseñarlo.
+ *
+ * No sustituye a la comprobación del caso de uso. Ocultar un botón no autoriza
+ * nada: el endpoint que Next genera para la acción de servidor sigue siendo
+ * invocable directamente, y quien decide es `authorize` allí dentro.
+ */
+export async function can(permission: string, resource: ResourceContext): Promise<boolean> {
+  return puede(await requireActor(), permission, resource);
 }

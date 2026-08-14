@@ -10,8 +10,9 @@ import {
 import type { Metadata } from 'next';
 
 import { ExchangeRateForm } from './ExchangeRateForm';
-import { eventRepository, exchangeRateRepository, prisma } from '@/lib/container';
-import { requirePermission } from '@/lib/session';
+import { LodgingPolicyForm } from './LodgingPolicyForm';
+import { eventRepository, exchangeRateRepository, lodgingPolicy, prisma } from '@/lib/container';
+import { can, requirePermission } from '@/lib/session';
 
 export const metadata: Metadata = { title: 'Configuración de la gestión' };
 
@@ -72,6 +73,15 @@ export default async function EventConfigurationPage({
 
   const tasas = await exchangeRateRepository().listRecent(event.id, 10);
 
+  /*
+   * La política de hospedaje se edita aquí y en Hospedaje solo se lee
+   * (HOS-014). El formulario aparece únicamente para quien puede guardarlo:
+   * enseñarlo a quien no tiene `lodging.manage` sería ofrecer una acción que su
+   * propia acción va a rechazar.
+   */
+  const administraHospedaje = await can('lodging.manage', { type: 'EVENT', eventId: event.id });
+  const hospedaje = administraHospedaje ? await lodgingPolicy(event.id) : null;
+
   // El día que se propone es el civil de la gestión, no el de quien mira: la
   // tasa es del día de allá (NFR-013).
   const hoy = civilDayIn(event.timezone, new Date());
@@ -122,6 +132,24 @@ export default async function EventConfigurationPage({
           ))}
         </dl>
       </Card>
+
+      {hospedaje !== null && (
+        <Card className="flex flex-col gap-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Hospedaje: noches y fechas</h2>
+            <p className="text-sm">
+              HOS-014: una sola fuente. De aquí salen las fechas de todas las reservas, y en
+              Hospedaje este dato solo se lee.
+            </p>
+          </div>
+
+          <LodgingPolicyForm
+            eventCode={event.code}
+            actual={hospedaje.policy}
+            reservasVivas={hospedaje.liveReservations}
+          />
+        </Card>
+      )}
 
       <Card className="flex flex-col gap-5">
         <div className="flex flex-col gap-1">

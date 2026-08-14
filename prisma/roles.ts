@@ -48,6 +48,13 @@ export const ROLES = [
        */
       'lodging.read',
       'lodging.assign_room',
+      /*
+       * `lodging.manage` es el inventario y la política de noches: cuántas
+       * habitaciones hay y de cuántas plazas. Es distinto de asignar, que
+       * coloca gente en lo que existe, y por eso son dos permisos: cambiar la
+       * capacidad mueve el inventario de la gestión entera.
+       */
+      'lodging.manage',
     ],
   },
   {

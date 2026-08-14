@@ -112,9 +112,12 @@ export {
 
 export {
   HELD_DURATION_MS,
+  assertDeactivable,
+  assertHotelDetails,
   assertHotelHasRoom,
   assertMayChooseHotel,
   assertPolicyConsistent,
+  assertRoomDetails,
   canTransitionReservation,
   firstFreeBed,
   hasAvailability,

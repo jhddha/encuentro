@@ -23,6 +23,19 @@ export {
 } from './expire-held-reservations.js';
 
 export {
+  savePolicy,
+  saveHotel,
+  saveRoom,
+  type ConfigureLodgingDeps,
+  type HotelInput,
+  type HotelState,
+  type LodgingConfigRepository,
+  type PolicyInput,
+  type RoomInput,
+  type RoomState,
+} from './configure-lodging.js';
+
+export {
   assignRoom,
   chooseHotel,
   type AssignRoomCommand,

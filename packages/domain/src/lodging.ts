@@ -271,3 +271,76 @@ export function assertMayChooseHotel(input: {
     );
   }
 }
+
+/**
+ * Datos con los que se da de alta o se corrige un hotel.
+ *
+ * El código lo pone la organización y no se valida su forma: es el nombre con
+ * el que ya llaman a ese hotel en sus papeles, y exigirle un patrón obligaría a
+ * inventar uno distinto del que usan. Lo que sí se exige es que exista y no sea
+ * espacio en blanco, porque es la clave por gestión.
+ */
+export function assertHotelDetails(input: { readonly code: string; readonly name: string }): void {
+  if (input.code.trim() === '') {
+    throw new DomainError('LODGING_POLICY_INVALID', 'El hotel necesita un código.');
+  }
+
+  if (input.name.trim() === '') {
+    throw new DomainError('LODGING_POLICY_INVALID', 'El hotel necesita un nombre.');
+  }
+}
+
+/**
+ * Datos de una habitación, con su capacidad frente a quien ya está dentro.
+ *
+ * **Bajar la capacidad por debajo de lo ocupado es el caso que importa.** Una
+ * habitación de cuatro con tres personas dentro no puede pasar a dos: las
+ * reservas ya escritas seguirían ahí y el inventario diría que caben menos de
+ * las que hay, así que la ocupación superaría a la capacidad y el hotel
+ * anunciaría plazas negativas. No es un error de tecleo improbable: pasa al
+ * corregir una habitación que se cargó mal después de haber asignado gente.
+ */
+export function assertRoomDetails(input: {
+  readonly code: string;
+  readonly capacity: number;
+  /** Plazas ocupadas ahora mismo por reservas vivas. */
+  readonly occupied: number;
+}): void {
+  if (input.code.trim() === '') {
+    throw new DomainError('LODGING_POLICY_INVALID', 'La habitación necesita un código.');
+  }
+
+  if (!Number.isInteger(input.capacity) || input.capacity < 1) {
+    throw new DomainError(
+      'LODGING_POLICY_INVALID',
+      'La capacidad debe ser un número entero de al menos una plaza.',
+    );
+  }
+
+  if (input.capacity < input.occupied) {
+    throw new DomainError(
+      'LODGING_CAPACITY_EXHAUSTED',
+      `La habitación tiene ${String(input.occupied)} plazas ocupadas: no puede quedarse en ${String(input.capacity)}. ` +
+        'Mueva primero a quien sobre.',
+    );
+  }
+}
+
+/**
+ * ¿Se puede retirar del inventario?
+ *
+ * Un hotel o una habitación **con gente dentro** no se desactiva. Desactivar no
+ * borra las reservas —siguen apuntando ahí— pero sí saca las plazas del
+ * inventario, y entonces el hotel cuenta menos capacidad de la que tiene
+ * ocupada. Quien quiera cerrar una habitación tiene que mover antes a su gente,
+ * que es además lo que haría de todos modos.
+ */
+export function assertDeactivable(label: string, live: number): void {
+  if (live > 0) {
+    throw new DomainError(
+      'LODGING_NOT_ELIGIBLE',
+      `${label} tiene ${String(live)} ${live === 1 ? 'reserva viva' : 'reservas vivas'}. ` +
+        'Reasígnelas antes de retirarlo del inventario.',
+    );
+  }
+}

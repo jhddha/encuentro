@@ -1,10 +1,11 @@
 import { EmptyState, PageHeader, ScrollableTable, StatusBadge } from '@encuentro/ui';
 import type { Metadata } from 'next';
 
-import { eventRepository, lodgingAssignments } from '@/lib/container';
-import { requirePermission } from '@/lib/session';
+import { eventRepository, lodgingAssignments, lodgingInventory } from '@/lib/container';
+import { can, requirePermission } from '@/lib/session';
 
 import { AssignRoomForm } from './AssignRoomForm';
+import { Inventario } from './Inventario';
 
 export const metadata: Metadata = { title: 'Hospedaje' };
 
@@ -41,6 +42,17 @@ export default async function LodgingPage({ params }: { params: Promise<{ eventC
 
   const { rows, rooms } = await lodgingAssignments(event.id);
   const retenidas = rows.filter((fila) => fila.status === 'HELD').length;
+
+  /*
+   * El inventario solo lo ve —y lo toca— quien puede administrarlo. Abrir la
+   * pantalla es `lodging.read`; cambiar la capacidad de una habitación mueve el
+   * inventario de la gestión entera y es `lodging.manage`.
+   *
+   * Esconder el formulario no autoriza nada: la acción de servidor vuelve a
+   * comprobarlo. Lo que evita es ofrecer algo que va a rechazarse.
+   */
+  const administra = await can('lodging.manage', { type: 'EVENT', eventId: event.id });
+  const inventario = administra ? await lodgingInventory(event.id) : [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -137,6 +149,8 @@ export default async function LodgingPage({ params }: { params: Promise<{ eventC
           </table>
         </ScrollableTable>
       )}
+
+      {administra && <Inventario eventCode={eventCode} hotels={inventario} />}
     </div>
   );
 }

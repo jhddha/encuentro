@@ -7,6 +7,7 @@ import {
   createCatalogRepository,
   createEventRepository,
   createExchangeRateRepository,
+  createLodgingConfigRepository,
   createLodgingRepository,
   createObjectStorage,
   createPaymentProofRepository,
@@ -15,8 +16,10 @@ import {
   createRegistrationConfirmationRepository,
   createRegistrationRepository,
   findAccountStatement,
+  findLodgingPolicy,
   findMyLodging,
   listAssignments,
+  listInventory,
   findProofDetail,
   listAdvanceChannels,
   listProofsPendingReview,
@@ -186,4 +189,19 @@ export function myLodging(eventId: string, userId: string) {
 /** Bandeja de Hospedaje: reservas vivas y habitaciones donde ponerlas. */
 export function lodgingAssignments(eventId: string) {
   return listAssignments(prismaClient(), eventId);
+}
+
+/** Configuración del inventario de hospedaje — HOS-011, HOS-014. */
+export function lodgingConfigRepository() {
+  return createLodgingConfigRepository(prismaClient());
+}
+
+/** Hoteles y habitaciones de la gestión, activos e inactivos. */
+export function lodgingInventory(eventId: string) {
+  return listInventory(prismaClient(), eventId);
+}
+
+/** Política de noches y cuántas reservas dependen ya de ella — HOS-014. */
+export function lodgingPolicy(eventId: string) {
+  return findLodgingPolicy(prismaClient(), eventId);
 }

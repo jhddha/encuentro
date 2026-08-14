@@ -240,3 +240,120 @@ export async function listAssignments(
     })),
   };
 }
+
+export interface InventoryRoom {
+  readonly id: string;
+  readonly code: string;
+  readonly capacity: number;
+  readonly occupied: number;
+  readonly active: boolean;
+}
+
+export interface InventoryHotel {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string;
+  readonly address: string | null;
+  readonly active: boolean;
+  readonly rooms: readonly InventoryRoom[];
+  /** Plazas de las habitaciones **activas**: es lo que se puede vender. */
+  readonly capacity: number;
+  readonly live: number;
+}
+
+/**
+ * Inventario completo de la gestión, para la pantalla de configuración.
+ *
+ * Incluye los hoteles y habitaciones **inactivos**, al revés que
+ * `listHotelOptions`: allí se ofrece lo que se puede reservar y aquí se
+ * administra lo que existe. Un hotel retirado del inventario tiene que seguir
+ * viéndose para poder volver a activarlo.
+ */
+export async function listInventory(
+  prisma: PrismaClient,
+  eventId: string,
+): Promise<readonly InventoryHotel[]> {
+  const hoteles = await prisma.hotel.findMany({
+    where: { eventId },
+    orderBy: [{ status: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true,
+      code: true,
+      name: true,
+      address: true,
+      status: true,
+      _count: { select: { reservations: { where: { status: { in: ['HELD', 'CONFIRMED'] } } } } },
+      rooms: {
+        orderBy: { code: 'asc' },
+        select: {
+          id: true,
+          code: true,
+          capacity: true,
+          status: true,
+          _count: {
+            select: { reservations: { where: { status: { in: ['HELD', 'CONFIRMED'] } } } },
+          },
+        },
+      },
+    },
+  });
+
+  return hoteles.map((hotel) => ({
+    id: hotel.id,
+    code: hotel.code,
+    name: hotel.name,
+    address: hotel.address,
+    active: hotel.status === 'ACTIVE',
+    live: hotel._count.reservations,
+    capacity: hotel.rooms
+      .filter((sala) => sala.status === 'ACTIVE')
+      .reduce((total, sala) => total + sala.capacity, 0),
+    rooms: hotel.rooms.map((sala) => ({
+      id: sala.id,
+      code: sala.code,
+      capacity: sala.capacity,
+      occupied: sala._count.reservations,
+      active: sala.status === 'ACTIVE',
+    })),
+  }));
+}
+
+export interface PolicyView {
+  readonly nightCount: number;
+  /** `YYYY-MM-DD`, que es como los pide el campo de fecha del formulario. */
+  readonly checkInDate: string;
+  readonly checkOutDate: string;
+}
+
+/**
+ * La política de la gestión y cuántas reservas vivas dependen ya de ella.
+ *
+ * El recuento no es adorno: cambiar las fechas **no** reescribe las reservas
+ * escritas (HOS-013), así que quien las cambie con gente ya reservada debe
+ * saberlo antes de guardar y no descubrirlo después.
+ */
+export async function findLodgingPolicy(
+  prisma: PrismaClient,
+  eventId: string,
+): Promise<{ readonly policy: PolicyView | null; readonly liveReservations: number }> {
+  const fila = await prisma.eventLodgingPolicy.findUnique({
+    where: { eventId },
+    select: { nightCount: true, checkInDate: true, checkOutDate: true },
+  });
+
+  return {
+    policy:
+      fila === null
+        ? null
+        : {
+            nightCount: fila.nightCount,
+            // La columna es `DATE`: se recorta el instante sin que la zona del
+            // proceso pueda desplazar el día.
+            checkInDate: fila.checkInDate.toISOString().slice(0, 10),
+            checkOutDate: fila.checkOutDate.toISOString().slice(0, 10),
+          },
+    liveReservations: await prisma.reservation.count({
+      where: { eventId, status: { in: ['HELD', 'CONFIRMED'] } },
+    }),
+  };
+}

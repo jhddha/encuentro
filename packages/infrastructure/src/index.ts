@@ -21,14 +21,20 @@ export {
 } from './registration-confirmation-repository.js';
 export { createReservationRepository } from './reservation-repository.js';
 export { createLodgingRepository } from './lodging-repository.js';
+export { createLodgingConfigRepository } from './lodging-config-repository.js';
 export {
+  findLodgingPolicy,
   findMyLodging,
   listAssignments,
   listHotelOptions,
+  listInventory,
   type AssignmentRow,
   type HotelOption,
+  type InventoryHotel,
+  type InventoryRoom,
   type MyLodging,
   type MyReservation,
+  type PolicyView,
   type RoomOption,
 } from './lodging-views.js';
 export { createExchangeRateRepository } from './exchange-rate-repository.js';
