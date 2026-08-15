@@ -31,6 +31,10 @@
     "/admin/e/[eventCode]/auditoria",
     "/caja/e/[eventCode]/[cashCode]",
     "/comision/e/[eventCode]/[commissionCode]",
-    "/scanner/e/[eventCode]/[stationCode]"
+    "/scanner/e/[eventCode]/[stationCode]",
+    "/servidor",
+    "/servidor/solicitud",
+    "/cambiar-contrasena",
+    "/admin/e/[eventCode]/comisiones"
   ]
 }

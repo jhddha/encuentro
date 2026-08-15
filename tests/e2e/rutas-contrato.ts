@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import { EVENTO, type ClaveActor } from './actores';
 
 /**
- * Las treinta y una rutas del contrato, instanciadas y clasificadas.
+ * Las treinta y cinco rutas del contrato, instanciadas y clasificadas.
  *
  * Se leen de `contracts/routes.json` en vez de copiarse. Copiarlas dejaría dos
  * listas que se separan en silencio, que es exactamente lo que le pasó al gate
@@ -43,6 +43,21 @@ const ACCESO: Readonly<Record<string, { acceso: Acceso; actor?: ClaveActor }>> =
   '/verificar-correo': { acceso: 'publica' },
 
   '/configurar-mfa': { acceso: 'guardada', actor: 'peregrino' },
+
+  /*
+   * Las cuatro del módulo de servidores (DEC-020). Nacen guardadas: la lección
+   * de `mi-cuenta/credencial` es que una pantalla pendiente sin guardián
+   * responde 200 a cualquiera, y el día que gana contenido nadie se acuerda de
+   * cerrarla.
+   *
+   * Las tres primeras las abre cualquier cuenta con sesión —el servidor no
+   * tiene asignaciones de rol— así que se comprueban con el peregrino, que es
+   * el personaje sin permisos del recorrido.
+   */
+  '/servidor': { acceso: 'guardada', actor: 'peregrino' },
+  '/servidor/solicitud': { acceso: 'guardada', actor: 'peregrino' },
+  '/cambiar-contrasena': { acceso: 'guardada', actor: 'peregrino' },
+  '/admin/e/[eventCode]/comisiones': { acceso: 'guardada', actor: 'admin' },
 
   '/e/[eventCode]/mi-cuenta': { acceso: 'guardada', actor: 'peregrino' },
   '/e/[eventCode]/mi-cuenta/pagos': { acceso: 'guardada', actor: 'peregrino' },

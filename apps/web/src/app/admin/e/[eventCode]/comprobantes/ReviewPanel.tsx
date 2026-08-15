@@ -14,7 +14,7 @@ import {
  * Panel de revisión de una evidencia — PAY-025, PAY-026, PAY-020.
  *
  * Vive dentro de la ruta de la bandeja, seleccionado por parámetro de consulta,
- * porque `contracts/routes.json` declara treinta y una rutas exactas y una
+ * porque `contracts/routes.json` declara treinta y cinco rutas exactas y una
  * página fuera del contrato es una divergencia. Añadir una ruta de detalle es un
  * cambio de contrato, no una decisión de implementación.
  *

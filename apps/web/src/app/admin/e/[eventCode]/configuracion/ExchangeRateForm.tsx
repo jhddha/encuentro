@@ -14,7 +14,7 @@ import { registerRateAction } from './actions';
  * Registrada aquí queda quién y cuándo.
  *
  * El formulario vive dentro de la configuración de la gestión y no en una ruta
- * propia: `contracts/routes.json` declara treinta y una rutas exactas.
+ * propia: `contracts/routes.json` declara treinta y cinco rutas exactas.
  */
 
 const inputClass =

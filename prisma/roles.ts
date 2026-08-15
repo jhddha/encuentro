@@ -55,6 +55,15 @@ export const ROLES = [
        * capacidad mueve el inventario de la gestión entera.
        */
       'lodging.manage',
+      /*
+       * El módulo de servidores, mientras no existan sus comisiones con
+       * coordinadores de verdad. Tercera vez en el día que una pantalla nueva
+       * nace inalcanzable por no darle su permiso a ningún rol: aquí lo delató
+       * la prueba de humo, en hospedaje también, y con `event.update` fue el
+       * propio usuario quien chocó.
+       */
+      'server.read',
+      'server.manage',
     ],
   },
   {

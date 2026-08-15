@@ -34,9 +34,11 @@ function listPageFiles(dir: string): string[] {
 }
 
 describe('rutas frente a contracts/routes.json', () => {
-  it('el contrato declara 31 rutas', () => {
-    // 28 de P02 más las tres del flujo de autenticación (DEC-016).
-    expect(contractRoutes).toHaveLength(31);
+  it('el contrato declara 35 rutas', () => {
+    // 28 de P02, las tres del flujo de autenticación (DEC-016) y las cuatro del
+    // módulo de servidores (DEC-020): panel del servidor, su solicitud, el
+    // cambio de contraseña del primer acceso y la gestión de comisiones.
+    expect(contractRoutes).toHaveLength(35);
   });
 
   it('no hay páginas fuera del contrato', () => {

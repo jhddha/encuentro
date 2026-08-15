@@ -21,7 +21,7 @@ export const dynamic = 'force-dynamic';
  *
  * La revisión es un **panel en esta misma ruta**, seleccionado por parámetro de
  * consulta. No es una preferencia de diseño: `contracts/routes.json` declara
- * treinta y una rutas exactas y una prueba rechaza cualquier página fuera del
+ * treinta y cinco rutas exactas y una prueba rechaza cualquier página fuera del
  * contrato. Añadir una ruta de detalle sería un cambio de contrato, no una
  * decisión de implementación.
  *
