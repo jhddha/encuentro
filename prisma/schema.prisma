@@ -54,6 +54,8 @@ model User {
   twoFactors  TwoFactor[]
   person      Person?
   rates       ExchangeRate[]
+  serverReviews     ServerRegistration[] @relation("serverRegistrationReviewer")
+  serverAssignments ServerAssignment[]   @relation("serverAssignmentAuthor")
 
   @@map("users")
 }
@@ -243,9 +245,12 @@ model Commission {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  event       Event            @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  assignments RoleAssignment[]
-  entries     JournalEntry[]
+  event               Event                @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  assignments         RoleAssignment[]
+  entries             JournalEntry[]
+  serverRegistrations ServerRegistration[]
+  serverAssignments   ServerAssignment[]
+  auditLogs           AuditLog[]
 
   @@unique([eventId, code])
   @@index([eventId, area])
@@ -336,6 +341,8 @@ model Event {
   commissions    Commission[]
   exchangeRates  ExchangeRate[]
   journalEntries JournalEntry[]
+  serverRegistrations ServerRegistration[]
+  serverPaymentConfig ServerPaymentConfig?
   notifications  Notification[]
 
   @@map("events")
@@ -356,7 +363,22 @@ model Event {
 model AuditLog {
   id      String  @id @default(uuid()) @db.Uuid
   eventId String? @map("event_id") @db.Uuid
-  actorId String  @map("actor_id") @db.Uuid
+
+  /// Comisión a la que pertenece la acción — SRV-023.
+  ///
+  /// Nula en casi todo: la mayoría de las acciones son de la gestión y no de
+  /// una comisión concreta. Existe porque el encargado de área ve **solo la
+  /// auditoría de sus comisiones**, y deducirla de `entity` obligaría a que
+  /// quien consulta conociera cada tipo de entidad del sistema y supiera a qué
+  /// comisión pertenece cada una: eso es adivinar, no filtrar.
+  ///
+  /// Que sea nula es además lo correcto para la regla: una acción sin comisión
+  /// —un cobro, un cierre, un cambio de configuración— **no** la ve un
+  /// encargado de área, y así queda fuera de su filtro sin ninguna excepción
+  /// escrita a mano.
+  commissionId String? @map("commission_id") @db.Uuid
+
+  actorId String @map("actor_id") @db.Uuid
 
   action   String
   entity   String
@@ -370,8 +392,9 @@ model AuditLog {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event Event? @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  actor User   @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  event      Event?      @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  commission Commission? @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  actor      User        @relation(fields: [actorId], references: [id], onDelete: Restrict)
 
   @@index([eventId, createdAt])
   @@index([entity, entityId])
@@ -411,6 +434,7 @@ model Person {
 
   user          User?          @relation(fields: [userId], references: [id], onDelete: Restrict)
   registrations Registration[]
+  serverRegistrations ServerRegistration[]
 
   @@map("persons")
 }
@@ -533,9 +557,146 @@ model Registration {
 ///
 /// PAY-001: el snapshot conserva las condiciones del momento. Un cambio
 /// posterior de tarifa no lo altera.
+/// Inscripción de servidor — SRV-001, SRV-004, DEC-020.
+///
+/// Tabla propia y no una fila de `registrations`, por decisión de la
+/// organización del 14 de agosto de 2026. Un servidor no compra un paquete ni
+/// elige modalidad: se apunta a una comisión, alguien lo aprueba, y solo
+/// entonces paga —si la gestión cobra—.
+///
+/// SRV-004: **una persona es peregrino o servidor en una gestión, nunca
+/// ambos.** Lo impide un disparador entre las dos tablas, no solo la pantalla:
+/// dos caminos distintos crean inscripciones y ninguno ve al otro.
+model ServerRegistration {
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+
+  /// Código visible, como el de la inscripción de peregrino.
+  code String
+
+  personId     String @map("person_id") @db.Uuid
+  commissionId String @map("commission_id") @db.Uuid
+
+  /// SRV-014. Los siete de `contracts/states.json`.
+  status String @default("PENDING")
+
+  /// SRV-015: respuestas del formulario específico de su comisión.
+  ///
+  /// `jsonb` y no columnas porque cada comisión pide campos distintos —placa y
+  /// licencia en Transporte, colegiatura en Servicios Médicos— y añadir una
+  /// columna por campo obligaría a migrar cada vez que una comisión cambia su
+  /// ficha. Lo que se guarda aquí no gobierna ninguna regla: se lee y se
+  /// muestra.
+  formData Json @default("{}") @map("form_data")
+
+  /// SRV-013: quién resolvió la solicitud y con qué motivo si la rechazó.
+  reviewedBy      String?   @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime? @map("reviewed_at") @db.Timestamptz(6)
+  rejectionReason String?   @map("rejection_reason")
+
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  person     Person     @relation(fields: [personId], references: [id], onDelete: Restrict)
+  commission Commission @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  reviewer   User?      @relation("serverRegistrationReviewer", fields: [reviewedBy], references: [id], onDelete: Restrict)
+
+  charges       Charge[]
+  paymentProofs PaymentProof[]
+  payments      Payment[]
+  assignments   ServerAssignment[]
+
+  /// Una persona no se apunta dos veces como servidora en la misma gestión.
+  @@unique([eventId, personId])
+  @@unique([eventId, code])
+  @@index([commissionId, status])
+  @@map("server_registrations")
+}
+
+/// Cobro de inscripción a servidores — SRV-017, SRV-018.
+///
+/// Uno por gestión y **global**: la organización decidió no diferenciar por
+/// comisión. Es tabla y no dos columnas en `events` porque el documento deja la
+/// puerta abierta a diferenciar por comisión más adelante, y añadir esa
+/// dimensión luego no debería obligar a tocar la gestión.
+///
+/// **El importe es el interruptor: cero significa gratuito.** No hay un
+/// booleano aparte, y esa es la diferencia que importa: con un `is_paid` junto
+/// a un `amount` nulable existe el estado «cobra, sin monto», y hay que
+/// prohibirlo con una restricción. Con un solo campo ese estado no se puede
+/// escribir.
+model ServerPaymentConfig {
+  eventId String @id @map("event_id") @db.Uuid
+
+  /// Cero es gratuito. Nunca negativo.
+  amount   Decimal @default(0) @db.Decimal(12, 2)
+  currency String  @db.Char(3)
+
+  version   Int      @default(1)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Restrict)
+
+  @@map("server_payment_config")
+}
+
+/// Asignación operativa del servidor — SRV-001.
+///
+/// «El servidor tiene inscripción propia, comisión, función, horario y
+/// vigencia», con el criterio «un cambio no altera el histórico anterior». Eso
+/// no cabe en columnas de la inscripción: cambiar de función reescribiría lo
+/// que hizo antes, y el histórico de quién sirvió en qué es justamente lo que
+/// una organización de voluntarios necesita conservar entre gestiones.
+///
+/// Así que la asignación es una fila con vigencia. Cambiarla **cierra** la
+/// actual poniendo `valid_until` y **abre** otra; la anterior se queda. Un
+/// índice único parcial garantiza que solo haya una vigente por servidor.
+///
+/// La comisión vive aquí y también en `server_registrations`: allí es la que
+/// **solicitó** —dato de la solicitud, que no cambia— y aquí la que **sirve**,
+/// que sí puede cambiar si lo mueven de comisión.
+model ServerAssignment {
+  id                   String @id @default(uuid()) @db.Uuid
+  serverRegistrationId String @map("server_registration_id") @db.Uuid
+  commissionId         String @map("commission_id") @db.Uuid
+
+  /// Qué hace: cocina, reparto, recepción, control de acceso… Lo define la
+  /// comisión y por eso es texto y no un enumerado del sistema.
+  role String
+
+  /// Cuándo lo hace. Texto libre por el mismo motivo: «desayuno», «turno
+  /// noche», «viernes y sábado» son las respuestas reales de cada comisión.
+  schedule String?
+
+  validFrom  DateTime  @map("valid_from") @db.Timestamptz(6)
+  /// Nulo mientras está vigente. Al cambiar la asignación se cierra aquí.
+  validUntil DateTime? @map("valid_until") @db.Timestamptz(6)
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdBy String   @map("created_by") @db.Uuid
+
+  serverRegistration ServerRegistration @relation(fields: [serverRegistrationId], references: [id], onDelete: Restrict)
+  commission         Commission         @relation(fields: [commissionId], references: [id], onDelete: Restrict)
+  author             User               @relation("serverAssignmentAuthor", fields: [createdBy], references: [id], onDelete: Restrict)
+
+  @@index([serverRegistrationId])
+  @@index([commissionId, validUntil])
+  @@map("server_assignments")
+}
+
+/// Cargo de una inscripción, de peregrino o de servidor.
+///
+/// **Dos dueños posibles y exactamente uno presente.** Es el precio de que el
+/// pago del servidor use el mismo circuito que el del peregrino (DEC-020): un
+/// cargo cuelga de una inscripción u otra, nunca de las dos ni de ninguna. Lo
+/// verifica un CHECK, no la disciplina de quien escribe.
 model Charge {
-  id             String @id @default(uuid()) @db.Uuid
-  registrationId String @map("registration_id") @db.Uuid
+  id             String  @id @default(uuid()) @db.Uuid
+  registrationId String? @map("registration_id") @db.Uuid
+
+  serverRegistrationId String? @map("server_registration_id") @db.Uuid
 
   concept  String
   amount   Decimal @db.Decimal(12, 2)
@@ -546,10 +707,12 @@ model Charge {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  registration Registration        @relation(fields: [registrationId], references: [id], onDelete: Restrict)
-  allocations  PaymentAllocation[]
+  registration       Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  serverRegistration ServerRegistration? @relation(fields: [serverRegistrationId], references: [id], onDelete: Restrict)
+  allocations        PaymentAllocation[]
 
   @@index([registrationId])
+  @@index([serverRegistrationId])
   @@map("charges")
 }
 
@@ -703,10 +866,15 @@ model PaymentChannel {
 /// PAY-025: subirla **no confirma nada**. Solo la aprobación crea un pago.
 /// PAY-018: el archivo es privado y se guarda su checksum.
 model PaymentProof {
-  id             String @id @default(uuid()) @db.Uuid
-  eventId        String @map("event_id") @db.Uuid
-  registrationId String @map("registration_id") @db.Uuid
-  channelId      String @map("channel_id") @db.Uuid
+  id      String @id @default(uuid()) @db.Uuid
+  eventId String @map("event_id") @db.Uuid
+
+  /// Dos dueños posibles, exactamente uno presente: la evidencia es de una
+  /// inscripción de peregrino o de servidor (DEC-020). Lo verifica un CHECK.
+  registrationId       String? @map("registration_id") @db.Uuid
+  serverRegistrationId String? @map("server_registration_id") @db.Uuid
+
+  channelId String @map("channel_id") @db.Uuid
 
   declaredAmount Decimal  @map("declared_amount") @db.Decimal(12, 2)
   currency       String   @db.Char(3)
@@ -742,10 +910,11 @@ model PaymentProof {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  event        Event          @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  registration Registration   @relation(fields: [registrationId], references: [id], onDelete: Restrict)
-  channel      PaymentChannel @relation(fields: [channelId], references: [id], onDelete: Restrict)
-  payment      Payment?
+  event              Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registration       Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  serverRegistration ServerRegistration? @relation(fields: [serverRegistrationId], references: [id], onDelete: Restrict)
+  channel            PaymentChannel      @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  payment            Payment?
 
   @@unique([eventId, reference])
   @@index([eventId, status])
@@ -791,7 +960,8 @@ model CashSession {
 model Payment {
   id             String  @id @default(uuid()) @db.Uuid
   eventId        String  @map("event_id") @db.Uuid
-  registrationId String? @map("registration_id") @db.Uuid
+  registrationId       String? @map("registration_id") @db.Uuid
+  serverRegistrationId String? @map("server_registration_id") @db.Uuid
 
   amount   Decimal @db.Decimal(12, 2)
   currency String  @db.Char(3)
@@ -807,9 +977,10 @@ model Payment {
 
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  event        Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
-  registration Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
-  sourceProof  PaymentProof?       @relation(fields: [sourceProofId], references: [id], onDelete: Restrict)
+  event              Event               @relation(fields: [eventId], references: [id], onDelete: Restrict)
+  registration       Registration?       @relation(fields: [registrationId], references: [id], onDelete: Restrict)
+  serverRegistration ServerRegistration? @relation(fields: [serverRegistrationId], references: [id], onDelete: Restrict)
+  sourceProof        PaymentProof?       @relation(fields: [sourceProofId], references: [id], onDelete: Restrict)
   cashSession  CashSession?        @relation(fields: [cashSessionId], references: [id], onDelete: Restrict)
   allocations  PaymentAllocation[]
   receipt      Receipt?

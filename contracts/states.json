@@ -51,5 +51,14 @@
     "RELEASED",
     "CANCELLED",
     "EXPIRED"
+  ],
+  "serverRegistration": [
+    "PENDING",
+    "REJECTED",
+    "AWAITING_PAYMENT",
+    "ACTIVE",
+    "SUSPENDED",
+    "WITHDRAWN",
+    "COMPLETED"
   ]
 }

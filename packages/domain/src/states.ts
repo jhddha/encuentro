@@ -56,6 +56,23 @@ export const PAYMENT_PROOF_STATES = [
 
 export const LODGING_STATES = ['HELD', 'CONFIRMED', 'RELEASED', 'CANCELLED', 'EXPIRED'] as const;
 
+/**
+ * Inscripción de servidor — SRV-014.
+ *
+ * `AWAITING_PAYMENT` solo aparece cuando la gestión cobra: con importe cero, la
+ * solicitud aceptada pasa directa a `ACTIVE`. El estado existe igualmente
+ * porque el cobro se enciende cambiando un número, no migrando la tabla.
+ */
+export const SERVER_REGISTRATION_STATES = [
+  'PENDING',
+  'REJECTED',
+  'AWAITING_PAYMENT',
+  'ACTIVE',
+  'SUSPENDED',
+  'WITHDRAWN',
+  'COMPLETED',
+] as const;
+
 export type EventState = (typeof EVENT_STATES)[number];
 export type RegistrationState = (typeof REGISTRATION_STATES)[number];
 export type PaymentComputedState = (typeof PAYMENT_COMPUTED_STATES)[number];
@@ -63,6 +80,7 @@ export type AttendanceState = (typeof ATTENDANCE_STATES)[number];
 export type PaymentState = (typeof PAYMENT_STATES)[number];
 export type PaymentProofState = (typeof PAYMENT_PROOF_STATES)[number];
 export type LodgingState = (typeof LODGING_STATES)[number];
+export type ServerRegistrationState = (typeof SERVER_REGISTRATION_STATES)[number];
 
 /**
  * Transiciones permitidas del ciclo de gestión (requirements.md §4.1).

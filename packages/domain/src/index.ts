@@ -14,6 +14,7 @@ export {
   PAYMENT_STATES,
   PAYMENT_PROOF_STATES,
   LODGING_STATES,
+  SERVER_REGISTRATION_STATES,
   EVENT_TRANSITIONS,
   REGISTRATION_TRANSITIONS,
   canTransition,
@@ -28,6 +29,7 @@ export {
   type PaymentState,
   type PaymentProofState,
   type LodgingState,
+  type ServerRegistrationState,
 } from './states.js';
 
 export { DomainError, type DomainErrorCode } from './errors.js';

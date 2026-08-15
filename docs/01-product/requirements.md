@@ -59,6 +59,7 @@ Excluye checkout automático, facturación fiscal, presupuestos, centros de cost
 - Evidencia de pago: `PENDING_UPLOAD`, `SUBMITTED`, `UNDER_REVIEW`, `APPROVED`, `REJECTED`, `CORRECTION_REQUESTED`, `REPLACED`, `CANCELLED`.
 - Pago: `PENDING`, `SUCCEEDED`, `CANCELLED`, `PARTIALLY_REFUNDED`, `REFUNDED`.
 - Reserva: `HELD`, `CONFIRMED`, `RELEASED`, `CANCELLED`, `EXPIRED`.
+- Inscripción de servidor: `PENDING`, `REJECTED`, `AWAITING_PAYMENT`, `ACTIVE`, `SUSPENDED`, `WITHDRAWN`, `COMPLETED` (SRV-014).
 
 ## 5. Gestión y configuración
 
@@ -246,10 +247,10 @@ El hueco en la numeración es deliberado: el requisito de v2.6 sobre segundo fac
 
 | ID | Requisito | Criterio |
 |---|---|---|
-| SRV-001 | El servidor tiene inscripción propia, comisión, función, horario y vigencia. | Un cambio no altera el histórico anterior. |
+| SRV-001 | El servidor tiene inscripción propia, comisión, función, horario y vigencia. | Un cambio no altera el histórico anterior: cierra la asignación vigente y abre otra, y solo hay una vigente a la vez. |
 | SRV-002 | Los beneficios de servidor son explícitos y validables por QR. | No se asumen por rol genérico. |
 | SRV-003 | Un servidor sin asignación no opera una estación restringida. | La API deniega. |
-| SRV-004 | La credencial de servidor es independiente de la de peregrino. | Una persona puede tener ambas sin colisión. |
+| SRV-004 | Una persona se inscribe en la gestión como peregrino **o** como servidor, nunca como ambos. | La base lo impide entre las dos tablas de inscripción, no solo la pantalla. |
 
 ### Jerarquía y cuentas
 
@@ -279,8 +280,8 @@ Los cuatro niveles vienen del documento de administración del 14 de agosto de 2
 
 | ID | Requisito | Criterio |
 |---|---|---|
-| SRV-017 | La gestión decide si la inscripción de servidor es gratuita o de pago, con un único interruptor global. | No se configura por comisión. |
-| SRV-018 | Si es de pago, el monto y la moneda son únicos para todos los servidores de la gestión. | Un solo importe configurado por el administrador master. |
+| SRV-017 | El importe de inscripción de servidor es único por gestión y **cero significa gratuito**. | No hay un interruptor aparte: el estado «cobra sin monto» no se puede escribir. |
+| SRV-018 | El importe no se configura por comisión. | Un solo valor para todos los servidores de la gestión. |
 | SRV-019 | El pago se solicita solo después de que el coordinador acepta la solicitud. | Nunca antes: no se cobra a quien no encaja en la comisión. |
 | SRV-020 | El pago de servidor usa el mismo circuito manual que el del peregrino, sin checkout automático. | Canal, evidencia, revisión y comprobante (DEC-002, DEC-015, DEC-020). |
 | SRV-021 | El ingreso por inscripción de servidor se reconoce en su propia cuenta, separado del ingreso por peregrinos. | Rol contable `SERVER_REGISTRATION_REVENUE` (DEC-020). |

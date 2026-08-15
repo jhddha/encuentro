@@ -14,6 +14,7 @@ import {
   blocksOrdinaryOperations,
   canTransition,
   requiresReason,
+  SERVER_REGISTRATION_STATES,
 } from './states.js';
 
 const contractPath = fileURLToPath(new URL('../../../contracts/states.json', import.meta.url));
@@ -28,6 +29,7 @@ describe('máquinas de estado frente a contracts/states.json', () => {
     ['payment', PAYMENT_STATES],
     ['paymentProof', PAYMENT_PROOF_STATES],
     ['lodging', LODGING_STATES],
+    ['serverRegistration', SERVER_REGISTRATION_STATES],
   ];
 
   it.each(cases)('%s coincide exactamente con el contrato', (key, states) => {
