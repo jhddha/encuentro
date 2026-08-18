@@ -48,3 +48,8 @@ Thumbs.db
 
 # Cache de los scripts de Python.
 __pycache__/
+
+# Documentación exportada a Word. Se regenera desde los .md del repositorio,
+# así que no se versiona: setenta binarios que nadie puede diferenciar en un
+# diff, y cuya fuente ya está aquí.
+documentacion-docx/
